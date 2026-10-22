@@ -7,6 +7,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon-192.png">
 <title>Gujjar Dairies Hisaab</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
 <style>
 :root{--bg:#f5f8fa;--ink:#14212b;--mut:#5d6f7e;--card:#fff;--line:#dbe4ea;--blue:#1d4e89;--butter:#f2c14e;--red:#b3261e;--grn:#1b7a4b}
 @media(prefers-color-scheme:dark){:root{--bg:#0e1820;--ink:#e8eff4;--mut:#90a3b2;--card:#16242f;--line:#273946;--blue:#6aa6e8;--butter:#f2c14e;--red:#ff8a80;--grn:#6fd6a0}}
@@ -22,15 +23,16 @@ main{padding:12px;max-width:640px;margin:auto}
 h2{font-size:17px;margin:18px 0 8px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
 input,select,button{font:inherit}
-input[type=text],input[type=number],input[type=search]{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+input[type=text],input[type=number],input[type=search],input[type=email],input[type=password]{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
 input:focus-visible,button:focus-visible{outline:3px solid var(--butter);outline-offset:1px}
 button{border:0;border-radius:8px;padding:9px 14px;background:var(--blue);color:#fff;cursor:pointer}
-body:not(.x) button.s{background:transparent;color:var(--red);padding:4px 8px}
+button.s{background:transparent;color:var(--red);padding:4px 8px}
+button.g{background:transparent;color:var(--blue);border:1px solid var(--line)}
 .it{display:grid;grid-template-columns:1fr 64px 64px;gap:6px;align-items:end}
 .it b{grid-column:1/-1;font-size:15px}
 .it label{font-size:12px;color:var(--mut)}
 .it .r{grid-column:1/-1;font-size:13px;color:var(--mut);display:flex;justify-content:space-between}
-.ln{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.ln{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);gap:8px}
 .add{display:grid;grid-template-columns:1fr 90px auto;gap:6px;margin-top:8px}
 .sum{display:flex;justify-content:space-between;padding:4px 0}
 .neg{color:var(--red)}.pos{color:var(--grn)}
@@ -41,13 +43,16 @@ nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);b
 nav button{flex:1;background:none;color:var(--mut);border-radius:0;padding:14px 4px;font-size:14px}
 nav button[aria-current=true]{color:var(--blue);font-weight:700;box-shadow:inset 0 3px 0 var(--butter)}
 .hint{color:var(--mut);font-size:13px}
+.sy{font-size:12px;opacity:.9;white-space:nowrap}
+.stack>*{margin:0 0 8px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
 </style>
 </head>
 <body>
 <header>
-  <div class="row"><div><div class="sub">Aaj ki sale</div><div class="big" id="hs">0</div></div>
+  <div class="row"><div id="hl"></div>
   <input type="date" id="dt" aria-label="Tareekh"></div>
-  <div class="sub" id="hp"></div>
+  <div class="row"><div class="sub" id="hp"></div><div class="sy" id="sy" aria-live="polite"></div></div>
 </header>
 <main id="m"></main>
 <nav id="nav"></nav>
@@ -57,72 +62,202 @@ const SECS={ex:['Kharche (Expense)',['LABOUR KHARCHI','SAFAYI','ROTI','CHEENI','
  cr:['Customer/Milk wale ki payment',['DELIVERY','HOME EXP. + PARCEL']],
  sp:['Supplier payment',['BRADY\'S BILL','DAWN BILL','EGG BILL','CUP CAKE','PLAIN CAKE','BISCUIT WALA']],
  rc:['Cash wasool (delivery, udhaar wasooli)',['DELIVERY','HAJI WASOOL']]};
-const K='gd_hisaab_v1';
-let S=null;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
-if(!S)S={items:SEED.map((r,i)=>({id:'i'+i,name:r[0],rate:r[1],cost:r[2],op:r[3]})),days:{},cash0:0};
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Save nahi hua. Phone ki storage check karein aur Backup lein.')}};
-const n=v=>parseFloat(v)||0, f=v=>Math.round(v).toLocaleString('en-PK'), esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const KINDS=['ex','cr','sp','rc'];
+// Publishable (anon) key only. It is safe in the browser; Row Level Security protects the data.
+const SB_URL='https://bpzlvcmbpyvcdzzzfsjr.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwemx2Y21icHl2Y2R6enpmc2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2OTU4MDEsImV4cCI6MjEwODI3MTgwMX0.RhN86kL1oTBs5FS9eFWV6nT1hsTFK8PFQTsQTHzDNrc';
+const K1='gd_hisaab_v1',K='gd_hisaab_v2';
+const n=v=>parseFloat(v)||0, has=v=>v!=null&&v!=='', num=v=>has(v)?n(v):null;
+const q2=v=>Math.round(v*100)/100, f=v=>Math.round(v).toLocaleString('en-PK'), fq=v=>q2(v).toLocaleString('en-PK');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let lastU=0;const now=()=>(lastU=Math.max(Date.now(),lastU+1));
+const nid=()=>'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+
+// v1 data (or an imported backup) -> v2: every record gets an edit time `u` and is queued for upload.
+function migrate(o,t){const q={};
+ o.items.forEach(it=>{it.off=!!it.off;it.u=t;it.pru=t;q['it:'+it.id]=1;q['pr:'+it.id]=1});
+ for(const [d,D] of Object.entries(o.days)){D.st=D.st||{};
+  for(const [id,s] of Object.entries(D.st)){s.u=t;if(has(s.pu)||has(s.cl))q['st:'+d+'|'+id]=1}
+  for(const k of KINDS)D[k]=(D[k]||[]).map(r=>{const e={id:r.id||nid(),n:r.n,a:n(r.a),del:!!r.del,u:t};q['en:'+d+'|'+k+'|'+e.id]=1;return e});
+  if(D.cash===undefined)D.cash=null;D.cu=t;if(D.cash!=null)q['ca:'+d]=1}
+ o.c0u=t;q['set:cash0']=1;
+ return Object.assign(o,{v:2,q,cur:o.cur||{},me:o.me||null})}
+function load(){let s=null,o=null;
+ try{s=JSON.parse(localStorage.getItem(K))}catch(e){}
+ if(s&&s.v===2)return s;
+ try{o=JSON.parse(localStorage.getItem(K1))}catch(e){}
+ if(o&&o.items&&o.days)return migrate(o,1);
+ return{v:2,items:SEED.map((r,i)=>({id:'i'+i,name:r[0],rate:r[1],cost:r[2],op:r[3],off:false,u:0,pru:0})),days:{},cash0:0,c0u:0,q:{},cur:{},me:null}}
+let S=load(),MEMO={};
+const save=()=>{MEMO={};try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Save nahi hua. Phone ki storage check karein aur Backup lein.')}};
+save();
+const mark=k=>{S.q[k]=now();save();kick()};
 const tz=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
 let date=tz(),tab='stock',q='';
-const dd=d=>S.days[d]=S.days[d]||{st:{},ex:[],cr:[],sp:[],rc:[],cash:null};
-const before=d=>Object.keys(S.days).filter(x=>x<d).sort().reverse();
-function opening(it,d){for(const x of before(d)){const s=S.days[x].st[it.id];if(s&&s.cl!==''&&s.cl!=null)return n(s.cl)}return n(it.op)}
-function sold(it,d){const s=(S.days[d]||{st:{}}).st[it.id];if(!s||s.cl===''||s.cl==null)return 0;return opening(it,d)+n(s.pu)-n(s.cl)}
-function tot(d){const D=S.days[d]||{st:{},ex:[],cr:[],sp:[],rc:[],cash:null};let sale=0,prof=0;
+const role=()=>S.me?S.me.role:'owner', own=()=>role()==='owner';
+const EMPTY={st:{},ex:[],cr:[],sp:[],rc:[],cash:null,cu:0};
+const day=d=>S.days[d]||EMPTY;
+const dd=d=>S.days[d]=S.days[d]||{st:{},ex:[],cr:[],sp:[],rc:[],cash:null,cu:0};
+const live=(D,k)=>D[k].filter(r=>!r.del);
+const keys=()=>MEMO.k||(MEMO.k=Object.keys(S.days).sort());
+const before=d=>keys().filter(x=>x<d).reverse();
+const active=D=>D.cash!=null||KINDS.some(k=>live(D,k).length)||Object.values(D.st).some(s=>has(s.cl));
+function opening(it,d){for(const x of before(d)){const s=S.days[x].st[it.id];if(s&&has(s.cl))return n(s.cl)}return n(it.op)}
+function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q2(opening(it,d)+n(s.pu)-n(s.cl))}
+// Opening galla = previous working day's counted cash, or what it should have been if not counted.
+function gOpen(d){for(const x of before(d)){const D=S.days[x];if(!active(D))continue;return D.cash!=null?n(D.cash):tot(x).exp}return n(S.cash0)}
+function tot(d){if(MEMO['t'+d])return MEMO['t'+d];const D=day(d);let sale=0,prof=0;
  S.items.forEach(it=>{const s=sold(it,d);sale+=s*n(it.rate);prof+=s*(n(it.rate)-n(it.cost))});
- const sm=k=>D[k].reduce((a,b)=>a+n(b.a),0),ex=sm('ex'),cr=sm('cr'),sp=sm('sp'),rc=sm('rc');
- let op=n(S.cash0);for(const x of before(d)){if(S.days[x].cash!=null){op=n(S.days[x].cash);break}}
- const exp=op+sale+rc-ex-cr-sp;return{sale,prof,ex,cr,sp,rc,op,exp,pl:prof-ex,diff:D.cash!=null?n(D.cash)-exp:null,cash:D.cash}}
-function head(){const t=tot(date);$('#hs').textContent=f(t.sale);$('#hp').innerHTML='Munafa − kharche: <span class="pl">'+f(t.pl)+'</span>'}
+ const sm=k=>live(D,k).reduce((a,b)=>a+n(b.a),0),ex=sm('ex'),cr=sm('cr'),sp=sm('sp'),rc=sm('rc'),op=gOpen(d);
+ const exp=op+sale+rc-ex-cr-sp;return MEMO['t'+d]={sale,prof,ex,cr,sp,rc,op,exp,pl:prof-ex,diff:D.cash!=null?n(D.cash)-exp:null,cash:D.cash}}
 const $=s=>document.querySelector(s);
-const TABS=[['stock','Stock'],['hisaab','Hisaab'],['report','Report'],['items','Items'],['backup','Backup']];
-function nav(){$('#nav').innerHTML=TABS.map(([k,l])=>`<button aria-current="${tab==k}" onclick="go('${k}')">${l}</button>`).join('')}
-function go(t){tab=t;render()}
-function render(){nav();head();$('#dt').value=date;$('#m').innerHTML=({stock,hisaab,report,items,backup})[tab]()}
+function head(){if(own()){const t=tot(date);$('#hl').innerHTML='<div class="sub">Aaj ki sale</div><div class="big">'+f(t.sale)+'</div>';$('#hp').innerHTML='Munafa − kharche: <span class="pl">'+f(t.pl)+'</span>'}
+ else{$('#hl').innerHTML='<div class="sub">Gujjar Dairies</div><div class="big">Hisaab</div>';$('#hp').textContent=S.me&&S.me.email?S.me.email:''}status()}
+const TABS=[['stock','Stock',1],['hisaab','Hisaab',1],['report','Report',0],['items','Items',0],['online','Online',1]];
+const tabs=()=>TABS.filter(t=>own()||t[2]);
+function nav(){$('#nav').innerHTML=tabs().map(([k,l])=>`<button aria-current="${tab==k}" onclick="go('${k}')">${l}</button>`).join('')}
+function go(t){tab=t;render();if(t==='online')loadMembers()}
+function render(){if(!tabs().some(t=>t[0]===tab))tab='stock';nav();head();$('#dt').value=date;$('#m').innerHTML=({stock,hisaab,report,items,online})[tab]()}
 $('#dt').onchange=e=>{date=e.target.value||tz();render()};
-function stock(){const D=dd(date);
- const L=S.items.filter(i=>i.name.toLowerCase().includes(q.toLowerCase())).map(it=>{const s=D.st[it.id]||{pu:'',cl:''},o=opening(it,date),sd=sold(it,date);
+function line(it){const sd=sold(it,date);return `<span>Bika: ${fq(sd)}</span>`+(own()?`<span>${f(sd*n(it.rate))} | munafa ${f(sd*(n(it.rate)-n(it.cost)))}</span>`:'')}
+function stock(){const D=day(date);
+ const L=S.items.filter(i=>!i.off&&i.name.toLowerCase().includes(q.toLowerCase())).map(it=>{const s=D.st[it.id]||{pu:'',cl:''};
  return `<div class="card it"><b>${esc(it.name)}</b>
- <div><label>Opening</label><div>${o}</div></div>
- <div><label for="p${it.id}">Purchase</label><input type="number" inputmode="decimal" id="p${it.id}" value="${s.pu}" onchange="setS('${it.id}','pu',this.value)"></div>
- <div><label for="c${it.id}">Closing</label><input type="number" inputmode="decimal" id="c${it.id}" value="${s.cl}" onchange="setS('${it.id}','cl',this.value)"></div>
- <div class="r"><span>Bika: ${sd}</span><span>${f(sd*n(it.rate))} | munafa ${f(sd*(n(it.rate)-n(it.cost)))}</span></div></div>`}).join('');
+ <div><label>Opening</label><div>${fq(opening(it,date))}</div></div>
+ <div><label for="p${it.id}">Purchase</label><input type="number" inputmode="decimal" id="p${it.id}" value="${s.pu??''}" onchange="setS('${it.id}','pu',this)"></div>
+ <div><label for="c${it.id}">Closing</label><input type="number" inputmode="decimal" id="c${it.id}" value="${s.cl??''}" onchange="setS('${it.id}','cl',this)"></div>
+ <div class="r">${line(it)}</div></div>`}).join('');
  return `<input type="search" placeholder="Item dhoondein" value="${esc(q)}" oninput="q=this.value;keep()" aria-label="Item search"><p class="hint">Sirf Purchase aur Closing likhein. Bika hua maal aur sale khud nikal jayegi. Closing khali ho to item ginti mein nahi aata.</p>${L}`}
 function keep(){const p=$('input[type=search]'),pos=p.selectionStart;$('#m').innerHTML=stock();const e=$('input[type=search]');e.focus();e.setSelectionRange(pos,pos)}
-function setS(id,k,v){const D=dd(date);D.st[id]=D.st[id]||{pu:'',cl:''};D.st[id][k]=v;save();const y=window.scrollY;render();window.scrollTo(0,y)}
-function sec(k){const D=dd(date),[title,names]=SECS[k],tt=D[k].reduce((a,b)=>a+n(b.a),0);
- return `<h2>${title}: ${f(tt)}</h2><div class="card">${D[k].map((r,i)=>`<div class="ln"><span>${esc(r.n)}</span><span>${f(n(r.a))} <button class="s" aria-label="Hatayen" onclick="del('${k}',${i})">✕</button></span></div>`).join('')||'<p class="hint">Abhi koi entry nahi.</p>'}
+// Updates only this card so the keyboard stays on the next field.
+function setS(id,k,el){const D=dd(date),s=D.st[id]=D.st[id]||{pu:'',cl:'',u:0};s[k]=el.value;s.u=now();mark('st:'+date+'|'+id);head();
+ el.closest('.card').querySelector('.r').innerHTML=line(S.items.find(x=>x.id===id))}
+function sec(k){const D=day(date),[title,names]=SECS[k],L=live(D,k),tt=L.reduce((a,b)=>a+n(b.a),0);
+ return `<h2>${title}: ${f(tt)}</h2><div class="card">${L.map(r=>`<div class="ln"><span>${esc(r.n)}</span><span>${f(n(r.a))} <button class="s" aria-label="Hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')||'<p class="hint">Abhi koi entry nahi.</p>'}
  <div class="add"><input type="text" id="n${k}" list="l${k}" placeholder="Naam" aria-label="Naam"><datalist id="l${k}">${names.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
  <input type="number" inputmode="decimal" id="a${k}" placeholder="Raqam" aria-label="Raqam"><button onclick="addL('${k}')">Add</button></div></div>`}
-function addL(k){const nm=$('#n'+k).value.trim(),a=n($('#a'+k).value);if(!nm||!a){alert('Naam aur raqam dono likhein.');return}dd(date)[k].push({n:nm,a});save();render()}
-function del(k,i){if(confirm('Ye entry hatani hai?')){dd(date)[k].splice(i,1);save();render()}}
-function hisaab(){const t=tot(date);
+function addL(k){const nm=$('#n'+k).value.trim(),a=n($('#a'+k).value);if(!nm||!a){alert('Naam aur raqam dono likhein.');return}
+ const e={id:nid(),n:nm,a,del:false,u:now()};dd(date)[k].push(e);mark('en:'+date+'|'+k+'|'+e.id);render()}
+function del(k,id){if(!confirm('Ye entry hatani hai?'))return;const e=dd(date)[k].find(x=>x.id===id);if(!e)return;e.del=true;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
+function hisaab(){const t=tot(date),ci=`<label for="ch" class="hint">Asal cash in hand (ginti ke baad)</label><input type="number" inputmode="decimal" id="ch" value="${t.cash??''}" onchange="setC(this.value)">`;
+ if(!own())return sec('ex')+sec('cr')+sec('sp')+sec('rc')+`<h2>Galla</h2><div class="card">${ci}</div>`;
  return sec('ex')+sec('cr')+sec('sp')+sec('rc')+`<h2>Galla</h2><div class="card">
  <div class="sum"><span>Galla opening</span><b>${f(t.op)}</b></div>
  <div class="sum"><span>+ Sale ${f(t.sale)} + Wasool ${f(t.rc)}</span><b>${f(t.sale+t.rc)}</b></div>
  <div class="sum"><span>− Kharche, payments</span><b>${f(t.ex+t.cr+t.sp)}</b></div>
  <div class="sum"><span>Hona chahiye</span><b>${f(t.exp)}</b></div>
- <label for="ch" class="hint">Asal cash in hand (ginti ke baad)</label><input type="number" inputmode="decimal" id="ch" value="${t.cash??''}" onchange="setC(this.value)">
+ ${ci}
  ${t.diff!=null?`<div class="sum"><span>Farq (galla diff)</span><b class="${t.diff<0?'neg':'pos'}">${f(t.diff)}</b></div>`:''}</div>`}
-function setC(v){dd(date).cash=v===''?null:n(v);save();render()}
+function setC(v){const D=dd(date);D.cash=v===''?null:n(v);D.cu=now();mark('ca:'+date);render()}
 function report(){const t=tot(date),R=(a,b,c)=>`<div class="sum"><span>${a}</span><b class="${c||''}">${b}</b></div>`;
- const days=Object.keys(S.days).sort().reverse().slice(0,10);
+ const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,10);
  return `<h2>${date} ka hisaab</h2><div class="card">${R('Counter sale',f(t.sale))}${R('Items ka munafa',f(t.prof))}${R('Kharche',f(t.ex))}${R('Munafa / nuqsan',f(t.pl),t.pl<0?'neg':'pos')}${R('Supplier payments',f(t.sp))}${R('Galla farq',t.diff==null?'-':f(t.diff),t.diff<0?'neg':'')}</div>
  <h2>Pichle din</h2><div class="card"><table><tr><th>Tareekh</th><th>Sale</th><th>Kharche</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr><td>${d.slice(5)}</td><td>${f(x.sale)}</td><td>${f(x.ex)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table></div>
  <p class="hint">Munafa = bike maal ka (rate − cost) minus kharche. Supplier payment stock ki kharidari hai, kharcha nahi.</p>`}
-function items(){return `<h2>Items, rate aur cost</h2>${S.items.map((it,i)=>`<div class="card it"><b>${esc(it.name)} <button class="s" aria-label="Item hatayen" onclick="delI(${i})">✕</button></b>
- <div><label>Rate</label><input type="number" inputmode="decimal" value="${it.rate}" onchange="upI(${i},'rate',this.value)"></div>
- <div><label>Cost</label><input type="number" inputmode="decimal" value="${it.cost}" onchange="upI(${i},'cost',this.value)"></div>
- <div><label>Shuru stock</label><input type="number" inputmode="decimal" value="${it.op}" onchange="upI(${i},'op',this.value)"></div></div>`).join('')}
- <h2>Naya item</h2><div class="card"><input type="text" id="ni" placeholder="Item ka naam" aria-label="Item ka naam" style="margin-bottom:6px"><button onclick="addI()">Item add karein</button></div>`}
-function upI(i,k,v){S.items[i][k]=n(v);save();head()}
-function addI(){const nm=$('#ni').value.trim();if(!nm)return;S.items.push({id:'i'+Date.now(),name:nm,rate:0,cost:0,op:0});save();render()}
-function delI(i){if(confirm('Item hatane se purani entries ka hisaab bhi badal sakta hai. Hatayen?')){S.items.splice(i,1);save();render()}}
-function backup(){return `<h2>Backup</h2><div class="card"><p>Data sirf is phone mein save hota hai. Har hafte backup file apne WhatsApp ya Google Drive mein save karein.</p><button onclick="exp()">Backup file download karein</button></div>
- <div class="card"><p>Purana backup wapas lane ke liye file chunein (maujooda data replace ho jayega).</p><input type="file" accept=".json" onchange="imp(this.files[0])" aria-label="Backup file"></div>
- <div class="card"><label for="c0" class="hint">Shuru ka galla (pehle din ke liye)</label><input type="number" id="c0" value="${S.cash0}" onchange="S.cash0=n(this.value);save();head()"></div>`}
+function items(){const off=S.items.filter(i=>i.off);
+ return `<h2>Items, rate aur cost</h2>${S.items.filter(i=>!i.off).map(it=>`<div class="card it"><b>${esc(it.name)} <button class="s" aria-label="Item band karein" onclick="offI('${it.id}',true)">✕</button></b>
+ <div><label>Rate</label><input type="number" inputmode="decimal" value="${it.rate}" onchange="upI('${it.id}','rate',this.value)"></div>
+ <div><label>Cost</label><input type="number" inputmode="decimal" value="${it.cost}" onchange="upI('${it.id}','cost',this.value)"></div>
+ <div><label>Shuru stock</label><input type="number" inputmode="decimal" value="${it.op}" onchange="upI('${it.id}','op',this.value)"></div></div>`).join('')}
+ <h2>Naya item</h2><div class="card"><input type="text" id="ni" placeholder="Item ka naam" aria-label="Item ka naam" style="margin-bottom:6px"><button onclick="addI()">Item add karein</button></div>
+ ${off.length?`<h2>Band items</h2><div class="card">${off.map(it=>`<div class="ln"><span>${esc(it.name)}</span><button class="g" onclick="offI('${it.id}',false)">Wapas layein</button></div>`).join('')}</div>`:''}`}
+const itm=id=>S.items.find(x=>x.id===id);
+function upI(id,k,v){const it=itm(id);it[k]=n(v);if(k==='op')it.u=now();else it.pru=now();mark('it:'+id);mark('pr:'+id);head()}
+function addI(){const nm=$('#ni').value.trim();if(!nm)return;const id='i'+Date.now();S.items.push({id,name:nm,rate:0,cost:0,op:0,off:false,u:now(),pru:now()});mark('it:'+id);mark('pr:'+id);render()}
+// Items are never deleted, only hidden, so old days keep their hisaab.
+function offI(id,v){if(v&&!confirm('Ye item list se hata dein? Purana hisaab waisa hi rahega aur neeche se wapas laa sakte hain.'))return;const it=itm(id);it.off=v;it.u=now();mark('it:'+id);render()}
+
+// ---- Online: login and sync (Supabase). Everything is saved on the phone first, then sent when internet is available.
+let sb=null,who=null,busy=false,syncErr='',lastSync=null,kickT=null,authMsg='',MEM=null;
+const PK={items:'id',prices:'item_id',settings:'key',day_stock:'day,item_id',entries:'id',cash:'day'};
+const OWNER_ONLY={it:1,pr:1,set:1};
+function sbInit(){if(sb||!window.supabase)return;
+ sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+ sb.auth.onAuthStateChange((ev,s)=>{who=s&&s.user?s.user.email:null;setTimeout(()=>{status();if(who)sync();if(tab==='online')render()},0)})}
+function kick(){clearTimeout(kickT);kickT=setTimeout(sync,3000)}
+function status(){const e=$('#sy');if(!e)return;const c=Object.keys(S.q).length;
+ e.textContent=!who?'':busy?'Sync ho raha hai…':!navigator.onLine?`Offline · ${c} baqi`:syncErr?'⚠ Sync nahi hua':c?`${c} baqi`:'✓ Online'}
+function toRow(t,r){
+ if(t==='it'||t==='pr'){const it=itm(r);if(!it)return null;
+  return t==='it'?['items',{id:it.id,name:it.name,op:n(it.op),off:!!it.off,u:it.u}]:['prices',{item_id:it.id,rate:n(it.rate),cost:n(it.cost),u:it.pru}]}
+ if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
+ const [d,a,b]=r.split('|'),D=S.days[d];if(!D)return null;
+ if(t==='st'){const s=D.st[a];return s?['day_stock',{day:d,item_id:a,pu:num(s.pu),cl:num(s.cl),u:s.u||0}]:null}
+ if(t==='en'){const e=(D[a]||[]).find(x=>x.id===b);return e?['entries',{id:e.id,day:d,kind:a,name:e.n,amount:n(e.a),deleted:!!e.del,u:e.u}]:null}
+ if(t==='ca')return['cash',{day:d,amount:D.cash,u:D.cu||0}];return null}
+async function push(){const snap={...S.q},R={items:[],prices:[],settings:[],day_stock:[],entries:[],cash:[]};
+ for(const k in snap){const i=k.indexOf(':'),t=k.slice(0,i);if(OWNER_ONLY[t]&&!own())continue;const row=toRow(t,k.slice(i+1));if(row)R[row[0]].push(row[1])}
+ for(const [tb,rows] of Object.entries(R))for(let i=0;i<rows.length;i+=500){const {error}=await sb.from(tb).upsert(rows.slice(i,i+500),{onConflict:PK[tb]});if(error)throw error}
+ for(const k in snap)if(S.q[k]===snap[k])delete S.q[k];save()}
+function merge(tb,r){
+ if(tb==='items'){const it=itm(r.id);if(!it){S.items.push({id:r.id,name:r.name,op:n(r.op),off:r.off,rate:0,cost:0,u:r.u,pru:0});return true}
+  if(r.u>it.u){Object.assign(it,{name:r.name,op:n(r.op),off:r.off,u:r.u});return true}return false}
+ if(tb==='prices'){const it=itm(r.item_id);if(it&&r.u>it.pru){Object.assign(it,{rate:n(r.rate),cost:n(r.cost),pru:r.u});return true}return false}
+ if(tb==='settings'){if(r.key==='cash0'&&r.u>S.c0u){S.cash0=n(r.value);S.c0u=r.u;return true}return false}
+ const D=dd(r.day);
+ if(tb==='day_stock'){const s=D.st[r.item_id];if(!s||r.u>(s.u||0)){D.st[r.item_id]={pu:r.pu??'',cl:r.cl??'',u:r.u};return true}return false}
+ if(tb==='entries'){const L=D[r.kind],i=L.findIndex(x=>x.id===r.id),e={id:r.id,n:r.name,a:n(r.amount),del:r.deleted,u:r.u};
+  if(i<0){L.push(e);return true}if(r.u>L[i].u){L[i]=e;return true}return false}
+ if(tb==='cash'){if(r.u>(D.cu||0)){D.cash=r.amount==null?null:n(r.amount);D.cu=r.u;return true}return false}return false}
+async function pull(){let ch=false;
+ for(const tb of ['items','prices','settings','day_stock','entries','cash']){if(!own()&&(tb==='prices'||tb==='settings'))continue;
+  // Re-read the last minute too, so rows committed slightly out of order are not missed. Merging is idempotent.
+  const since=new Date(new Date(S.cur[tb]||0).getTime()-60000).toISOString();let max=S.cur[tb]||null;
+  for(let off=0;;off+=1000){const {data,error}=await sb.from(tb).select('*').gt('sa',since).order('sa').range(off,off+999);if(error)throw error;
+   data.forEach(r=>{if(merge(tb,r))ch=true;if(!max||r.sa>max)max=r.sa});if(data.length<1000)break}
+  if(max)S.cur[tb]=max}
+ save();return ch}
+async function sync(){sbInit();if(!sb||busy||!navigator.onLine){status();return}
+ const {data:{session}}=await sb.auth.getSession();who=session?session.user.email:null;if(!session){status();return}
+ busy=true;status();let redraw=false;
+ try{const {data:m,error}=await sb.from('members').select('role').eq('user_id',session.user.id).maybeSingle();if(error)throw error;
+  const r=m?m.role:'pending';if(role()!==r||!S.me||S.me.email!==who)redraw=true;S.me={email:who,role:r};save();
+  if(r==='owner'&&!S.seeded){const {count,error:ce}=await sb.from('items').select('id',{count:'exact',head:true});if(ce)throw ce;
+   if(!count)S.items.forEach(it=>{S.q['it:'+it.id]=S.q['it:'+it.id]||1;S.q['pr:'+it.id]=S.q['pr:'+it.id]||1});S.seeded=true;save()}
+  if(r!=='pending'){await push();if(await pull())redraw=true}
+  lastSync=new Date();syncErr=''}
+ catch(e){syncErr=e.message||String(e)}
+ finally{busy=false}
+ const a=document.activeElement;if(redraw&&!(a&&a.tagName==='INPUT'))render();else status()}
+function trErr(m){return /invalid login/i.test(m)?'Email ya password ghalat hai.':/already registered|already exists/i.test(m)?'Ye email pehle se bana hua hai. Login dabayein.':/not confirmed/i.test(m)?'Pehle email par aaya link khol kar account pakka karein.':/password/i.test(m)?'Password kam az kam 6 harf ka rakhein.':'Masla: '+m}
+async function login(up){sbInit();if(!sb||!navigator.onLine){alert('Login ke liye internet chahiye.');return}
+ const e=$('#em').value.trim(),p=$('#pw').value;if(!e||p.length<6){alert('Email aur kam az kam 6 harf ka password likhein.');return}
+ authMsg='Intezar karein…';render();
+ const {data,error}=up?await sb.auth.signUp({email:e,password:p}):await sb.auth.signInWithPassword({email:e,password:p});
+ authMsg=error?trErr(error.message):!data.session?'Email par aaya link khol kar account pakka karein, phir yahan Login karein.':'';
+ if(data&&data.session){who=data.session.user.email;await sync()}render()}
+async function logout(){if(!confirm('Logout karna hai? Phone ka data phone mein hi rahega.'))return;
+ if(sb)await sb.auth.signOut({scope:'local'}).catch(()=>{});
+ // A staff phone stays in staff mode after logout until the owner logs in on it.
+ who=null;S.me=role()==='staff'?{email:null,role:'staff'}:null;save();render()}
+async function loadMembers(){if(!sb||!who||!own()||!navigator.onLine)return;
+ const {data,error}=await sb.from('members').select('user_id,email,role,created_at').order('created_at');if(!error){MEM=data;if(tab==='online')render()}}
+async function setRole(id,r){const {error}=await sb.from('members').update({role:r}).eq('user_id',id);if(error)alert(trErr(error.message));loadMembers()}
+function online(){const c=Object.keys(S.q).length,r=role();let h='<h2>Online account</h2>';
+ if(!who)h+=`<div class="card stack"><p>Login karne se hisaab internet par mehfooz ho jata hai aur doosre phone par bhi nazar aata hai. Login ke baghair bhi app isi phone par chalti rahegi.</p>
+ <p class="hint">Sab se pehla account owner ka banega. Staff ka account owner ke "Haan" karne ke baad chalega.</p>
+ <input type="email" id="em" placeholder="Email" autocomplete="username" aria-label="Email">
+ <input type="password" id="pw" placeholder="Password (kam az kam 6 harf)" autocomplete="current-password" aria-label="Password">
+ <div class="btns"><button onclick="login(false)">Login</button><button class="g" onclick="login(true)">Naya account banayein</button></div>
+ ${authMsg?`<p>${esc(authMsg)}</p>`:''}${!window.supabase?'<p class="hint">Abhi internet nahi hai. Internet aane par login ho sakega.</p>':''}</div>`;
+ else h+=`<div class="card stack"><div class="sum"><span>Account</span><b>${esc(who)}</b></div>
+ <div class="sum"><span>Kaam</span><b>${r==='owner'?'Owner':r==='staff'?'Staff':'Owner ki manzoori baqi'}</b></div>
+ <div class="sum"><span>Bhejne ke liye baqi</span><b>${c}</b></div>
+ <div class="sum"><span>Aakhri sync</span><b>${lastSync?lastSync.toLocaleTimeString('en-PK',{hour:'numeric',minute:'2-digit'}):'-'}</b></div>
+ ${syncErr?`<p class="neg">Sync nahi hua: ${esc(syncErr)}</p>`:''}${r==='pending'?'<p>Owner se kahein ke Online tab mein aap ko "Staff banayein" kar de.</p>':''}
+ <div class="btns"><button onclick="sync().then(render)">Abhi sync karein</button><button class="g" onclick="logout()">Logout</button></div></div>`;
+ if(who&&own()&&MEM){const o=MEM.filter(x=>x.role!=='owner');
+  h+=`<h2>Staff</h2><div class="card">${o.map(x=>`<div class="ln"><span>${esc(x.email||'')}<br><span class="hint">${x.role==='staff'?'Staff':'Manzoori baqi'}</span></span>${x.role==='staff'?`<button class="g" onclick="setRole('${x.user_id}','pending')">Rok dein</button>`:`<button onclick="setRole('${x.user_id}','staff')">Staff banayein</button>`}</div>`).join('')||'<p class="hint">Abhi koi staff nahi. Staff apne phone par is app mein "Naya account banayein" kare, phir yahan nazar aayega.</p>'}</div>`}
+ if(own())h+=`<h2>Backup</h2><div class="card"><p>Backup file apne WhatsApp ya Google Drive mein bhi save kar lein.</p><button onclick="exp()">Backup file download karein</button></div>
+ <div class="card"><p>Purana backup wapas lane ke liye file chunein. Is phone ka data us file se badal jayega aur online bhi chala jayega.</p><input type="file" accept=".json" onchange="imp(this.files[0])" aria-label="Backup file"></div>
+ <div class="card"><label for="c0" class="hint">Shuru ka galla (pehle din ke liye)</label><input type="number" id="c0" value="${S.cash0}" onchange="S.cash0=n(this.value);S.c0u=now();mark('set:cash0');head()"></div>`;
+ return h}
 function exp(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='hisaab-backup-'+tz()+'.json';a.click()}
-function imp(file){if(!file)return;file.text().then(t=>{try{const d=JSON.parse(t);if(!d.items||!d.days)throw 0;if(confirm('Maujooda data replace karna hai?')){S=d;save();render()}}catch(e){alert('Ye sahi backup file nahi hai.')}})}
+function imp(file){if(!file)return;file.text().then(t=>{try{const d=JSON.parse(t);if(!d.items||!d.days)throw 0;
+ if(confirm('Is phone ka data is file se badalna hai?')){const me=S.me,cur=S.cur,seeded=S.seeded;S=migrate(d,now());Object.assign(S,{me,cur,seeded});save();render();kick()}}catch(e){alert('Ye sahi backup file nahi hai.')}})}
+window.addEventListener('online',()=>{status();sync()});window.addEventListener('offline',status);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync()});
+setInterval(()=>{if(document.visibilityState==='visible')sync()},60000);
+window.addEventListener('load',()=>{sbInit();sync()});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 render();
 </script>
