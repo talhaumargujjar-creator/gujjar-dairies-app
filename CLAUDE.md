@@ -10,7 +10,9 @@ Is file ko repo ke root (`gujjar-dairies-app/`) mein `CLAUDE.md` naam se rakhein
 ## Maujooda halat
 Static PWA, koi build step nahi. Files: `index.html` (HTML+CSS+JS sab ek file mein), `manifest.webmanifest`, `sw.js`, `icon-192.png`, `icon-512.png`.
 - Data `localStorage` key `gd_hisaab_v2` mein (v1 wala `gd_hisaab_v1` safety ke liye chhoda hua hai, pehli baar khulne par v2 mein migrate hota hai). Har record par `u` (edit time ms), entries par `id` aur `del` (soft delete), items par `off`, `pru` (price edit time). `q` = upload ke liye baqi keys, `cur` = har table ka pull cursor, `me` = {email, role}.
-- App khulte hi login page aata hai (`S.me` khali ho to). Login ke baad tabs: Stock, Hisaab, Report, Items, Account (sync, staff manzoori, password, Backup). Staff ko sirf Stock, Hisaab, Account. `pending` user ko "manzoori ka intezar" screen.
+- App khulte hi login page aata hai (`S.me` khali ho to). Login ke baad tabs: Stock, Hisaab, Doodh, Report, Items, Account (sync, staff manzoori, password, Backup). Staff ko sirf Stock, Hisaab, Doodh, Account.
+- Doodh tab Google Sheet "MILK 2026 New" ki jagah le raha hai (plan: 1 entry ✓, 2 rate/raqam/baqaya, 3 milan + PNL + Suzuki kharcha, 4 sync ✓, 5 sheet se purana data, 6 report/WhatsApp). Data `S.mk`: `ps` parties (`kind` 'sup' = doodh dene wali jaise Wasif Chacho, Bikri Bara; 'buy' = lene wali jaise Johar), `mr[day]` mandi rate {m,e} fi mann, `d[day][partyId]` = {bm,be,cm,ce,lm,le,sm,se} **kg mein** (1 mann = 40 kg; b bandhi, c cow, l mandi se liya, s mandi ko becha; m subah, e shaam). Party ka kul = b + c + l − s. Milan: dene wali parties ka kul = lene wali ka kul. Supabase tables `milk_parties` (sirf owner likhe), `milk_rates`, `milk_days`; queue keys `mp:`, `mr:`, `md:day|party`.
+- Sheet ke qaide (marhala 2 ke liye): bandhi raqam = mann × party ka bandhi rate, cow = mann × cow rate, mandi = mann × mandi rate; mandi ko bechne par rate se commission katta hai (Wasif −230, Bikri −2500 fi mann). Baqaya = pichla baqaya + raqam − payment. `pending` user ko "manzoori ka intezar" screen.
 - Stock card paper register jaisa: Opening, Purchase, Istemal (register ka "Being used", `us`), Closing. Bika = Opening + Purchase − Istemal − Closing.
 - Hosting: GitHub repo `talhaumargujjar-creator/gujjar-dairies-app` -> Vercel project `gujjar-dairies-app` (free), main par push se auto deploy. Live: https://gujjar-dairies-app.vercel.app
 - Supabase project `bpzlvcmbpyvcdzzzfsjr` (Vercel Marketplace se bana, free). Schema `supabase/schema.sql` mein. Pehla signup owner banta hai, baqi `pending` jab tak owner "Staff banayein" na kare. Delete policy kahin nahi; last-write-wins trigger `lww()` purani `u` wali write ko rad karta hai. Dusra Supabase project `hakcpkkvmhamdgmfttpc` (Vercel project `gujjar-dairies` se juda) istemal nahi hota.
@@ -41,7 +43,7 @@ Static PWA, koi build step nahi. Files: `index.html` (HTML+CSS+JS sab ek file me
 
 ## Usool
 - Free stack hi. Naya dependency ya service lagane se pehle owner se poocho.
-- Offline kaam karna band nahi hona chahiye. Service worker ka cache version (abhi `hisaab-v2`) badlo jab files badlein.
+- Offline kaam karna band nahi hona chahiye. Service worker ka cache version (abhi `hisaab-v5`) badlo jab files badlein.
 - Maujooda `localStorage` data ko migrate karo, mita na do. Naye version se pehle Backup export ka tareeqa batao.
 - Chhote chhote commits, aur har kaam ke baad `git push` taake Vercel deploy kare. Deploy hone par owner ko link batao.
 - UI aasan rakho: bara text, ek haath se phone par chalne wali, Roman Urdu labels. Raqam `en-PK` format mein.

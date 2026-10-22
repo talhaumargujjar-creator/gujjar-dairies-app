@@ -141,3 +141,37 @@ revoke execute on function public.keepalive() from public;
 grant execute on function public.keepalive() to anon, authenticated;
 -- "Being used" from the paper register: stock used inside the shop (e.g. milk turned into dahi), not sold.
 alter table public.day_stock add column us numeric;
+-- Doodh (milk) book, replaces the MILK 2026 sheet. Quantities are kg (1 mann = 40 kg).
+-- milk_days columns: b = bandhi, c = cow, l = taken from mandi, s = sold to mandi; m = morning, e = evening.
+create table public.milk_parties (
+  id text primary key, name text not null, kind text not null check (kind in ('sup','buy')), off boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+create table public.milk_rates (
+  day date primary key, mor numeric, eve numeric,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+create table public.milk_days (
+  day date not null, party_id text not null,
+  bm numeric, be numeric, cm numeric, ce numeric, lm numeric, le numeric, sm numeric, se numeric,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid,
+  primary key (day, party_id)
+);
+do $$
+declare t text;
+begin
+  foreach t in array array['milk_parties','milk_rates','milk_days'] loop
+    execute format('create trigger %I_lww before insert or update on public.%I for each row execute function public.lww()', t, t);
+    execute format('create index %I_sa_idx on public.%I (sa)', t, t);
+    execute format('alter table public.%I enable row level security', t);
+    execute format('create policy %I_member_select on public.%I for select to authenticated using (public.is_member())', t, t);
+  end loop;
+  foreach t in array array['milk_rates','milk_days'] loop
+    execute format('create policy %I_member_insert on public.%I for insert to authenticated with check (public.is_member())', t, t);
+    execute format('create policy %I_member_update on public.%I for update to authenticated using (public.is_member()) with check (public.is_member())', t, t);
+  end loop;
+end $$;
+-- Parties: everyone reads, only owner adds or renames.
+create policy milk_parties_owner_insert on public.milk_parties for insert to authenticated with check (public.is_owner());
+create policy milk_parties_owner_update on public.milk_parties for update to authenticated using (public.is_owner()) with check (public.is_owner());
+revoke all on public.milk_parties, public.milk_rates, public.milk_days from anon;
