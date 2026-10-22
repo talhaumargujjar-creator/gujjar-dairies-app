@@ -3,26 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#1d4e89">
+<meta name="theme-color" content="#2e4791">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <title>Gujjar Dairies Hisaab</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
 <style>
-:root{--bg:#eef3f8;--ink:#13202b;--mut:#5b6b79;--card:#fff;--line:#d9e3ec;--field:#f6f9fc;--blue:#1d4e89;--bink:#1d4e89;--soft:#e3edf8;--butter:#f2c14e;--red:#b3261e;--redbg:#fdeceb;--grn:#17734a;--grnbg:#e5f4ec;--amb:#7a5000;--ambbg:#fff3d1;--sh:0 1px 2px rgba(15,40,70,.05),0 6px 18px rgba(15,40,70,.06)}
-@media(prefers-color-scheme:dark){:root{--bg:#0d1720;--ink:#e7eef4;--mut:#93a5b4;--card:#15232e;--line:#263845;--field:#0f1c26;--bink:#8bbcf0;--soft:#1b3047;--red:#ff9a90;--redbg:#3b1f1d;--grn:#71d6a3;--grnbg:#16322a;--amb:#f2c14e;--ambbg:#33290f;--sh:none}}
+/* Brand colours sampled from the Gujjar Dairies logo: blue #2E4791, red #C71C2B. */
+:root{--bg:#f1f4fa;--ink:#141c2e;--mut:#5a6478;--card:#fff;--line:#dbe1ee;--field:#f7f9fd;--blue:#2e4791;--bink:#2e4791;--soft:#e7ecf8;--brand:#c71c2b;--brandbg:#fde9eb;--butter:#f2c14e;--red:#b3261e;--redbg:#fdeceb;--grn:#17734a;--grnbg:#e5f4ec;--amb:#7a5000;--ambbg:#fff3d1;--sh:0 1px 2px rgba(20,35,80,.05),0 6px 18px rgba(20,35,80,.07)}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1424;--ink:#e8ecf6;--mut:#99a3ba;--card:#171f33;--line:#2a3550;--field:#111829;--bink:#a3b6f0;--soft:#222d4a;--brand:#ff6b78;--brandbg:#3a1c24;--red:#ff9a90;--redbg:#3b1f1d;--grn:#71d6a3;--grnbg:#16322a;--amb:#f2c14e;--ambbg:#33290f;--sh:none}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg)}
 body{margin:0;color:var(--ink);font:17px/1.45 "Segoe UI",Roboto,system-ui,sans-serif}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer}
 [hidden]{display:none!important}
-.hdr{background:linear-gradient(165deg,#1d4e89,#163a68);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 16px;border-radius:0 0 22px 22px;box-shadow:0 4px 16px rgba(10,30,60,.16)}
+.hdr{background:linear-gradient(165deg,#2e4791,#223672);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 16px;border-radius:0 0 22px 22px;border-bottom:4px solid #c71c2b;box-shadow:0 4px 16px rgba(20,35,80,.18)}
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;line-height:1.15}
-.brand small{display:block;font-weight:400;font-size:12px;opacity:.8}
-.logo{width:38px;height:38px;border-radius:12px;background:var(--butter);color:#163a68;display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+.brand{display:flex;align-items:center;gap:10px;line-height:1.2;min-width:0}
+.brand img{height:46px;width:auto;flex:none}
+.brand small{display:block;font-size:12px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand small b{font-size:13px;opacity:1}
 .pill{border:0;font-size:13px;padding:6px 11px;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;white-space:nowrap}
 .pill.warn{background:var(--butter);color:#3b2a00}
 .dbar{display:flex;align-items:center;margin-top:12px;background:rgba(255,255,255,.12);border-radius:14px}
@@ -34,7 +36,7 @@ button{cursor:pointer}
 .stat{background:rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;min-width:0}
 .stat span{display:block;font-size:12px;opacity:.85}
 .stat b{font-size:18px;white-space:nowrap}
-.stat b.y{color:var(--butter)}
+.stat b.y{color:#ffd3d7}
 main{padding:14px 14px calc(100px + env(safe-area-inset-bottom));max-width:640px;margin:auto}
 h2{font-size:18px;margin:20px 4px 10px}
 h3{font-size:17px;margin:0}
@@ -56,8 +58,8 @@ button:focus-visible{outline:3px solid var(--butter);outline-offset:2px}
 .tabs button{flex:1;border:0;background:none;color:var(--mut);padding:7px 2px 8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:62px}
 .tabs i{display:grid;place-items:center;width:52px;height:30px;border-radius:15px}
 .tabs svg{width:23px;height:23px}
-.tabs button[aria-current=true]{color:var(--bink);font-weight:700}
-.tabs button[aria-current=true] i{background:var(--soft)}
+.tabs button[aria-current=true]{color:var(--brand);font-weight:700}
+.tabs button[aria-current=true] i{background:var(--brandbg)}
 .sh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .sh b{font-size:19px}
 .prog{height:9px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:10px}
@@ -101,10 +103,12 @@ td,th{padding:10px 4px;border-bottom:1px solid var(--line);text-align:right}
 td:first-child,th:first-child{text-align:left}
 tr[onclick]{cursor:pointer}
 th{font-size:13px;color:var(--mut);font-weight:600}
-.gate{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:28px 18px calc(28px + env(safe-area-inset-bottom));max-width:440px;margin:auto}
-.gate .logo{width:72px;height:72px;font-size:28px;border-radius:20px;margin:0 auto 12px;box-shadow:0 6px 18px rgba(242,193,78,.35)}
-.gate h1{text-align:center;margin:0;font-size:27px}
-.gate .sub{text-align:center;color:var(--mut);margin:4px 0 22px}
+.gate{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:24px 18px calc(28px + env(safe-area-inset-bottom));max-width:440px;margin:auto}
+.gate .art{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:18px}
+.gate .mascot{height:150px;width:auto}
+.gate .word{width:210px;height:auto;margin-top:-4px}
+.gate .tagline{width:230px;height:auto;background:#fff;border-radius:10px;padding:6px 10px;box-sizing:content-box}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .pw{position:relative}
 .pw input{padding-right:96px}
 .pw button{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--bink);font-size:15px;font-weight:600;padding:10px}
@@ -194,7 +198,7 @@ const tabs=()=>TABS.filter(t=>own()||t[2]);
 function navV(){return `<nav class="tabs">${tabs().map(([k,l])=>`<button aria-current="${tab==k}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
 function go(t){tab=t;render();scrollTo(0,0);if(t==='acct')loadMembers()}
 function statsV(){const t=tot(date);return `<div class="stat"><span>Sale</span><b>${f(t.sale)}</b></div><div class="stat"><span>Munafa</span><b class="y">${f(t.pl)}</b></div><div class="stat"><span>Galla farq</span><b>${t.diff==null?'—':f(t.diff)}</b></div>`}
-function hdr(){return `<header class="hdr"><div class="top"><div class="brand"><div class="logo">GD</div><div>Gujjar Dairies<small>${own()?'Owner':'Staff'} · ${esc(S.me.email)}</small></div></div><button class="pill" id="sy" onclick="go('acct')"></button></div>
+function hdr(){return `<header class="hdr"><div class="top"><div class="brand"><img src="/img/logo.png" alt="Gujjar Dairies"><small><b>${own()?'Owner':'Staff'}</b><br>Hisaab</small></div><button class="pill" id="sy" onclick="go('acct')"></button></div>
  <div class="dbar"><button onclick="shift(-1)" aria-label="Pichla din">‹</button><div class="dmid"><input type="date" id="dt" value="${date}" onchange="setDate(this.value)" aria-label="Tareekh"><small>${dayName(date)}${date===tz()?' · Aaj':''}</small></div><button onclick="shift(1)" aria-label="Agla din">›</button></div>
  ${own()?`<div class="stats" id="stats">${statsV()}</div>`:''}</header>`}
 function head(){const e=$('#stats');if(e)e.innerHTML=statsV();status()}
@@ -281,7 +285,7 @@ function offI(id,v){if(v&&!confirm('Ye item list se hata dein? Purana hisaab wai
 
 // ---- Login screens
 let mode='in',lastEmail='',recovering=false;
-function gate(inner){return `<div class="gate"><div class="logo">GD</div><h1>Gujjar Dairies</h1><p class="sub">Roz ka hisaab</p>${inner}</div>`}
+function gate(inner){return `<div class="gate"><div class="art"><img class="mascot" src="/img/mascot.png" alt=""><img class="word" src="/img/logo.png" alt=""><img class="tagline" src="/img/tagline.png" alt="Khalis hi Gujjar ki pehchan hai"></div><h1 class="sr">Gujjar Dairies Hisaab</h1>${inner}</div>`}
 function setMsg(t,kind){const m=$('#amsg');if(!m)return;m.hidden=!t;m.textContent=t||'';m.className='msg'+(kind?' '+kind:'')}
 function loginV(){const up=mode==='up',fg=mode==='forgot';
  return gate(`<form class="card" onsubmit="event.preventDefault();submitAuth()"><h3 style="margin-bottom:14px">${up?'Naya account banayein':fg?'Password bhool gaye?':'Login karein'}</h3>
