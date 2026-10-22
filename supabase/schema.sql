@@ -121,3 +121,21 @@ create policy cash_member_insert on public.cash for insert to authenticated with
 create policy cash_member_update on public.cash for update to authenticated using (public.is_member()) with check (public.is_member());
 
 revoke all on public.members, public.items, public.prices, public.settings, public.day_stock, public.entries, public.cash from anon;
+
+-- Daily heartbeat so the free Supabase project never counts as inactive.
+-- The Vercel cron (vercel.json -> api/keepalive.js) calls keepalive() once a day; it only bumps a counter and timestamp.
+create table public.keepalive (
+  id int primary key default 1 check (id = 1),
+  last_ping timestamptz not null default now(),
+  pings bigint not null default 0
+);
+alter table public.keepalive enable row level security;
+revoke all on public.keepalive from anon, authenticated;
+insert into public.keepalive (id) values (1);
+
+create or replace function public.keepalive() returns timestamptz
+language sql security definer set search_path = '' as $$
+  update public.keepalive set last_ping = now(), pings = pings + 1 where id = 1 returning last_ping
+$$;
+revoke execute on function public.keepalive() from public;
+grant execute on function public.keepalive() to anon, authenticated;

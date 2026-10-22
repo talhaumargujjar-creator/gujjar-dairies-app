@@ -14,6 +14,7 @@ Static PWA, koi build step nahi. Files: `index.html` (HTML+CSS+JS sab ek file me
 - Hosting: GitHub repo `talhaumargujjar-creator/gujjar-dairies-app` -> Vercel project `gujjar-dairies-app` (free), main par push se auto deploy. Live: https://gujjar-dairies-app.vercel.app
 - Supabase project `bpzlvcmbpyvcdzzzfsjr` (Vercel Marketplace se bana, free). Schema `supabase/schema.sql` mein. Pehla signup owner banta hai, baqi `pending` jab tak owner "Staff banayein" na kare. Delete policy kahin nahi; last-write-wins trigger `lww()` purani `u` wali write ko rad karta hai. Dusra Supabase project `hakcpkkvmhamdgmfttpc` (Vercel project `gujjar-dairies` se juda) istemal nahi hota.
 - Login ke baghair bhi app pehle ki tarah sirf phone par chalti hai.
+- Supabase pause se bachao: Vercel cron (`vercel.json`) roz 06:00 UTC par `api/keepalive.js` chalata hai jo `keepalive()` RPC call karta hai (`public.keepalive` table mein `last_ping` badalta hai). Ye Vercel ke `SUPABASE_URL` aur `SUPABASE_ANON_KEY` env vars istemal karta hai.
 
 ## Hisaab ka logic (sheet se, isko na bigaro)
 - Opening = pichle din ki closing (pehle din ke liye item ka `op`).
