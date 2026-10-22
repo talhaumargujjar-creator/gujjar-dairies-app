@@ -2,72 +2,138 @@
 <html lang="ur-Latn">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1d4e89">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>Gujjar Dairies Hisaab</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
 <style>
-:root{--bg:#f5f8fa;--ink:#14212b;--mut:#5d6f7e;--card:#fff;--line:#dbe4ea;--blue:#1d4e89;--butter:#f2c14e;--red:#b3261e;--grn:#1b7a4b}
-@media(prefers-color-scheme:dark){:root{--bg:#0e1820;--ink:#e8eff4;--mut:#90a3b2;--card:#16242f;--line:#273946;--blue:#6aa6e8;--butter:#f2c14e;--red:#ff8a80;--grn:#6fd6a0}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 "Segoe UI",Roboto,system-ui,sans-serif;padding-bottom:76px}
-header{background:#1d4e89;color:#fff;padding:14px 16px 12px;position:sticky;top:0;z-index:5}
-header .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-header input[type=date]{font:inherit;border:0;border-radius:8px;padding:6px 8px}
-.big{font-size:30px;font-weight:700;letter-spacing:-.5px}
-.sub{font-size:13px;opacity:.85}
-.pl{color:var(--butter);font-weight:700}
-main{padding:12px;max-width:640px;margin:auto}
-h2{font-size:17px;margin:18px 0 8px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
-input,select,button{font:inherit}
-input[type=text],input[type=number],input[type=search],input[type=email],input[type=password]{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
-input:focus-visible,button:focus-visible{outline:3px solid var(--butter);outline-offset:1px}
-button{border:0;border-radius:8px;padding:9px 14px;background:var(--blue);color:#fff;cursor:pointer}
-button.s{background:transparent;color:var(--red);padding:4px 8px}
-button.g{background:transparent;color:var(--blue);border:1px solid var(--line)}
-.it{display:grid;grid-template-columns:1fr 64px 64px;gap:6px;align-items:end}
-.it b{grid-column:1/-1;font-size:15px}
-.it label{font-size:12px;color:var(--mut)}
-.it .r{grid-column:1/-1;font-size:13px;color:var(--mut);display:flex;justify-content:space-between}
-.ln{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);gap:8px}
-.add{display:grid;grid-template-columns:1fr 90px auto;gap:6px;margin-top:8px}
-.sum{display:flex;justify-content:space-between;padding:4px 0}
-.neg{color:var(--red)}.pos{color:var(--grn)}
-table{width:100%;border-collapse:collapse;font-size:14px}
-td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:right}
+:root{--bg:#eef3f8;--ink:#13202b;--mut:#5b6b79;--card:#fff;--line:#d9e3ec;--field:#f6f9fc;--blue:#1d4e89;--bink:#1d4e89;--soft:#e3edf8;--butter:#f2c14e;--red:#b3261e;--redbg:#fdeceb;--grn:#17734a;--grnbg:#e5f4ec;--amb:#7a5000;--ambbg:#fff3d1;--sh:0 1px 2px rgba(15,40,70,.05),0 6px 18px rgba(15,40,70,.06)}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1720;--ink:#e7eef4;--mut:#93a5b4;--card:#15232e;--line:#263845;--field:#0f1c26;--bink:#8bbcf0;--soft:#1b3047;--red:#ff9a90;--redbg:#3b1f1d;--grn:#71d6a3;--grnbg:#16322a;--amb:#f2c14e;--ambbg:#33290f;--sh:none}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg)}
+body{margin:0;color:var(--ink);font:17px/1.45 "Segoe UI",Roboto,system-ui,sans-serif}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+.hdr{background:linear-gradient(165deg,#1d4e89,#163a68);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 16px;border-radius:0 0 22px 22px;box-shadow:0 4px 16px rgba(10,30,60,.16)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;line-height:1.15}
+.brand small{display:block;font-weight:400;font-size:12px;opacity:.8}
+.logo{width:38px;height:38px;border-radius:12px;background:var(--butter);color:#163a68;display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
+.pill{border:0;font-size:13px;padding:6px 11px;border-radius:99px;background:rgba(255,255,255,.15);color:#fff;white-space:nowrap}
+.pill.warn{background:var(--butter);color:#3b2a00}
+.dbar{display:flex;align-items:center;margin-top:12px;background:rgba(255,255,255,.12);border-radius:14px}
+.dbar button{border:0;background:none;color:#fff;width:52px;height:52px;font-size:26px;border-radius:14px;flex:none}
+.dmid{flex:1;text-align:center;line-height:1.15}
+.dmid input{background:transparent;border:0;color:#fff;font-size:18px;font-weight:700;text-align:center;color-scheme:dark;width:100%;max-width:200px;padding:2px}
+.dmid small{display:block;font-size:13px;opacity:.85}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.stat{background:rgba(255,255,255,.1);border-radius:12px;padding:8px 10px;min-width:0}
+.stat span{display:block;font-size:12px;opacity:.85}
+.stat b{font-size:18px;white-space:nowrap}
+.stat b.y{color:var(--butter)}
+main{padding:14px 14px calc(100px + env(safe-area-inset-bottom));max-width:640px;margin:auto}
+h2{font-size:18px;margin:20px 4px 10px}
+h3{font-size:17px;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:var(--sh)}
+input[type=text],input[type=number],input[type=search],input[type=email],input[type=password]{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font-size:17px}
+input:focus{outline:none;border-color:var(--bink);box-shadow:0 0 0 3px rgba(42,100,168,.2)}
+button:focus-visible{outline:3px solid var(--butter);outline-offset:2px}
+.btn{border:0;border-radius:12px;min-height:50px;padding:10px 18px;background:var(--blue);color:#fff;font-weight:600;font-size:17px}
+.btn.full{width:100%}
+.btn.ghost{background:transparent;color:var(--bink);border:1.5px solid var(--line)}
+.btn.danger{background:transparent;color:var(--red);border:1.5px solid var(--line)}
+.btn:disabled{opacity:.6}
+.link{background:none;border:0;color:var(--bink);padding:10px 0;font-weight:600;font-size:16px}
+.x{border:0;background:none;color:var(--red);width:44px;height:44px;border-radius:10px;font-size:18px;flex:none}
+.hint{color:var(--mut);font-size:15px;margin:0}
+.muted{color:var(--mut)}
+.neg{color:var(--red)!important}.pos{color:var(--grn)!important}
+.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:6}
+.tabs button{flex:1;border:0;background:none;color:var(--mut);padding:7px 2px 8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:62px}
+.tabs i{display:grid;place-items:center;width:52px;height:30px;border-radius:15px}
+.tabs svg{width:23px;height:23px}
+.tabs button[aria-current=true]{color:var(--bink);font-weight:700}
+.tabs button[aria-current=true] i{background:var(--soft)}
+.sh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sh b{font-size:19px}
+.prog{height:9px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:10px}
+.prog i{display:block;height:100%;background:var(--grn);border-radius:99px;transition:width .2s}
+.chips{display:flex;gap:8px;margin:12px 0}
+.chip{border:1.5px solid var(--line);background:var(--card);border-radius:99px;padding:8px 16px;font-size:15px;white-space:nowrap}
+.chip[aria-pressed=true]{background:var(--blue);border-color:var(--blue);color:#fff}
+.item{padding:12px}
+.item.done{border-left:5px solid var(--grn)}
+.ih{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.ih b{font-size:16px}
+.tag{font-size:13px;color:var(--mut);white-space:nowrap}
+.g4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.f label,.f .l{display:block;font-size:12px;color:var(--mut);margin-bottom:3px;text-align:center;white-space:nowrap}
+.f input{min-height:46px;padding:8px 2px;text-align:center;font-size:16px}
+.f .v{min-height:46px;display:grid;place-items:center;background:var(--soft);border-radius:12px;font-weight:700;font-size:16px}
+.res{display:flex;justify-content:space-between;gap:8px;margin-top:9px;font-size:14px;color:var(--mut)}
+.res b{color:var(--ink)}
+.row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);gap:8px}
+.row:last-of-type{border-bottom:0}
+.row span:last-child{display:flex;align-items:center;font-weight:600}
+.qc{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.qc button{border:1px solid var(--line);background:var(--field);border-radius:99px;padding:7px 12px;font-size:14px}
+.addr{display:grid;grid-template-columns:1fr 110px;gap:8px;margin-top:10px}
+.addr .btn{grid-column:1/-1}
+.sum{display:flex;justify-content:space-between;padding:6px 0}
+.sum.tot{border-top:1.5px solid var(--line);margin-top:6px;padding-top:10px;font-size:18px}
+.badge{border-radius:12px;padding:13px;text-align:center;font-weight:700;margin-top:12px;font-size:18px}
+.badge.ok{background:var(--grnbg);color:var(--grn)}
+.badge.bad{background:var(--redbg);color:var(--red)}
+.badge.more{background:var(--ambbg);color:var(--amb)}
+.fld{margin-bottom:14px}
+.fld label{display:block;font-size:15px;font-weight:600;margin:0 2px 6px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--sh)}
+.tile span{font-size:13px;color:var(--mut)}
+.tile b{display:block;font-size:22px;margin-top:2px}
+table{width:100%;border-collapse:collapse;font-size:15px}
+td,th{padding:10px 4px;border-bottom:1px solid var(--line);text-align:right}
 td:first-child,th:first-child{text-align:left}
-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line)}
-nav button{flex:1;background:none;color:var(--mut);border-radius:0;padding:14px 4px;font-size:14px}
-nav button[aria-current=true]{color:var(--blue);font-weight:700;box-shadow:inset 0 3px 0 var(--butter)}
-.hint{color:var(--mut);font-size:13px}
-.sy{font-size:12px;opacity:.9;white-space:nowrap}
-.stack>*{margin:0 0 8px}
-.btns{display:flex;gap:8px;flex-wrap:wrap}
+tr[onclick]{cursor:pointer}
+th{font-size:13px;color:var(--mut);font-weight:600}
+.gate{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:28px 18px calc(28px + env(safe-area-inset-bottom));max-width:440px;margin:auto}
+.gate .logo{width:72px;height:72px;font-size:28px;border-radius:20px;margin:0 auto 12px;box-shadow:0 6px 18px rgba(242,193,78,.35)}
+.gate h1{text-align:center;margin:0;font-size:27px}
+.gate .sub{text-align:center;color:var(--mut);margin:4px 0 22px}
+.pw{position:relative}
+.pw input{padding-right:96px}
+.pw button{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--bink);font-size:15px;font-weight:600;padding:10px}
+.msg{padding:11px 13px;border-radius:12px;background:var(--ambbg);color:var(--amb);margin-top:12px;font-size:15px}
+.msg.err{background:var(--redbg);color:var(--red)}
+.msg.ok{background:var(--grnbg);color:var(--grn)}
+.av{width:52px;height:52px;border-radius:50%;background:var(--soft);color:var(--bink);display:grid;place-items:center;font-weight:800;font-size:22px;flex:none}
+.role{display:inline-block;font-size:13px;font-weight:700;padding:3px 10px;border-radius:99px;background:var(--grnbg);color:var(--grn)}
+.nm{font-weight:700;border-color:transparent!important;background:transparent!important;padding-left:4px!important}
+.nm:focus{border-color:var(--bink)!important;background:var(--field)!important}
+details summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between}
+details summary::after{content:"›";transform:rotate(90deg);color:var(--mut)}
+details[open] summary::after{transform:rotate(-90deg)}
 </style>
 </head>
 <body>
-<header>
-  <div class="row"><div id="hl"></div>
-  <input type="date" id="dt" aria-label="Tareekh"></div>
-  <div class="row"><div class="sub" id="hp"></div><div class="sy" id="sy" aria-live="polite"></div></div>
-</header>
-<main id="m"></main>
-<nav id="nav"></nav>
+<div id="app"></div>
 <script>
 const SEED=[["FULL FAT MILK",240,232.05,304],["COW MILK",240,0,0],["DAHI",400,305,100],["DESI GHEE",3200,2600,1],["COW DESI GHEE",4000,0,0],["BUTTER 100-Gram",300,210,43],["BUTTER 200-Gram",600,420,21],["COW BUTTER 100-Gram",300,250,0],["MASKA BUN",100,80,3],["MILK BOTTLE",160,110,21],["LASSI",150,110,25],["EGG",20.83,19.42,575],["CUP CAKE 60 WALAY",60,50,16],["MILKY LARGE BREAD",140,100,3],["MILKY SMAL BREAD",100,75,3],["SLICE RUSK",110,85,10],["MEETHA BUN",30,25,0],["CREAM/SHEER/PARA BUN",60,50,9],["JELLY BUN",50,30,2],["BISCUIT",120,100,6],["PLAIN CAKE 200-Gram",150,125,3],["PLAIN CAKE 100-Gram",100,90,0],["LARGE BREAD COMPANY",240,218,4],["MEDIUM BREAD COMPANY",180,163,1],["SMALL BREAD COMPANY",130,117,4],["MINI BREAD COMPANY",80,72,6],["BRAN BREAD COMPANY",180,163,5],["BRAN BREAD 3 PCS",50,45,2],["BRADY'S 5 PCS BREAD",40,36,4],["DAWN 4 PCS BREAD",50,45,2],["LARGE FRUIT BUN",60,54,6],["SCHOOL BUN",25,22,21],["BURGER BUN",130,117,10],["PLAIN CAKE COMPANY",140,125,6],["DAWN RUSK 80/-",90,72,2],["DAWN RUSK 150/-",170,135,6],["HONEY",600,460,0],["MARBLE",220,150,2],["DAWN 120/-",150,130,4],["CAKE RUSK LARGE",250,230,0],["PAKOLA BOTTLE",0,0,121],["BRADY'S 100/- CAKERUSK",140,125,0],["GOAT MILK",600,420,0],["PHENI",200,120,0],["DOODH SODA",160,120,0],["SUNSHINE",110,85,27],["WATER SMALL",60,25,14],["WATER LARGE",120,80,3]];
-const SECS={ex:['Kharche (Expense)',['LABOUR KHARCHI','SAFAYI','ROTI','CHEENI','GAS CYLINDER','RIKSHA KIRAYA','BIKE PETROL','LABOUR CHAI','WATER','SALARY']],
- cr:['Customer/Milk wale ki payment',['DELIVERY','HOME EXP. + PARCEL']],
- sp:['Supplier payment',['BRADY\'S BILL','DAWN BILL','EGG BILL','CUP CAKE','PLAIN CAKE','BISCUIT WALA']],
- rc:['Cash wasool (delivery, udhaar wasooli)',['DELIVERY','HAJI WASOOL']]};
+const SECS={ex:['Kharche',['LABOUR KHARCHI','SAFAYI','ROTI','CHEENI','GAS CYLINDER','RIKSHA KIRAYA','BIKE PETROL','LABOUR CHAI','WATER','SALARY']],
+ cr:['Customer / doodh wale ko payment',['DELIVERY','HOME EXP. + PARCEL']],
+ sp:['Supplier ko payment',['BRADY\'S BILL','DAWN BILL','EGG BILL','CUP CAKE','PLAIN CAKE','BISCUIT WALA']],
+ rc:['Cash wasool (delivery, udhaar)',['DELIVERY','HAJI WASOOL']]};
 const KINDS=['ex','cr','sp','rc'];
 // Publishable (anon) key only. It is safe in the browser; Row Level Security protects the data.
 const SB_URL='https://bpzlvcmbpyvcdzzzfsjr.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJwemx2Y21icHl2Y2R6enpmc2pyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2OTU4MDEsImV4cCI6MjEwODI3MTgwMX0.RhN86kL1oTBs5FS9eFWV6nT1hsTFK8PFQTsQTHzDNrc';
 const K1='gd_hisaab_v1',K='gd_hisaab_v2';
 const n=v=>parseFloat(v)||0, has=v=>v!=null&&v!=='', num=v=>has(v)?n(v):null;
-const q2=v=>Math.round(v*100)/100, f=v=>Math.round(v).toLocaleString('en-PK'), fq=v=>q2(v).toLocaleString('en-PK');
+const q2=v=>Math.round(v*1000)/1000, f=v=>Math.round(v).toLocaleString('en-PK'), fq=v=>q2(v).toLocaleString('en-PK',{maximumFractionDigits:3});
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let lastU=0;const now=()=>(lastU=Math.max(Date.now(),lastU+1));
 const nid=()=>'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
@@ -76,7 +142,7 @@ const nid=()=>'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 function migrate(o,t){const q={};
  o.items.forEach(it=>{it.off=!!it.off;it.u=t;it.pru=t;q['it:'+it.id]=1;q['pr:'+it.id]=1});
  for(const [d,D] of Object.entries(o.days)){D.st=D.st||{};
-  for(const [id,s] of Object.entries(D.st)){s.u=t;if(has(s.pu)||has(s.cl))q['st:'+d+'|'+id]=1}
+  for(const [id,s] of Object.entries(D.st)){s.u=t;if(has(s.pu)||has(s.us)||has(s.cl))q['st:'+d+'|'+id]=1}
   for(const k of KINDS)D[k]=(D[k]||[]).map(r=>{const e={id:r.id||nid(),n:r.n,a:n(r.a),del:!!r.del,u:t};q['en:'+d+'|'+k+'|'+e.id]=1;return e});
   if(D.cash===undefined)D.cash=null;D.cu=t;if(D.cash!=null)q['ca:'+d]=1}
  o.c0u=t;q['set:cash0']=1;
@@ -92,7 +158,11 @@ const save=()=>{MEMO={};try{localStorage.setItem(K,JSON.stringify(S))}catch(e){a
 save();
 const mark=k=>{S.q[k]=now();save();kick()};
 const tz=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
-let date=tz(),tab='stock',q='';
+const addDay=(d,k)=>{const x=new Date(d+'T00:00:00Z');x.setUTCDate(x.getUTCDate()+k);return x.toISOString().slice(0,10)};
+const DAYS=['Itwaar','Peer','Mangal','Budh','Jumeraat','Juma','Hafta'];
+const dayName=d=>DAYS[new Date(d+'T00:00:00Z').getUTCDay()];
+const pk=d=>d.split('-').reverse().join('-');
+let date=tz(),tab='stock',q='',flt='all';
 const role=()=>S.me?S.me.role:'owner', own=()=>role()==='owner';
 const EMPTY={st:{},ex:[],cr:[],sp:[],rc:[],cash:null,cu:0};
 const day=d=>S.days[d]||EMPTY;
@@ -102,7 +172,8 @@ const keys=()=>MEMO.k||(MEMO.k=Object.keys(S.days).sort());
 const before=d=>keys().filter(x=>x<d).reverse();
 const active=D=>D.cash!=null||KINDS.some(k=>live(D,k).length)||Object.values(D.st).some(s=>has(s.cl));
 function opening(it,d){for(const x of before(d)){const s=S.days[x].st[it.id];if(s&&has(s.cl))return n(s.cl)}return n(it.op)}
-function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q2(opening(it,d)+n(s.pu)-n(s.cl))}
+// Sold = opening + purchase - used in shop - closing. Without a closing the item is not counted.
+function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q2(opening(it,d)+n(s.pu)-n(s.us)-n(s.cl))}
 // Opening galla = previous working day's counted cash, or what it should have been if not counted.
 function gOpen(d){for(const x of before(d)){const D=S.days[x];if(!active(D))continue;return D.cash!=null?n(D.cash):tot(x).exp}return n(S.cash0)}
 function tot(d){if(MEMO['t'+d])return MEMO['t'+d];const D=day(d);let sale=0,prof=0;
@@ -110,78 +181,168 @@ function tot(d){if(MEMO['t'+d])return MEMO['t'+d];const D=day(d);let sale=0,prof
  const sm=k=>live(D,k).reduce((a,b)=>a+n(b.a),0),ex=sm('ex'),cr=sm('cr'),sp=sm('sp'),rc=sm('rc'),op=gOpen(d);
  const exp=op+sale+rc-ex-cr-sp;return MEMO['t'+d]={sale,prof,ex,cr,sp,rc,op,exp,pl:prof-ex,diff:D.cash!=null?n(D.cash)-exp:null,cash:D.cash}}
 const $=s=>document.querySelector(s);
-function head(){if(own()){const t=tot(date);$('#hl').innerHTML='<div class="sub">Aaj ki sale</div><div class="big">'+f(t.sale)+'</div>';$('#hp').innerHTML='Munafa − kharche: <span class="pl">'+f(t.pl)+'</span>'}
- else{$('#hl').innerHTML='<div class="sub">Gujjar Dairies</div><div class="big">Hisaab</div>';$('#hp').textContent=S.me&&S.me.email?S.me.email:''}status()}
-const TABS=[['stock','Stock',1],['hisaab','Hisaab',1],['report','Report',0],['items','Items',0],['online','Online',1]];
+const itm=id=>S.items.find(x=>x.id===id);
+
+// ---- Screens
+const ICON={stock:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+ hisaab:'<rect x="2" y="6" width="20" height="13" rx="2"/><circle cx="12" cy="12.5" r="2.5"/><path d="M6 10v5M18 10v5"/>',
+ report:'<path d="M3 21h18"/><path d="M6 17v-5M11 17V6M16 17v-8M21 17v-3"/>',
+ items:'<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1.3"/><circle cx="4" cy="12" r="1.3"/><circle cx="4" cy="18" r="1.3"/>',
+ acct:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>'};
+const TABS=[['stock','Stock',1],['hisaab','Hisaab',1],['report','Report',0],['items','Items',0],['acct','Account',1]];
 const tabs=()=>TABS.filter(t=>own()||t[2]);
-function nav(){$('#nav').innerHTML=tabs().map(([k,l])=>`<button aria-current="${tab==k}" onclick="go('${k}')">${l}</button>`).join('')}
-function go(t){tab=t;render();if(t==='online')loadMembers()}
-function render(){if(!tabs().some(t=>t[0]===tab))tab='stock';nav();head();$('#dt').value=date;$('#m').innerHTML=({stock,hisaab,report,items,online})[tab]()}
-$('#dt').onchange=e=>{date=e.target.value||tz();render()};
-function line(it){const sd=sold(it,date);return `<span>Bika: ${fq(sd)}</span>`+(own()?`<span>${f(sd*n(it.rate))} | munafa ${f(sd*(n(it.rate)-n(it.cost)))}</span>`:'')}
-function stock(){const D=day(date);
- const L=S.items.filter(i=>!i.off&&i.name.toLowerCase().includes(q.toLowerCase())).map(it=>{const s=D.st[it.id]||{pu:'',cl:''};
- return `<div class="card it"><b>${esc(it.name)}</b>
- <div><label>Opening</label><div>${fq(opening(it,date))}</div></div>
- <div><label for="p${it.id}">Purchase</label><input type="number" inputmode="decimal" id="p${it.id}" value="${s.pu??''}" onchange="setS('${it.id}','pu',this)"></div>
- <div><label for="c${it.id}">Closing</label><input type="number" inputmode="decimal" id="c${it.id}" value="${s.cl??''}" onchange="setS('${it.id}','cl',this)"></div>
- <div class="r">${line(it)}</div></div>`}).join('');
- return `<input type="search" placeholder="Item dhoondein" value="${esc(q)}" oninput="q=this.value;keep()" aria-label="Item search"><p class="hint">Sirf Purchase aur Closing likhein. Bika hua maal aur sale khud nikal jayegi. Closing khali ho to item ginti mein nahi aata.</p>${L}`}
-function keep(){const p=$('input[type=search]'),pos=p.selectionStart;$('#m').innerHTML=stock();const e=$('input[type=search]');e.focus();e.setSelectionRange(pos,pos)}
+function navV(){return `<nav class="tabs">${tabs().map(([k,l])=>`<button aria-current="${tab==k}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
+function go(t){tab=t;render();scrollTo(0,0);if(t==='acct')loadMembers()}
+function statsV(){const t=tot(date);return `<div class="stat"><span>Sale</span><b>${f(t.sale)}</b></div><div class="stat"><span>Munafa</span><b class="y">${f(t.pl)}</b></div><div class="stat"><span>Galla farq</span><b>${t.diff==null?'—':f(t.diff)}</b></div>`}
+function hdr(){return `<header class="hdr"><div class="top"><div class="brand"><div class="logo">GD</div><div>Gujjar Dairies<small>${own()?'Owner':'Staff'} · ${esc(S.me.email)}</small></div></div><button class="pill" id="sy" onclick="go('acct')"></button></div>
+ <div class="dbar"><button onclick="shift(-1)" aria-label="Pichla din">‹</button><div class="dmid"><input type="date" id="dt" value="${date}" onchange="setDate(this.value)" aria-label="Tareekh"><small>${dayName(date)}${date===tz()?' · Aaj':''}</small></div><button onclick="shift(1)" aria-label="Agla din">›</button></div>
+ ${own()?`<div class="stats" id="stats">${statsV()}</div>`:''}</header>`}
+function head(){const e=$('#stats');if(e)e.innerHTML=statsV();status()}
+function shift(k){date=addDay(date,k);render()}
+function setDate(v){date=v||tz();render()}
+function render(){const a=$('#app');
+ if(recovering){a.innerHTML=recoverV();return}
+ if(!S.me||!S.me.email){a.innerHTML=loginV();return}
+ if(S.me.role==='pending'){a.innerHTML=pendingV();return}
+ if(!tabs().some(t=>t[0]===tab))tab='stock';
+ a.innerHTML=hdr()+`<main>${({stock,hisaab,report,items,acct})[tab]()}</main>`+navV();status()}
+
+// Stock
+const isDone=it=>has((day(date).st[it.id]||{}).cl);
+function line(it){const s=day(date).st[it.id]||{},tin=opening(it,date)+n(s.pu);
+ if(!has(s.cl))return `<span>Total ${fq(tin)}</span><span>Closing likhni hai</span>`;
+ const sd=sold(it,date);if(sd<0)return `<span class="neg">Closing total se zyada hai. Dobara check karein.</span>`;
+ return `<span>Total ${fq(tin)} · Bika <b>${fq(sd)}</b></span>`+(own()?`<span><b>Rs ${f(sd*n(it.rate))}</b></span>`:'')}
+function card(it){const s=day(date).st[it.id]||{};
+ const inp=(k,l)=>`<div class="f"><label for="${k}${it.id}">${l}</label><input type="number" inputmode="decimal" enterkeyhint="next" id="${k}${it.id}" value="${s[k]??''}" onchange="setS('${it.id}','${k}',this)"></div>`;
+ return `<div class="card item${isDone(it)?' done':''}"><div class="ih"><b>${esc(it.name)}</b>${own()?`<span class="tag">Rate ${fq(it.rate)}</span>`:''}</div>
+ <div class="g4"><div class="f"><span class="l">Opening</span><div class="v">${fq(opening(it,date))}</div></div>${inp('pu','Purchase')}${inp('us','Istemal')}${inp('cl','Closing')}</div>
+ <div class="res">${line(it)}</div></div>`}
+const act=()=>S.items.filter(i=>!i.off);
+function listV(){const L=act().filter(i=>i.name.toLowerCase().includes(q.toLowerCase())&&(flt==='all'||(flt==='done')===isDone(i)));
+ return L.map(card).join('')||`<p class="hint" style="text-align:center;padding:20px">${flt==='left'?'Sab items ho gaye ✓':'Koi item nahi mila.'}</p>`}
+function progV(){const A=act(),d=A.filter(isDone).length;return {d,t:A.length,p:A.length?d*100/A.length:0}}
+function stock(){const p=progV();
+ return `<div class="card"><div class="sh"><h3>Stock ki ginti</h3><span class="muted" id="pc">${p.d} / ${p.t} items</span></div><div class="prog"><i id="pb" style="width:${p.p}%"></i></div>
+ <p class="hint" style="margin-top:10px">Har item ki <b>Purchase</b> aur <b>Closing</b> likhein. <b>Istemal</b> sirf tab likhein jab maal bika nahi balke dukaan mein kaam aaya (jaise doodh se dahi).</p></div>
+ <input type="search" placeholder="Item dhoondein" value="${esc(q)}" oninput="q=this.value;$('#list').innerHTML=listV()" aria-label="Item dhoondein">
+ <div class="chips">${[['all','Sab'],['left','Baqi'],['done','Ho gaye']].map(([k,l])=>`<button class="chip" aria-pressed="${flt===k}" onclick="flt='${k}';render()">${l}</button>`).join('')}</div>
+ <div id="list">${listV()}</div>`}
 // Updates only this card so the keyboard stays on the next field.
-function setS(id,k,el){const D=dd(date),s=D.st[id]=D.st[id]||{pu:'',cl:'',u:0};s[k]=el.value;s.u=now();mark('st:'+date+'|'+id);head();
- el.closest('.card').querySelector('.r').innerHTML=line(S.items.find(x=>x.id===id))}
+function setS(id,k,el){const D=dd(date),s=D.st[id]=D.st[id]||{pu:'',us:'',cl:'',u:0};s[k]=el.value;s.u=now();mark('st:'+date+'|'+id);head();
+ const c=el.closest('.card');c.querySelector('.res').innerHTML=line(itm(id));c.classList.toggle('done',has(s.cl));
+ const p=progV(),pc=$('#pc'),pb=$('#pb');if(pc)pc.textContent=p.d+' / '+p.t+' items';if(pb)pb.style.width=p.p+'%'}
+document.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.target.tagName!=='INPUT'||e.target.type!=='number')return;
+ const L=[...document.querySelectorAll('#list input[type=number]')],i=L.indexOf(e.target);if(i>=0&&L[i+1]){e.preventDefault();L[i+1].focus()}});
+
+// Hisaab
 function sec(k){const D=day(date),[title,names]=SECS[k],L=live(D,k),tt=L.reduce((a,b)=>a+n(b.a),0);
- return `<h2>${title}: ${f(tt)}</h2><div class="card">${L.map(r=>`<div class="ln"><span>${esc(r.n)}</span><span>${f(n(r.a))} <button class="s" aria-label="Hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')||'<p class="hint">Abhi koi entry nahi.</p>'}
- <div class="add"><input type="text" id="n${k}" list="l${k}" placeholder="Naam" aria-label="Naam"><datalist id="l${k}">${names.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
- <input type="number" inputmode="decimal" id="a${k}" placeholder="Raqam" aria-label="Raqam"><button onclick="addL('${k}')">Add</button></div></div>`}
+ return `<div class="card"><div class="sh"><h3>${title}</h3><b>${f(tt)}</b></div>
+ ${L.length?`<div style="margin-top:8px">${L.map(r=>`<div class="row"><span>${esc(r.n)}</span><span>${f(n(r.a))}<button class="x" aria-label="${esc(r.n)} hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')}</div>`:''}
+ <div class="qc">${names.map(x=>`<button onclick="pick('${k}',this.textContent)">${esc(x)}</button>`).join('')}</div>
+ <div class="addr"><input type="text" id="n${k}" placeholder="Naam" aria-label="${title}: naam"><input type="number" inputmode="decimal" id="a${k}" placeholder="Raqam" aria-label="${title}: raqam"><button class="btn" onclick="addL('${k}')">+ Add karein</button></div></div>`}
+function pick(k,v){$('#n'+k).value=v;$('#a'+k).focus()}
 function addL(k){const nm=$('#n'+k).value.trim(),a=n($('#a'+k).value);if(!nm||!a){alert('Naam aur raqam dono likhein.');return}
  const e={id:nid(),n:nm,a,del:false,u:now()};dd(date)[k].push(e);mark('en:'+date+'|'+k+'|'+e.id);render()}
 function del(k,id){if(!confirm('Ye entry hatani hai?'))return;const e=dd(date)[k].find(x=>x.id===id);if(!e)return;e.del=true;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
-function hisaab(){const t=tot(date),ci=`<label for="ch" class="hint">Asal cash in hand (ginti ke baad)</label><input type="number" inputmode="decimal" id="ch" value="${t.cash??''}" onchange="setC(this.value)">`;
- if(!own())return sec('ex')+sec('cr')+sec('sp')+sec('rc')+`<h2>Galla</h2><div class="card">${ci}</div>`;
- return sec('ex')+sec('cr')+sec('sp')+sec('rc')+`<h2>Galla</h2><div class="card">
- <div class="sum"><span>Galla opening</span><b>${f(t.op)}</b></div>
- <div class="sum"><span>+ Sale ${f(t.sale)} + Wasool ${f(t.rc)}</span><b>${f(t.sale+t.rc)}</b></div>
- <div class="sum"><span>− Kharche, payments</span><b>${f(t.ex+t.cr+t.sp)}</b></div>
- <div class="sum"><span>Hona chahiye</span><b>${f(t.exp)}</b></div>
- ${ci}
- ${t.diff!=null?`<div class="sum"><span>Farq (galla diff)</span><b class="${t.diff<0?'neg':'pos'}">${f(t.diff)}</b></div>`:''}</div>`}
+function galla(){const t=tot(date),ci=`<div class="fld" style="margin:12px 0 0"><label for="ch">Galle mein asal cash (gin kar likhein)</label><input type="number" inputmode="decimal" id="ch" value="${t.cash??''}" onchange="setC(this.value)"></div>`;
+ if(!own())return `<div class="card"><h3>Galla</h3>${ci}</div>`;
+ const b=t.diff==null?'':Math.round(t.diff)===0?'<div class="badge ok">✓ Galla poora hai</div>':t.diff<0?`<div class="badge bad">Rs ${f(-t.diff)} kam hain</div>`:`<div class="badge more">Rs ${f(t.diff)} zyada hain</div>`;
+ return `<div class="card"><h3>Galla</h3>
+ <div class="sum" style="margin-top:6px"><span>Pichla bacha galla</span><b>${f(t.op)}</b></div>
+ <div class="sum"><span>+ Sale</span><b>${f(t.sale)}</b></div>
+ <div class="sum"><span>+ Wasool</span><b>${f(t.rc)}</b></div>
+ <div class="sum"><span>− Kharche aur payments</span><b>${f(t.ex+t.cr+t.sp)}</b></div>
+ <div class="sum tot"><span>Galle mein hona chahiye</span><b>${f(t.exp)}</b></div>${ci}${b}</div>`}
+function hisaab(){return KINDS.map(sec).join('')+galla()}
 function setC(v){const D=dd(date);D.cash=v===''?null:n(v);D.cu=now();mark('ca:'+date);render()}
-function report(){const t=tot(date),R=(a,b,c)=>`<div class="sum"><span>${a}</span><b class="${c||''}">${b}</b></div>`;
- const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,10);
- return `<h2>${date} ka hisaab</h2><div class="card">${R('Counter sale',f(t.sale))}${R('Items ka munafa',f(t.prof))}${R('Kharche',f(t.ex))}${R('Munafa / nuqsan',f(t.pl),t.pl<0?'neg':'pos')}${R('Supplier payments',f(t.sp))}${R('Galla farq',t.diff==null?'-':f(t.diff),t.diff<0?'neg':'')}</div>
- <h2>Pichle din</h2><div class="card"><table><tr><th>Tareekh</th><th>Sale</th><th>Kharche</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr><td>${d.slice(5)}</td><td>${f(x.sale)}</td><td>${f(x.ex)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table></div>
+
+// Report
+function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
+ const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
+ return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Counter sale',f(t.sale))}${T('Items ka munafa',f(t.prof))}${T('Kharche',f(t.ex))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Supplier payments',f(t.sp))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}</div>
+ <h2>Pichle din</h2><div class="card">${days.length?`<table><tr><th>Tareekh</th><th>Sale</th><th>Kharche</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr onclick="date='${d}';render();scrollTo(0,0)"><td>${pk(d).slice(0,5)}</td><td>${f(x.sale)}</td><td>${f(x.ex)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table>`:'<p class="hint">Abhi koi din ka hisaab nahi.</p>'}</div>
  <p class="hint">Munafa = bike maal ka (rate − cost) minus kharche. Supplier payment stock ki kharidari hai, kharcha nahi.</p>`}
+
+// Items
 function items(){const off=S.items.filter(i=>i.off);
- return `<h2>Items, rate aur cost</h2>${S.items.filter(i=>!i.off).map(it=>`<div class="card it"><b>${esc(it.name)} <button class="s" aria-label="Item band karein" onclick="offI('${it.id}',true)">✕</button></b>
- <div><label>Rate</label><input type="number" inputmode="decimal" value="${it.rate}" onchange="upI('${it.id}','rate',this.value)"></div>
- <div><label>Cost</label><input type="number" inputmode="decimal" value="${it.cost}" onchange="upI('${it.id}','cost',this.value)"></div>
- <div><label>Shuru stock</label><input type="number" inputmode="decimal" value="${it.op}" onchange="upI('${it.id}','op',this.value)"></div></div>`).join('')}
- <h2>Naya item</h2><div class="card"><input type="text" id="ni" placeholder="Item ka naam" aria-label="Item ka naam" style="margin-bottom:6px"><button onclick="addI()">Item add karein</button></div>
- ${off.length?`<h2>Band items</h2><div class="card">${off.map(it=>`<div class="ln"><span>${esc(it.name)}</span><button class="g" onclick="offI('${it.id}',false)">Wapas layein</button></div>`).join('')}</div>`:''}`}
-const itm=id=>S.items.find(x=>x.id===id);
+ return `<div class="card"><h3>Naya item</h3><div class="addr"><input type="text" id="ni" placeholder="Item ka naam" aria-label="Item ka naam"><input type="number" inputmode="decimal" id="nr" placeholder="Rate" aria-label="Rate"><button class="btn" onclick="addI()">+ Item add karein</button></div></div>
+ <h2>Items, rate aur cost</h2>${act().map(it=>`<div class="card item"><div class="ih"><input type="text" class="nm" value="${esc(it.name)}" onchange="upN('${it.id}',this.value)" aria-label="Item ka naam"><button class="x" aria-label="${esc(it.name)} hatayen" onclick="offI('${it.id}',true)">✕</button></div>
+ <div class="g3"><div class="f"><label>Rate</label><input type="number" inputmode="decimal" value="${it.rate}" onchange="upI('${it.id}','rate',this.value)"></div>
+ <div class="f"><label>Cost</label><input type="number" inputmode="decimal" value="${it.cost}" onchange="upI('${it.id}','cost',this.value)"></div>
+ <div class="f"><label>Shuru stock</label><input type="number" inputmode="decimal" value="${it.op}" onchange="upI('${it.id}','op',this.value)"></div></div></div>`).join('')}
+ ${off.length?`<h2>Hataye gaye items</h2><div class="card">${off.map(it=>`<div class="row"><span>${esc(it.name)}</span><button class="btn ghost" onclick="offI('${it.id}',false)">Wapas layein</button></div>`).join('')}</div>`:''}`}
 function upI(id,k,v){const it=itm(id);it[k]=n(v);if(k==='op')it.u=now();else it.pru=now();mark('it:'+id);mark('pr:'+id);head()}
-function addI(){const nm=$('#ni').value.trim();if(!nm)return;const id='i'+Date.now();S.items.push({id,name:nm,rate:0,cost:0,op:0,off:false,u:now(),pru:now()});mark('it:'+id);mark('pr:'+id);render()}
+function upN(id,v){v=v.trim();if(!v)return;const it=itm(id);it.name=v;it.u=now();mark('it:'+id)}
+function addI(){const nm=$('#ni').value.trim();if(!nm){alert('Item ka naam likhein.');return}const id='i'+Date.now();
+ S.items.push({id,name:nm,rate:n($('#nr').value),cost:0,op:0,off:false,u:now(),pru:now()});mark('it:'+id);mark('pr:'+id);render()}
 // Items are never deleted, only hidden, so old days keep their hisaab.
 function offI(id,v){if(v&&!confirm('Ye item list se hata dein? Purana hisaab waisa hi rahega aur neeche se wapas laa sakte hain.'))return;const it=itm(id);it.off=v;it.u=now();mark('it:'+id);render()}
 
-// ---- Online: login and sync (Supabase). Everything is saved on the phone first, then sent when internet is available.
-let sb=null,who=null,busy=false,syncErr='',lastSync=null,kickT=null,authMsg='',MEM=null;
+// ---- Login screens
+let mode='in',lastEmail='',recovering=false;
+function gate(inner){return `<div class="gate"><div class="logo">GD</div><h1>Gujjar Dairies</h1><p class="sub">Roz ka hisaab</p>${inner}</div>`}
+function setMsg(t,kind){const m=$('#amsg');if(!m)return;m.hidden=!t;m.textContent=t||'';m.className='msg'+(kind?' '+kind:'')}
+function loginV(){const up=mode==='up',fg=mode==='forgot';
+ return gate(`<form class="card" onsubmit="event.preventDefault();submitAuth()"><h3 style="margin-bottom:14px">${up?'Naya account banayein':fg?'Password bhool gaye?':'Login karein'}</h3>
+ <div class="fld"><label for="em">Email</label><input type="email" id="em" autocomplete="username" value="${esc(lastEmail)}" required></div>
+ ${fg?'<p class="hint" style="margin:-4px 0 14px">Apni email likhein. Us par naya password banane ka link aayega.</p>':`<div class="fld"><label for="pw">Password</label><div class="pw"><input type="password" id="pw" autocomplete="${up?'new-password':'current-password'}" required minlength="6"><button type="button" onclick="tgPw(this)">Dikhayein</button></div></div>`}
+ <button class="btn full" id="go">${up?'Account banayein':fg?'Link bhejein':'Login'}</button>
+ <div id="amsg" class="msg" hidden></div>
+ <div style="display:flex;justify-content:space-between;margin-top:6px">${mode!=='in'?`<button type="button" class="link" onclick="setMode('in')">← Login par wapas</button>`:`<button type="button" class="link" onclick="setMode('forgot')">Password bhool gaye?</button><button type="button" class="link" onclick="setMode('up')">Naya account</button>`}</div></form>
+ ${up?'<p class="hint" style="text-align:center">Naya account staff ke liye hai. Account banne ke baad owner ki manzoori chahiye hogi.</p>':''}`)}
+function tgPw(b){const i=$('#pw');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'Dikhayein':'Chhupayein'}
+function setMode(m){lastEmail=($('#em')||{}).value||lastEmail;mode=m;render()}
+function recoverV(){return gate(`<form class="card" onsubmit="event.preventDefault();setPw('np')"><h3 style="margin-bottom:14px">Naya password banayein</h3>
+ <div class="fld"><label for="np">Naya password (kam az kam 6 harf)</label><input type="password" id="np" autocomplete="new-password" required minlength="6"></div>
+ <button class="btn full">Password save karein</button><div id="amsg" class="msg" hidden></div></form>`)}
+function pendingV(){return gate(`<div class="card"><h3>Manzoori ka intezar</h3><p>Aap ka account <b>${esc(S.me.email)}</b> ban gaya hai. Owner apni app mein <b>Account → Staff</b> mein aap ke saamne "Staff banayein" dabaye, phir yahan neeche wala button dabayein.</p>
+ <button class="btn full" onclick="sync().then(render)">Dobara check karein</button><button class="btn danger full" style="margin-top:10px" onclick="logout()">Logout</button></div>`)}
+function trErr(m){return /invalid login/i.test(m)?'Email ya password ghalat hai.':/already registered|already exists/i.test(m)?'Ye email pehle se bana hua hai. Login karein.':/not confirmed/i.test(m)?'Pehle email par aaya link khol kar account pakka karein.':/should be different|same password/i.test(m)?'Naya password purane se alag rakhein.':/rate limit|security purposes|too many/i.test(m)?'Bohat koshishen ho gayin. Thori der baad dobara karein.':/invalid.*email|email.*invalid/i.test(m)?'Email sahi likhein.':/password/i.test(m)?'Password kam az kam 6 harf ka rakhein.':/fetch|network/i.test(m)?'Internet ka masla hai. Dobara koshish karein.':'Masla: '+m}
+async function submitAuth(){const up=mode==='up',fg=mode==='forgot',b=$('#go');sbInit();lastEmail=$('#em').value.trim();
+ if(!sb||!navigator.onLine){setMsg('Login ke liye internet chahiye.','err');return}
+ if(!lastEmail){setMsg('Email likhein.','err');return}
+ b.disabled=true;setMsg('Intezar karein…');
+ try{
+  if(fg){const {error}=await sb.auth.resetPasswordForEmail(lastEmail,{redirectTo:location.origin});
+   setMsg(error?trErr(error.message):'Email bhej di. Email mein aaya link kholein, phir naya password banayein.',error?'err':'ok');return}
+  const p=$('#pw').value;if(p.length<6){setMsg('Password kam az kam 6 harf ka rakhein.','err');return}
+  const {data,error}=up?await sb.auth.signUp({email:lastEmail,password:p}):await sb.auth.signInWithPassword({email:lastEmail,password:p});
+  if(error){setMsg(trErr(error.message),'err');return}
+  if(!data.session){setMsg('Email par aaya link khol kar account pakka karein, phir yahan Login karein.','ok');return}
+  who=data.session.user.email;setMsg('Data aa raha hai…');await sync();
+  if(!S.me){setMsg('Login ho gaya lekin data nahi aa saka. '+trErr(syncErr||'network'),'err');return}
+  tab='stock';mode='in';render()}
+ finally{if(b.isConnected)b.disabled=false}}
+async function setPw(id){const i=$('#'+id),p=i.value;if(p.length<6){setMsg('Password kam az kam 6 harf ka rakhein.','err');return}
+ sbInit();if(!sb||!navigator.onLine){setMsg('Internet chahiye.','err');return}
+ setMsg('Intezar karein…');const {error}=await sb.auth.updateUser({password:p});
+ if(error){setMsg(trErr(error.message),'err');return}
+ i.value='';if(recovering){recovering=false;await sync();render()}else setMsg('✓ Password badal gaya.','ok')}
+async function logout(){if(!confirm('Logout karna hai? Is phone ka hisaab phone mein hi rahega.'))return;
+ if(sb)await sb.auth.signOut({scope:'local'}).catch(()=>{});
+ who=null;S.me=null;save();mode='in';render()}
+
+// ---- Online sync (Supabase). Everything is saved on the phone first, then sent when internet is available.
+let sb=null,who=null,busy=false,syncErr='',lastSync=null,kickT=null,MEM=null,syncP=null;
 const PK={items:'id',prices:'item_id',settings:'key',day_stock:'day,item_id',entries:'id',cash:'day'};
 const OWNER_ONLY={it:1,pr:1,set:1};
 function sbInit(){if(sb||!window.supabase)return;
  sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
- sb.auth.onAuthStateChange((ev,s)=>{who=s&&s.user?s.user.email:null;setTimeout(()=>{status();if(who)sync();if(tab==='online')render()},0)})}
+ sb.auth.onAuthStateChange((ev,s)=>{who=s&&s.user?s.user.email:null;setTimeout(()=>{
+  if(ev==='PASSWORD_RECOVERY'){recovering=true;render();return}
+  if(ev==='SIGNED_OUT'){if(S.me){S.me=null;save();render()}return}
+  if(who)sync()},0)})}
 function kick(){clearTimeout(kickT);kickT=setTimeout(sync,3000)}
-function status(){const e=$('#sy');if(!e)return;const c=Object.keys(S.q).length;
- e.textContent=!who?'':busy?'Sync ho raha hai…':!navigator.onLine?`Offline · ${c} baqi`:syncErr?'⚠ Sync nahi hua':c?`${c} baqi`:'✓ Online'}
+function status(){const e=$('#sy');if(!e)return;const c=Object.keys(S.q).length,warn=!navigator.onLine||!!syncErr;
+ e.className='pill'+(warn?' warn':'');
+ e.textContent=busy?'Sync ho raha hai…':!navigator.onLine?`Offline${c?' · '+c+' baqi':''}`:syncErr?'⚠ Sync nahi hua':c?`${c} baqi`:'✓ Online'}
 function toRow(t,r){
  if(t==='it'||t==='pr'){const it=itm(r);if(!it)return null;
   return t==='it'?['items',{id:it.id,name:it.name,op:n(it.op),off:!!it.off,u:it.u}]:['prices',{item_id:it.id,rate:n(it.rate),cost:n(it.cost),u:it.pru}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  const [d,a,b]=r.split('|'),D=S.days[d];if(!D)return null;
- if(t==='st'){const s=D.st[a];return s?['day_stock',{day:d,item_id:a,pu:num(s.pu),cl:num(s.cl),u:s.u||0}]:null}
+ if(t==='st'){const s=D.st[a];return s?['day_stock',{day:d,item_id:a,pu:num(s.pu),us:num(s.us),cl:num(s.cl),u:s.u||0}]:null}
  if(t==='en'){const e=(D[a]||[]).find(x=>x.id===b);return e?['entries',{id:e.id,day:d,kind:a,name:e.n,amount:n(e.a),deleted:!!e.del,u:e.u}]:null}
  if(t==='ca')return['cash',{day:d,amount:D.cash,u:D.cu||0}];return null}
 async function push(){const snap={...S.q},R={items:[],prices:[],settings:[],day_stock:[],entries:[],cash:[]};
@@ -194,7 +355,7 @@ function merge(tb,r){
  if(tb==='prices'){const it=itm(r.item_id);if(it&&r.u>it.pru){Object.assign(it,{rate:n(r.rate),cost:n(r.cost),pru:r.u});return true}return false}
  if(tb==='settings'){if(r.key==='cash0'&&r.u>S.c0u){S.cash0=n(r.value);S.c0u=r.u;return true}return false}
  const D=dd(r.day);
- if(tb==='day_stock'){const s=D.st[r.item_id];if(!s||r.u>(s.u||0)){D.st[r.item_id]={pu:r.pu??'',cl:r.cl??'',u:r.u};return true}return false}
+ if(tb==='day_stock'){const s=D.st[r.item_id];if(!s||r.u>(s.u||0)){D.st[r.item_id]={pu:r.pu??'',us:r.us??'',cl:r.cl??'',u:r.u};return true}return false}
  if(tb==='entries'){const L=D[r.kind],i=L.findIndex(x=>x.id===r.id),e={id:r.id,n:r.name,a:n(r.amount),del:r.deleted,u:r.u};
   if(i<0){L.push(e);return true}if(r.u>L[i].u){L[i]=e;return true}return false}
  if(tb==='cash'){if(r.u>(D.cu||0)){D.cash=r.amount==null?null:n(r.amount);D.cu=r.u;return true}return false}return false}
@@ -206,11 +367,13 @@ async function pull(){let ch=false;
    data.forEach(r=>{if(merge(tb,r))ch=true;if(!max||r.sa>max)max=r.sa});if(data.length<1000)break}
   if(max)S.cur[tb]=max}
  save();return ch}
-async function sync(){sbInit();if(!sb||busy||!navigator.onLine){status();return}
- const {data:{session}}=await sb.auth.getSession();who=session?session.user.email:null;if(!session){status();return}
+function sync(){return syncP||(syncP=doSync().finally(()=>{syncP=null}))}
+async function doSync(){sbInit();if(!sb||!navigator.onLine){status();return}
+ const {data:{session},error:se}=await sb.auth.getSession();who=session?session.user.email:null;
+ if(!session){if(!se&&S.me){S.me=null;save();render()}status();return}
  busy=true;status();let redraw=false;
  try{const {data:m,error}=await sb.from('members').select('role').eq('user_id',session.user.id).maybeSingle();if(error)throw error;
-  const r=m?m.role:'pending';if(role()!==r||!S.me||S.me.email!==who)redraw=true;S.me={email:who,role:r};save();
+  const r=m?m.role:'pending';if(!S.me||S.me.role!==r||S.me.email!==who)redraw=true;S.me={email:who,role:r};save();
   if(r==='owner'&&!S.seeded){const {count,error:ce}=await sb.from('items').select('id',{count:'exact',head:true});if(ce)throw ce;
    if(!count)S.items.forEach(it=>{S.q['it:'+it.id]=S.q['it:'+it.id]||1;S.q['pr:'+it.id]=S.q['pr:'+it.id]||1});S.seeded=true;save()}
   if(r!=='pending'){await push();if(await pull())redraw=true}
@@ -218,46 +381,34 @@ async function sync(){sbInit();if(!sb||busy||!navigator.onLine){status();return}
  catch(e){syncErr=e.message||String(e)}
  finally{busy=false}
  const a=document.activeElement;if(redraw&&!(a&&a.tagName==='INPUT'))render();else status()}
-function trErr(m){return /invalid login/i.test(m)?'Email ya password ghalat hai.':/already registered|already exists/i.test(m)?'Ye email pehle se bana hua hai. Login dabayein.':/not confirmed/i.test(m)?'Pehle email par aaya link khol kar account pakka karein.':/password/i.test(m)?'Password kam az kam 6 harf ka rakhein.':'Masla: '+m}
-async function login(up){sbInit();if(!sb||!navigator.onLine){alert('Login ke liye internet chahiye.');return}
- const e=$('#em').value.trim(),p=$('#pw').value;if(!e||p.length<6){alert('Email aur kam az kam 6 harf ka password likhein.');return}
- authMsg='Intezar karein…';render();
- const {data,error}=up?await sb.auth.signUp({email:e,password:p}):await sb.auth.signInWithPassword({email:e,password:p});
- authMsg=error?trErr(error.message):!data.session?'Email par aaya link khol kar account pakka karein, phir yahan Login karein.':'';
- if(data&&data.session){who=data.session.user.email;await sync()}render()}
-async function logout(){if(!confirm('Logout karna hai? Phone ka data phone mein hi rahega.'))return;
- if(sb)await sb.auth.signOut({scope:'local'}).catch(()=>{});
- // A staff phone stays in staff mode after logout until the owner logs in on it.
- who=null;S.me=role()==='staff'?{email:null,role:'staff'}:null;save();render()}
 async function loadMembers(){if(!sb||!who||!own()||!navigator.onLine)return;
- const {data,error}=await sb.from('members').select('user_id,email,role,created_at').order('created_at');if(!error){MEM=data;if(tab==='online')render()}}
+ const {data,error}=await sb.from('members').select('user_id,email,role,created_at').order('created_at');if(!error){MEM=data;if(tab==='acct')render()}}
 async function setRole(id,r){const {error}=await sb.from('members').update({role:r}).eq('user_id',id);if(error)alert(trErr(error.message));loadMembers()}
-function online(){const c=Object.keys(S.q).length,r=role();let h='<h2>Online account</h2>';
- if(!who)h+=`<div class="card stack"><p>Login karne se hisaab internet par mehfooz ho jata hai aur doosre phone par bhi nazar aata hai. Login ke baghair bhi app isi phone par chalti rahegi.</p>
- <p class="hint">Sab se pehla account owner ka banega. Staff ka account owner ke "Haan" karne ke baad chalega.</p>
- <input type="email" id="em" placeholder="Email" autocomplete="username" aria-label="Email">
- <input type="password" id="pw" placeholder="Password (kam az kam 6 harf)" autocomplete="current-password" aria-label="Password">
- <div class="btns"><button onclick="login(false)">Login</button><button class="g" onclick="login(true)">Naya account banayein</button></div>
- ${authMsg?`<p>${esc(authMsg)}</p>`:''}${!window.supabase?'<p class="hint">Abhi internet nahi hai. Internet aane par login ho sakega.</p>':''}</div>`;
- else h+=`<div class="card stack"><div class="sum"><span>Account</span><b>${esc(who)}</b></div>
- <div class="sum"><span>Kaam</span><b>${r==='owner'?'Owner':r==='staff'?'Staff':'Owner ki manzoori baqi'}</b></div>
- <div class="sum"><span>Bhejne ke liye baqi</span><b>${c}</b></div>
- <div class="sum"><span>Aakhri sync</span><b>${lastSync?lastSync.toLocaleTimeString('en-PK',{hour:'numeric',minute:'2-digit'}):'-'}</b></div>
- ${syncErr?`<p class="neg">Sync nahi hua: ${esc(syncErr)}</p>`:''}${r==='pending'?'<p>Owner se kahein ke Online tab mein aap ko "Staff banayein" kar de.</p>':''}
- <div class="btns"><button onclick="sync().then(render)">Abhi sync karein</button><button class="g" onclick="logout()">Logout</button></div></div>`;
- if(who&&own()&&MEM){const o=MEM.filter(x=>x.role!=='owner');
-  h+=`<h2>Staff</h2><div class="card">${o.map(x=>`<div class="ln"><span>${esc(x.email||'')}<br><span class="hint">${x.role==='staff'?'Staff':'Manzoori baqi'}</span></span>${x.role==='staff'?`<button class="g" onclick="setRole('${x.user_id}','pending')">Rok dein</button>`:`<button onclick="setRole('${x.user_id}','staff')">Staff banayein</button>`}</div>`).join('')||'<p class="hint">Abhi koi staff nahi. Staff apne phone par is app mein "Naya account banayein" kare, phir yahan nazar aayega.</p>'}</div>`}
- if(own())h+=`<h2>Backup</h2><div class="card"><p>Backup file apne WhatsApp ya Google Drive mein bhi save kar lein.</p><button onclick="exp()">Backup file download karein</button></div>
- <div class="card"><p>Purana backup wapas lane ke liye file chunein. Is phone ka data us file se badal jayega aur online bhi chala jayega.</p><input type="file" accept=".json" onchange="imp(this.files[0])" aria-label="Backup file"></div>
- <div class="card"><label for="c0" class="hint">Shuru ka galla (pehle din ke liye)</label><input type="number" id="c0" value="${S.cash0}" onchange="S.cash0=n(this.value);S.c0u=now();mark('set:cash0');head()"></div>`;
- return h}
+
+// Account
+function acct(){const c=Object.keys(S.q).length,r=role();
+ let h=`<div class="card" style="display:flex;gap:14px;align-items:center"><div class="av">${esc((S.me.email||'?')[0].toUpperCase())}</div><div style="min-width:0"><b style="word-break:break-all">${esc(S.me.email)}</b><br><span class="role">${r==='owner'?'Owner':'Staff'}</span></div></div>
+ <div class="card"><div class="sh"><h3>Online sync</h3><b class="${syncErr||!navigator.onLine?'neg':'pos'}" style="font-size:16px">${busy?'Ho raha hai…':!navigator.onLine?'Offline':syncErr?'Masla':'Theek hai'}</b></div>
+ <div class="sum" style="margin-top:6px"><span>Bhejne ke liye baqi</span><b>${c}</b></div>
+ <div class="sum"><span>Aakhri sync</span><b>${lastSync?lastSync.toLocaleTimeString('en-PK',{hour:'numeric',minute:'2-digit'}):'—'}</b></div>
+ ${syncErr?`<p class="msg err">${esc(trErr(syncErr))}</p>`:''}
+ <p class="hint" style="margin:6px 0 12px">Internet na ho tab bhi likhte rahein. Internet aate hi sab khud online chala jayega.</p>
+ <button class="btn ghost full" onclick="sync().then(render)">Abhi sync karein</button></div>`;
+ if(own()&&MEM){const o=MEM.filter(x=>x.role!=='owner');
+  h+=`<div class="card"><h3>Staff</h3>${o.map(x=>`<div class="row"><span style="min-width:0;word-break:break-all">${esc(x.email||'')}<br><span class="hint">${x.role==='staff'?'Staff':'Manzoori baqi'}</span></span>${x.role==='staff'?`<button class="btn ghost" onclick="setRole('${x.user_id}','pending')">Rok dein</button>`:`<button class="btn" onclick="setRole('${x.user_id}','staff')">Staff banayein</button>`}</div>`).join('')||'<p class="hint" style="margin-top:8px">Abhi koi staff nahi. Staff apne phone par is app mein "Naya account" banaye, phir yahan nazar aayega.</p>'}</div>`}
+ h+=`<form class="card" onsubmit="event.preventDefault();setPw('np')"><details><summary>Password badlein</summary><div class="fld" style="margin-top:12px"><label for="np">Naya password (kam az kam 6 harf)</label><input type="password" id="np" autocomplete="new-password" minlength="6"></div><button class="btn full">Password save karein</button><div id="amsg" class="msg" hidden></div></details></form>`;
+ if(own())h+=`<div class="card"><details><summary>Backup</summary><p class="hint" style="margin:12px 0">Backup file apne WhatsApp ya Google Drive mein bhi save kar lein.</p><button class="btn ghost full" onclick="exp()">Backup file download karein</button>
+ <p class="hint" style="margin:16px 0 8px">Purana backup wapas lane ke liye file chunein. Is phone ka data us file se badal jayega aur online bhi chala jayega.</p><input type="file" accept=".json" onchange="imp(this.files[0])" aria-label="Backup file"></details></div>
+ <div class="card"><div class="fld" style="margin:0"><label for="c0">Shuru ka galla (pehle din ke liye)</label><input type="number" inputmode="decimal" id="c0" value="${S.cash0}" onchange="S.cash0=n(this.value);S.c0u=now();mark('set:cash0');head()"></div></div>`;
+ return h+`<button class="btn danger full" onclick="logout()">Logout</button>`}
 function exp(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='hisaab-backup-'+tz()+'.json';a.click()}
 function imp(file){if(!file)return;file.text().then(t=>{try{const d=JSON.parse(t);if(!d.items||!d.days)throw 0;
  if(confirm('Is phone ka data is file se badalna hai?')){const me=S.me,cur=S.cur,seeded=S.seeded;S=migrate(d,now());Object.assign(S,{me,cur,seeded});save();render();kick()}}catch(e){alert('Ye sahi backup file nahi hai.')}})}
+
 window.addEventListener('online',()=>{status();sync()});window.addEventListener('offline',status);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync()});
 setInterval(()=>{if(document.visibilityState==='visible')sync()},60000);
-window.addEventListener('load',()=>{sbInit();sync()});
+window.addEventListener('load',()=>{sbInit();sync();if(!S.me)render()});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 render();
 </script>

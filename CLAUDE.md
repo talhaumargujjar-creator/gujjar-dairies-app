@@ -10,7 +10,8 @@ Is file ko repo ke root (`gujjar-dairies-app/`) mein `CLAUDE.md` naam se rakhein
 ## Maujooda halat
 Static PWA, koi build step nahi. Files: `index.html` (HTML+CSS+JS sab ek file mein), `manifest.webmanifest`, `sw.js`, `icon-192.png`, `icon-512.png`.
 - Data `localStorage` key `gd_hisaab_v2` mein (v1 wala `gd_hisaab_v1` safety ke liye chhoda hua hai, pehli baar khulne par v2 mein migrate hota hai). Har record par `u` (edit time ms), entries par `id` aur `del` (soft delete), items par `off`, `pru` (price edit time). `q` = upload ke liye baqi keys, `cur` = har table ka pull cursor, `me` = {email, role}.
-- Tabs: Stock, Hisaab, Report, Items, Online (login, sync, staff manzoori, Backup). Staff ko sirf Stock, Hisaab, Online dikhte hain.
+- App khulte hi login page aata hai (`S.me` khali ho to). Login ke baad tabs: Stock, Hisaab, Report, Items, Account (sync, staff manzoori, password, Backup). Staff ko sirf Stock, Hisaab, Account. `pending` user ko "manzoori ka intezar" screen.
+- Stock card paper register jaisa: Opening, Purchase, Istemal (register ka "Being used", `us`), Closing. Bika = Opening + Purchase − Istemal − Closing.
 - Hosting: GitHub repo `talhaumargujjar-creator/gujjar-dairies-app` -> Vercel project `gujjar-dairies-app` (free), main par push se auto deploy. Live: https://gujjar-dairies-app.vercel.app
 - Supabase project `bpzlvcmbpyvcdzzzfsjr` (Vercel Marketplace se bana, free). Schema `supabase/schema.sql` mein. Pehla signup owner banta hai, baqi `pending` jab tak owner "Staff banayein" na kare. Delete policy kahin nahi; last-write-wins trigger `lww()` purani `u` wali write ko rad karta hai. Dusra Supabase project `hakcpkkvmhamdgmfttpc` (Vercel project `gujjar-dairies` se juda) istemal nahi hota.
 - Login ke baghair bhi app pehle ki tarah sirf phone par chalti hai.

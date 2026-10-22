@@ -139,3 +139,5 @@ language sql security definer set search_path = '' as $$
 $$;
 revoke execute on function public.keepalive() from public;
 grant execute on function public.keepalive() to anon, authenticated;
+-- "Being used" from the paper register: stock used inside the shop (e.g. milk turned into dahi), not sold.
+alter table public.day_stock add column us numeric;
