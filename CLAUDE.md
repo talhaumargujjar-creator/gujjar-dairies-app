@@ -10,7 +10,10 @@ Is file ko repo ke root (`gujjar-dairies-app/`) mein `CLAUDE.md` naam se rakhein
 ## Maujooda halat
 Static PWA, koi build step nahi. Files: `index.html` (HTML+CSS+JS sab ek file mein), `manifest.webmanifest`, `sw.js`, `icon-192.png`, `icon-512.png`.
 - Data `localStorage` key `gd_hisaab_v2` mein (v1 wala `gd_hisaab_v1` safety ke liye chhoda hua hai, pehli baar khulne par v2 mein migrate hota hai). Har record par `u` (edit time ms), entries par `id` aur `del` (soft delete), items par `off`, `pru` (price edit time). `q` = upload ke liye baqi keys, `cur` = har table ka pull cursor, `me` = {email, role}.
-- App khulte hi login page aata hai (`S.me` khali ho to). Login ke baad tabs: Stock, Hisaab, Doodh, Report, Items, Account (sync, staff manzoori, password, Backup). Staff ko sirf Stock, Hisaab, Doodh, Account.
+- App khulte hi login page aata hai (`S.me` khali ho to). Login ke baad neeche tabs: Stock, Hisaab, Doodh, Bank, Report, Account (sync, staff manzoori, password, Backup, aur "Items, rate aur cost" ka button). Staff ko sirf Stock, Hisaab, Doodh, Account.
+- Hisaab tab paper khaate (cashbook page) jaisa: kinds `ex` kharcha, `sl` salary (dono munafa mein), `cr` ghar aur gari kharcha (TOTAL PAID 2), `ud` udhaar diya (3), `bl` bill ki raqam / owner ko (4), `sp` supplier (5), `rc` cash wasool. Galla = opening + counter sale + rc + bank se nikala − sab paid − bank mein jama. Munafa = items munafa − ex − sl. Udhaar khata naam-wise: ud − rc (naam `nkey` se uppercase; "(375+375)" jaisa hissa naam ke aakhir mein hota hai aur khate mein hata diya jata hai). Raqam mein "900+900" likh sakte hain.
+- Bank tab (sirf owner): `S.bk` = `ac` accounts {id,name,op} aur `tx` {id,day,ac,type,party,a,no,cd,st,note,del}. Types `BT`: jama (galle se bank, galla −), nikala (galla +), chq_diya, chq_mila, online_aaya, online_gaya. Cheque `pending` rehta hai jab tak "Clear ho gaya" na dabaya jaye; balance sirf `clear` wale ginta hai. Tables `bank_accounts`, `bank_tx` (owner-only RLS); queue keys `ba:`, `bt:`.
+- Items par `ord` (register ki tarteeb). Stock mein owner "Rate ✎" daba kar sirf us din ka rate (`rt`, day_stock mein) laga sakta hai, jaise anday ka roz ka rate.
 - Doodh tab Google Sheet "MILK 2026 New" ki jagah le raha hai (plan: 1 entry ✓, 2 rate/raqam/baqaya, 3 milan + PNL + Suzuki kharcha, 4 sync ✓, 5 sheet se purana data, 6 report/WhatsApp). Data `S.mk`: `ps` parties (`kind` 'sup' = doodh dene wali jaise Wasif Chacho, Bikri Bara; 'buy' = lene wali jaise Johar), `mr[day]` mandi rate {m,e} fi mann, `d[day][partyId]` = {bm,be,cm,ce,lm,le,sm,se} **kg mein** (1 mann = 40 kg; b bandhi, c cow, l mandi se liya, s mandi ko becha; m subah, e shaam). Party ka kul = b + c + l − s. Milan: dene wali parties ka kul = lene wali ka kul. Supabase tables `milk_parties` (sirf owner likhe), `milk_rates`, `milk_days`; queue keys `mp:`, `mr:`, `md:day|party`.
 - Sheet ke qaide (marhala 2 ke liye): bandhi raqam = mann × party ka bandhi rate, cow = mann × cow rate, mandi = mann × mandi rate; mandi ko bechne par rate se commission katta hai (Wasif −230, Bikri −2500 fi mann). Baqaya = pichla baqaya + raqam − payment. `pending` user ko "manzoori ka intezar" screen.
 - Stock card paper register jaisa: Opening, Purchase, Istemal (register ka "Being used", `us`), Closing. Bika = Opening + Purchase − Istemal − Closing.
@@ -43,7 +46,7 @@ Static PWA, koi build step nahi. Files: `index.html` (HTML+CSS+JS sab ek file me
 
 ## Usool
 - Free stack hi. Naya dependency ya service lagane se pehle owner se poocho.
-- Offline kaam karna band nahi hona chahiye. Service worker ka cache version (abhi `hisaab-v5`) badlo jab files badlein.
+- Offline kaam karna band nahi hona chahiye. Service worker ka cache version (abhi `hisaab-v6`) badlo jab files badlein.
 - Maujooda `localStorage` data ko migrate karo, mita na do. Naye version se pehle Backup export ka tareeqa batao.
 - Chhote chhote commits, aur har kaam ke baad `git push` taake Vercel deploy kare. Deploy hone par owner ko link batao.
 - UI aasan rakho: bara text, ek haath se phone par chalne wali, Roman Urdu labels. Raqam `en-PK` format mein.

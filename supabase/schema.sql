@@ -175,3 +175,40 @@ end $$;
 create policy milk_parties_owner_insert on public.milk_parties for insert to authenticated with check (public.is_owner());
 create policy milk_parties_owner_update on public.milk_parties for update to authenticated using (public.is_owner()) with check (public.is_owner());
 revoke all on public.milk_parties, public.milk_rates, public.milk_days from anon;
+
+-- Cashbook sections from the paper khata:
+-- ex kharcha, sl salary, cr ghar/gari (TOTAL PAID 2), ud udhaar diya (TOTAL PAID 3),
+-- bl bill ki raqam / owner ko (TOTAL PAID 4), sp supplier (TOTAL PAID 5), rc cash wasool.
+alter table public.entries drop constraint entries_kind_check;
+alter table public.entries add constraint entries_kind_check check (kind in ('ex','sl','cr','ud','bl','sp','rc'));
+
+-- Register order for items, and an optional rate for one day (egg rate changes daily).
+alter table public.items add column ord int;
+alter table public.day_stock add column rt numeric;
+
+-- Bank accounts and their transactions (cash deposits/withdrawals, cheques given/received, online). Owner only.
+create table public.bank_accounts (
+  id text primary key, name text not null, op numeric not null default 0, off boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+create table public.bank_tx (
+  id text primary key, day date not null, account_id text not null,
+  type text not null check (type in ('jama','nikala','chq_diya','chq_mila','online_aaya','online_gaya')),
+  party text, amount numeric not null default 0, chq_no text, chq_date date,
+  status text not null default 'clear' check (status in ('pending','clear','bounce')),
+  note text, deleted boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+do $$
+declare t text;
+begin
+  foreach t in array array['bank_accounts','bank_tx'] loop
+    execute format('create trigger %I_lww before insert or update on public.%I for each row execute function public.lww()', t, t);
+    execute format('create index %I_sa_idx on public.%I (sa)', t, t);
+    execute format('alter table public.%I enable row level security', t);
+    execute format('create policy %I_owner_select on public.%I for select to authenticated using (public.is_owner())', t, t);
+    execute format('create policy %I_owner_insert on public.%I for insert to authenticated with check (public.is_owner())', t, t);
+    execute format('create policy %I_owner_update on public.%I for update to authenticated using (public.is_owner()) with check (public.is_owner())', t, t);
+  end loop;
+end $$;
+revoke all on public.bank_accounts, public.bank_tx from anon;
