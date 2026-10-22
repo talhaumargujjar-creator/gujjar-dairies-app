@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ur-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1d4e89">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon-192.png">
+<title>Gujjar Dairies Hisaab</title>
+<style>
+:root{--bg:#f5f8fa;--ink:#14212b;--mut:#5d6f7e;--card:#fff;--line:#dbe4ea;--blue:#1d4e89;--butter:#f2c14e;--red:#b3261e;--grn:#1b7a4b}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1820;--ink:#e8eff4;--mut:#90a3b2;--card:#16242f;--line:#273946;--blue:#6aa6e8;--butter:#f2c14e;--red:#ff8a80;--grn:#6fd6a0}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 "Segoe UI",Roboto,system-ui,sans-serif;padding-bottom:76px}
+header{background:#1d4e89;color:#fff;padding:14px 16px 12px;position:sticky;top:0;z-index:5}
+header .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+header input[type=date]{font:inherit;border:0;border-radius:8px;padding:6px 8px}
+.big{font-size:30px;font-weight:700;letter-spacing:-.5px}
+.sub{font-size:13px;opacity:.85}
+.pl{color:var(--butter);font-weight:700}
+main{padding:12px;max-width:640px;margin:auto}
+h2{font-size:17px;margin:18px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+input,select,button{font:inherit}
+input[type=text],input[type=number],input[type=search]{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+input:focus-visible,button:focus-visible{outline:3px solid var(--butter);outline-offset:1px}
+button{border:0;border-radius:8px;padding:9px 14px;background:var(--blue);color:#fff;cursor:pointer}
+body:not(.x) button.s{background:transparent;color:var(--red);padding:4px 8px}
+.it{display:grid;grid-template-columns:1fr 64px 64px;gap:6px;align-items:end}
+.it b{grid-column:1/-1;font-size:15px}
+.it label{font-size:12px;color:var(--mut)}
+.it .r{grid-column:1/-1;font-size:13px;color:var(--mut);display:flex;justify-content:space-between}
+.ln{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.add{display:grid;grid-template-columns:1fr 90px auto;gap:6px;margin-top:8px}
+.sum{display:flex;justify-content:space-between;padding:4px 0}
+.neg{color:var(--red)}.pos{color:var(--grn)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:right}
+td:first-child,th:first-child{text-align:left}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line)}
+nav button{flex:1;background:none;color:var(--mut);border-radius:0;padding:14px 4px;font-size:14px}
+nav button[aria-current=true]{color:var(--blue);font-weight:700;box-shadow:inset 0 3px 0 var(--butter)}
+.hint{color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><div><div class="sub">Aaj ki sale</div><div class="big" id="hs">0</div></div>
+  <input type="date" id="dt" aria-label="Tareekh"></div>
+  <div class="sub" id="hp"></div>
+</header>
+<main id="m"></main>
+<nav id="nav"></nav>
+<script>
+const SEED=[["FULL FAT MILK",240,232.05,304],["COW MILK",240,0,0],["DAHI",400,305,100],["DESI GHEE",3200,2600,1],["COW DESI GHEE",4000,0,0],["BUTTER 100-Gram",300,210,43],["BUTTER 200-Gram",600,420,21],["COW BUTTER 100-Gram",300,250,0],["MASKA BUN",100,80,3],["MILK BOTTLE",160,110,21],["LASSI",150,110,25],["EGG",20.83,19.42,575],["CUP CAKE 60 WALAY",60,50,16],["MILKY LARGE BREAD",140,100,3],["MILKY SMAL BREAD",100,75,3],["SLICE RUSK",110,85,10],["MEETHA BUN",30,25,0],["CREAM/SHEER/PARA BUN",60,50,9],["JELLY BUN",50,30,2],["BISCUIT",120,100,6],["PLAIN CAKE 200-Gram",150,125,3],["PLAIN CAKE 100-Gram",100,90,0],["LARGE BREAD COMPANY",240,218,4],["MEDIUM BREAD COMPANY",180,163,1],["SMALL BREAD COMPANY",130,117,4],["MINI BREAD COMPANY",80,72,6],["BRAN BREAD COMPANY",180,163,5],["BRAN BREAD 3 PCS",50,45,2],["BRADY'S 5 PCS BREAD",40,36,4],["DAWN 4 PCS BREAD",50,45,2],["LARGE FRUIT BUN",60,54,6],["SCHOOL BUN",25,22,21],["BURGER BUN",130,117,10],["PLAIN CAKE COMPANY",140,125,6],["DAWN RUSK 80/-",90,72,2],["DAWN RUSK 150/-",170,135,6],["HONEY",600,460,0],["MARBLE",220,150,2],["DAWN 120/-",150,130,4],["CAKE RUSK LARGE",250,230,0],["PAKOLA BOTTLE",0,0,121],["BRADY'S 100/- CAKERUSK",140,125,0],["GOAT MILK",600,420,0],["PHENI",200,120,0],["DOODH SODA",160,120,0],["SUNSHINE",110,85,27],["WATER SMALL",60,25,14],["WATER LARGE",120,80,3]];
+const SECS={ex:['Kharche (Expense)',['LABOUR KHARCHI','SAFAYI','ROTI','CHEENI','GAS CYLINDER','RIKSHA KIRAYA','BIKE PETROL','LABOUR CHAI','WATER','SALARY']],
+ cr:['Customer/Milk wale ki payment',['DELIVERY','HOME EXP. + PARCEL']],
+ sp:['Supplier payment',['BRADY\'S BILL','DAWN BILL','EGG BILL','CUP CAKE','PLAIN CAKE','BISCUIT WALA']],
+ rc:['Cash wasool (delivery, udhaar wasooli)',['DELIVERY','HAJI WASOOL']]};
+const K='gd_hisaab_v1';
+let S=null;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+if(!S)S={items:SEED.map((r,i)=>({id:'i'+i,name:r[0],rate:r[1],cost:r[2],op:r[3]})),days:{},cash0:0};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Save nahi hua. Phone ki storage check karein aur Backup lein.')}};
+const n=v=>parseFloat(v)||0, f=v=>Math.round(v).toLocaleString('en-PK'), esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tz=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+let date=tz(),tab='stock',q='';
+const dd=d=>S.days[d]=S.days[d]||{st:{},ex:[],cr:[],sp:[],rc:[],cash:null};
+const before=d=>Object.keys(S.days).filter(x=>x<d).sort().reverse();
+function opening(it,d){for(const x of before(d)){const s=S.days[x].st[it.id];if(s&&s.cl!==''&&s.cl!=null)return n(s.cl)}return n(it.op)}
+function sold(it,d){const s=(S.days[d]||{st:{}}).st[it.id];if(!s||s.cl===''||s.cl==null)return 0;return opening(it,d)+n(s.pu)-n(s.cl)}
+function tot(d){const D=S.days[d]||{st:{},ex:[],cr:[],sp:[],rc:[],cash:null};let sale=0,prof=0;
+ S.items.forEach(it=>{const s=sold(it,d);sale+=s*n(it.rate);prof+=s*(n(it.rate)-n(it.cost))});
+ const sm=k=>D[k].reduce((a,b)=>a+n(b.a),0),ex=sm('ex'),cr=sm('cr'),sp=sm('sp'),rc=sm('rc');
+ let op=n(S.cash0);for(const x of before(d)){if(S.days[x].cash!=null){op=n(S.days[x].cash);break}}
+ const exp=op+sale+rc-ex-cr-sp;return{sale,prof,ex,cr,sp,rc,op,exp,pl:prof-ex,diff:D.cash!=null?n(D.cash)-exp:null,cash:D.cash}}
+function head(){const t=tot(date);$('#hs').textContent=f(t.sale);$('#hp').innerHTML='Munafa − kharche: <span class="pl">'+f(t.pl)+'</span>'}
+const $=s=>document.querySelector(s);
+const TABS=[['stock','Stock'],['hisaab','Hisaab'],['report','Report'],['items','Items'],['backup','Backup']];
+function nav(){$('#nav').innerHTML=TABS.map(([k,l])=>`<button aria-current="${tab==k}" onclick="go('${k}')">${l}</button>`).join('')}
+function go(t){tab=t;render()}
+function render(){nav();head();$('#dt').value=date;$('#m').innerHTML=({stock,hisaab,report,items,backup})[tab]()}
+$('#dt').onchange=e=>{date=e.target.value||tz();render()};
+function stock(){const D=dd(date);
+ const L=S.items.filter(i=>i.name.toLowerCase().includes(q.toLowerCase())).map(it=>{const s=D.st[it.id]||{pu:'',cl:''},o=opening(it,date),sd=sold(it,date);
+ return `<div class="card it"><b>${esc(it.name)}</b>
+ <div><label>Opening</label><div>${o}</div></div>
+ <div><label for="p${it.id}">Purchase</label><input type="number" inputmode="decimal" id="p${it.id}" value="${s.pu}" onchange="setS('${it.id}','pu',this.value)"></div>
+ <div><label for="c${it.id}">Closing</label><input type="number" inputmode="decimal" id="c${it.id}" value="${s.cl}" onchange="setS('${it.id}','cl',this.value)"></div>
+ <div class="r"><span>Bika: ${sd}</span><span>${f(sd*n(it.rate))} | munafa ${f(sd*(n(it.rate)-n(it.cost)))}</span></div></div>`}).join('');
+ return `<input type="search" placeholder="Item dhoondein" value="${esc(q)}" oninput="q=this.value;keep()" aria-label="Item search"><p class="hint">Sirf Purchase aur Closing likhein. Bika hua maal aur sale khud nikal jayegi. Closing khali ho to item ginti mein nahi aata.</p>${L}`}
+function keep(){const p=$('input[type=search]'),pos=p.selectionStart;$('#m').innerHTML=stock();const e=$('input[type=search]');e.focus();e.setSelectionRange(pos,pos)}
+function setS(id,k,v){const D=dd(date);D.st[id]=D.st[id]||{pu:'',cl:''};D.st[id][k]=v;save();const y=window.scrollY;render();window.scrollTo(0,y)}
+function sec(k){const D=dd(date),[title,names]=SECS[k],tt=D[k].reduce((a,b)=>a+n(b.a),0);
+ return `<h2>${title}: ${f(tt)}</h2><div class="card">${D[k].map((r,i)=>`<div class="ln"><span>${esc(r.n)}</span><span>${f(n(r.a))} <button class="s" aria-label="Hatayen" onclick="del('${k}',${i})">✕</button></span></div>`).join('')||'<p class="hint">Abhi koi entry nahi.</p>'}
+ <div class="add"><input type="text" id="n${k}" list="l${k}" placeholder="Naam" aria-label="Naam"><datalist id="l${k}">${names.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+ <input type="number" inputmode="decimal" id="a${k}" placeholder="Raqam" aria-label="Raqam"><button onclick="addL('${k}')">Add</button></div></div>`}
+function addL(k){const nm=$('#n'+k).value.trim(),a=n($('#a'+k).value);if(!nm||!a){alert('Naam aur raqam dono likhein.');return}dd(date)[k].push({n:nm,a});save();render()}
+function del(k,i){if(confirm('Ye entry hatani hai?')){dd(date)[k].splice(i,1);save();render()}}
+function hisaab(){const t=tot(date);
+ return sec('ex')+sec('cr')+sec('sp')+sec('rc')+`<h2>Galla</h2><div class="card">
+ <div class="sum"><span>Galla opening</span><b>${f(t.op)}</b></div>
+ <div class="sum"><span>+ Sale ${f(t.sale)} + Wasool ${f(t.rc)}</span><b>${f(t.sale+t.rc)}</b></div>
+ <div class="sum"><span>− Kharche, payments</span><b>${f(t.ex+t.cr+t.sp)}</b></div>
+ <div class="sum"><span>Hona chahiye</span><b>${f(t.exp)}</b></div>
+ <label for="ch" class="hint">Asal cash in hand (ginti ke baad)</label><input type="number" inputmode="decimal" id="ch" value="${t.cash??''}" onchange="setC(this.value)">
+ ${t.diff!=null?`<div class="sum"><span>Farq (galla diff)</span><b class="${t.diff<0?'neg':'pos'}">${f(t.diff)}</b></div>`:''}</div>`}
+function setC(v){dd(date).cash=v===''?null:n(v);save();render()}
+function report(){const t=tot(date),R=(a,b,c)=>`<div class="sum"><span>${a}</span><b class="${c||''}">${b}</b></div>`;
+ const days=Object.keys(S.days).sort().reverse().slice(0,10);
+ return `<h2>${date} ka hisaab</h2><div class="card">${R('Counter sale',f(t.sale))}${R('Items ka munafa',f(t.prof))}${R('Kharche',f(t.ex))}${R('Munafa / nuqsan',f(t.pl),t.pl<0?'neg':'pos')}${R('Supplier payments',f(t.sp))}${R('Galla farq',t.diff==null?'-':f(t.diff),t.diff<0?'neg':'')}</div>
+ <h2>Pichle din</h2><div class="card"><table><tr><th>Tareekh</th><th>Sale</th><th>Kharche</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr><td>${d.slice(5)}</td><td>${f(x.sale)}</td><td>${f(x.ex)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table></div>
+ <p class="hint">Munafa = bike maal ka (rate − cost) minus kharche. Supplier payment stock ki kharidari hai, kharcha nahi.</p>`}
+function items(){return `<h2>Items, rate aur cost</h2>${S.items.map((it,i)=>`<div class="card it"><b>${esc(it.name)} <button class="s" aria-label="Item hatayen" onclick="delI(${i})">✕</button></b>
+ <div><label>Rate</label><input type="number" inputmode="decimal" value="${it.rate}" onchange="upI(${i},'rate',this.value)"></div>
+ <div><label>Cost</label><input type="number" inputmode="decimal" value="${it.cost}" onchange="upI(${i},'cost',this.value)"></div>
+ <div><label>Shuru stock</label><input type="number" inputmode="decimal" value="${it.op}" onchange="upI(${i},'op',this.value)"></div></div>`).join('')}
+ <h2>Naya item</h2><div class="card"><input type="text" id="ni" placeholder="Item ka naam" aria-label="Item ka naam" style="margin-bottom:6px"><button onclick="addI()">Item add karein</button></div>`}
+function upI(i,k,v){S.items[i][k]=n(v);save();head()}
+function addI(){const nm=$('#ni').value.trim();if(!nm)return;S.items.push({id:'i'+Date.now(),name:nm,rate:0,cost:0,op:0});save();render()}
+function delI(i){if(confirm('Item hatane se purani entries ka hisaab bhi badal sakta hai. Hatayen?')){S.items.splice(i,1);save();render()}}
+function backup(){return `<h2>Backup</h2><div class="card"><p>Data sirf is phone mein save hota hai. Har hafte backup file apne WhatsApp ya Google Drive mein save karein.</p><button onclick="exp()">Backup file download karein</button></div>
+ <div class="card"><p>Purana backup wapas lane ke liye file chunein (maujooda data replace ho jayega).</p><input type="file" accept=".json" onchange="imp(this.files[0])" aria-label="Backup file"></div>
+ <div class="card"><label for="c0" class="hint">Shuru ka galla (pehle din ke liye)</label><input type="number" id="c0" value="${S.cash0}" onchange="S.cash0=n(this.value);save();head()"></div>`}
+function exp(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='hisaab-backup-'+tz()+'.json';a.click()}
+function imp(file){if(!file)return;file.text().then(t=>{try{const d=JSON.parse(t);if(!d.items||!d.days)throw 0;if(confirm('Maujooda data replace karna hai?')){S=d;save();render()}}catch(e){alert('Ye sahi backup file nahi hai.')}})}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+render();
+</script>
+</body>
+</html>
