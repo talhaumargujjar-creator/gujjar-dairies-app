@@ -212,3 +212,33 @@ begin
   end loop;
 end $$;
 revoke all on public.bank_accounts, public.bank_tx from anon;
+
+-- Doodh book step 2: per-party rates (owner only) and payments.
+-- A rate row applies from from_day until the next row. ladj/sadj = how much below the mandi rate milk taken from /
+-- sold to the mandi is counted (commission). Opening baqaya per party lives in settings as key 'mob:<party_id>' = {v, d}.
+create table public.milk_party_rates (
+  party_id text not null, from_day date not null, br numeric, cr numeric, ladj numeric, sadj numeric,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid,
+  primary key (party_id, from_day)
+);
+create table public.milk_pay (
+  id text primary key, day date not null, party_id text not null, amount numeric not null default 0, note text,
+  deleted boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+do $$
+declare t text;
+begin
+  foreach t in array array['milk_party_rates','milk_pay'] loop
+    execute format('create trigger %I_lww before insert or update on public.%I for each row execute function public.lww()', t, t);
+    execute format('create index %I_sa_idx on public.%I (sa)', t, t);
+    execute format('alter table public.%I enable row level security', t);
+  end loop;
+end $$;
+create policy milk_party_rates_owner_select on public.milk_party_rates for select to authenticated using (public.is_owner());
+create policy milk_party_rates_owner_insert on public.milk_party_rates for insert to authenticated with check (public.is_owner());
+create policy milk_party_rates_owner_update on public.milk_party_rates for update to authenticated using (public.is_owner()) with check (public.is_owner());
+create policy milk_pay_member_select on public.milk_pay for select to authenticated using (public.is_member());
+create policy milk_pay_member_insert on public.milk_pay for insert to authenticated with check (public.is_member());
+create policy milk_pay_member_update on public.milk_pay for update to authenticated using (public.is_member()) with check (public.is_member());
+revoke all on public.milk_party_rates, public.milk_pay from anon;
