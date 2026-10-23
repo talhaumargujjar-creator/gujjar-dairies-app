@@ -151,7 +151,12 @@ input[type=tel],input[type=month]{width:100%;min-height:48px;padding:10px 12px;b
 .crow:last-child{border-bottom:0}
 .crow>b{white-space:nowrap;font-size:17px}
 #prt{display:none}
-@media print{body>*:not(#prt){display:none!important}#prt{display:block;color:#000;background:#fff;font:13px/1.4 Arial,sans-serif}#prt h1{font-size:20px;margin:0}#prt h2{font-size:16px;margin:10px 0 0}#prt p{margin:2px 0}#prt table{margin-top:10px;font-size:13px}#prt td,#prt th{padding:4px;border-bottom:1px solid #ccc;color:#000}#prt .l{text-align:left}}
+@media print{body>*:not(#prt){display:none!important}#prt{display:block;color:#000;background:#fff;font:13px/1.4 Arial,sans-serif}#prt h1{font-size:20px;margin:0}#prt h2{font-size:16px;margin:10px 0 0}#prt p{margin:2px 0}#prt table{margin-top:10px;font-size:13px}#prt td,#prt th{padding:4px;border-bottom:1px solid #ccc;color:#000}#prt .l{text-align:left}
+ #prt .ph{display:flex;align-items:center;gap:16px;border-bottom:3px solid #c71c2b;padding-bottom:10px}#prt .ph img{height:72px;width:auto}
+ #prt .pb{display:flex;justify-content:space-between;gap:12px;margin-top:10px}
+ #prt .po{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}#prt .po div{border:1px solid #ccc;border-radius:8px;padding:6px;text-align:center;break-inside:avoid}
+ #prt .po img{width:100%;height:120px;object-fit:contain;border-radius:6px}#prt .po p{font-weight:bold;margin-top:4px}
+ #prt .pof{break-inside:avoid;page-break-inside:avoid}#prt td,#prt th{padding:3px 4px}}
 </style>
 </head>
 <body>
@@ -196,7 +201,7 @@ function migrate(o,t){const q={};
   for(const [d,L] of Object.entries(o.mk.pay||{}))L.forEach(e=>{e.u=t;q['mpy:'+d+'|'+e.id]=1})
   for(const [d,x] of Object.entries(o.mk.x||{})){x.u=t;q['mx:'+d]=1}}
  if(o.bk){o.bk.ac.forEach(a=>{a.u=t;q['ba:'+a.id]=1});o.bk.tx.forEach(x=>{x.u=t;q['bt:'+x.id]=1})}
- if(o.dl){o.dl.cs.forEach(c=>{c.u=t;q['dc:'+c.id]=1});o.dl.py.forEach(p=>{p.u=t;q['dp:'+p.id]=1});
+ if(o.dl){o.dl.cs.forEach(c=>{c.u=t;q['dc:'+c.id]=1});if(o.dl.bp){o.dl.bp.u=t;q['bp:bill']=1}o.dl.py.forEach(p=>{p.u=t;q['dp:'+p.id]=1});
   for(const [d,C] of Object.entries(o.dl.d))for(const [c,L] of Object.entries(C))for(const [i,e] of Object.entries(L)){e.u=t;q['dv:'+d+'|'+c+'|'+i]=1}}
  return Object.assign(o,{v:2,q,cur:o.cur||{},me:o.me||null})}
 function load(){let s=null,o=null;
@@ -224,7 +229,9 @@ function bkInit(s){if(!s.bk)s.bk={ac:[],tx:[]};if(!s.cs)s.cs={}}
 // dl = {cs:[{id,name,addr,phone,op,ord,off,u}] customers (op = baqaya before the first entry),
 //   d:{day:{custId:{itemId:{q,r,a,del,u}}}} what went to each customer (itemId '_amt' = plain amount a, from the old sheet),
 //   py:[{id,day,c,a,m:'cash'|'online',note,del,u}] money received, sent:{'YYYY-MM':{custId:1}} bills sent from this phone}.
-function dlInit(s){if(!s.dl)s.dl={cs:[],d:{},py:[]};s.dl.sent=s.dl.sent||{}}
+// bp = bill header and offers printed on every bill: {shop,owner,phone,addr,offers:[{id,t,img}],u}; img is a small JPEG data URL.
+// A day's remarks for a customer sit on the special item '_note' as {n,del,u}.
+function dlInit(s){if(!s.dl)s.dl={cs:[],d:{},py:[]};s.dl.sent=s.dl.sent||{};s.dl.bp=s.dl.bp||{shop:'Gujjar Dairies',owner:'',phone:'',addr:'',offers:[],u:0}}
 let S=load(),MEMO={};mkInit(S);bkInit(S);dlInit(S);
 const save=()=>{MEMO={};try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Save nahi hua. Phone ki storage check karein aur Backup lein.')}};
 save();
@@ -264,7 +271,7 @@ const damt=(iid,e)=>iid==='_amt'?n(e.a):n(e.q)*(has(e.r)?n(e.r):drOf(itm(iid)));
 // One day's home delivery: quantity per item (it left the shop's stock), sale at delivery rates and its munafa.
 // Old sheet amounts ('_amt') only count in customer bills, not in the shop's daily hisaab.
 function dday(d){if(MEMO['d'+d])return MEMO['d'+d];const q={};let sale=0,prof=0;
- for(const L of Object.values(S.dl.d[d]||{}))for(const [iid,e] of Object.entries(L)){if(e.del||iid==='_amt')continue;
+ for(const L of Object.values(S.dl.d[d]||{}))for(const [iid,e] of Object.entries(L)){if(e.del||iid[0]==='_')continue;
   const a=damt(iid,e),it=itm(iid);q[iid]=(q[iid]||0)+n(e.q);sale+=a;prof+=a-n(e.q)*(it?costOf(it,d):0)}
  const cash=S.dl.py.filter(p=>!p.del&&p.day===d&&p.m==='cash').reduce((s,p)=>s+n(p.a),0);
  return MEMO['d'+d]={q,sale,prof,cash}}
@@ -657,7 +664,8 @@ const ymOf=d=>d.slice(0,7),monName=ym=>MON[+ym.slice(5)-1]+' '+ym.slice(0,4);
 const cst=id=>S.dl.cs.find(c=>c.id===id);
 const byOrd=(a,b)=>((a.ord??1e6)-(b.ord??1e6))||a.name.localeCompare(b.name);
 const custs=()=>S.dl.cs.filter(c=>!c.off).sort(byOrd);
-const dlines=(d,c)=>Object.entries((S.dl.d[d]||{})[c]||{}).filter(([,e])=>!e.del);
+const dlines=(d,c)=>Object.entries((S.dl.d[d]||{})[c]||{}).filter(([i,e])=>!e.del&&i!=='_note');
+const dnote=(d,c)=>{const e=((S.dl.d[d]||{})[c]||{})._note;return e&&!e.del?e.n||'':''};
 const iname=id=>id==='_amt'?'Sheet wali raqam':(itm(id)||{name:'?'}).name;
 const isMilk=id=>/\bMILK$/i.test(iname(id));
 const dsumTxt=L=>L.map(([i,e])=>i==='_amt'?(own()?'Rs '+f(n(e.a)):'Purani entry'):iname(i)+' '+fq(n(e.q))).join(' · ');
@@ -666,14 +674,14 @@ function dstatsV(){const C=custs(),done=C.filter(c=>dlines(date,c.id).length).le
   (own()?`<div class="stat"><span>Raqam</span><b>${f(V.sale)}</b></div>`:`<div class="stat"><span>Baqi customers</span><b>${C.length-done}</b></div>`)}
 // Quick buttons: what this customer usually takes, then milk, then what customers take most.
 function favs(c){const N={},G=MEMO.fav||(MEMO.fav={});
- if(!MEMO.favd){MEMO.favd=1;for(const C of Object.values(S.dl.d))for(const L of Object.values(C))for(const [i,e] of Object.entries(L))if(!e.del&&i!=='_amt')G[i]=(G[i]||0)+1}
- for(const C of Object.values(S.dl.d)){const L=C[c];if(L)for(const [i,e] of Object.entries(L))if(!e.del&&i!=='_amt')N[i]=(N[i]||0)+1}
+ if(!MEMO.favd){MEMO.favd=1;for(const C of Object.values(S.dl.d))for(const L of Object.values(C))for(const [i,e] of Object.entries(L))if(!e.del&&i[0]!=='_')G[i]=(G[i]||0)+1}
+ for(const C of Object.values(S.dl.d)){const L=C[c];if(L)for(const [i,e] of Object.entries(L))if(!e.del&&i[0]!=='_')N[i]=(N[i]||0)+1}
  const milk=act().filter(it=>isMilk(it.id)).slice(0,1).map(it=>it.id),top=O=>Object.keys(O).sort((a,b)=>O[b]-O[a]);
  return [...new Set([...top(N),...milk,...top(G)])].filter(i=>itm(i)&&!itm(i).off).slice(0,6)}
 function lastDay(c,d){for(const x of Object.keys(S.dl.d).filter(x=>x<d).sort().reverse())if(dlines(x,c).some(([i])=>i!=='_amt'))return x;return null}
-function dcard(c){const L=dlines(date,c.id),open=dOpen===c.id;
+function dcard(c){const L=dlines(date,c.id),open=dOpen===c.id,nt=dnote(date,c.id);
  let h=`<div class="card item${L.length?' done':''}"><button class="dh" onclick="dOpen=dOpen==='${c.id}'?null:'${c.id}';render()" aria-expanded="${open}"><span style="min-width:0"><b>${esc(c.name)}</b>${c.addr?`<br><span class="hint">${esc(c.addr)}</span>`:''}</span><span class="tag">${open?'Band karein':L.length?'✓ Badlein':'Likhein ›'}</span></button>
- <p class="hint" style="margin-top:4px">${L.length?esc(dsumTxt(L)):'Aaj abhi kuch nahi likha'}</p>`;
+ <p class="hint" style="margin-top:4px">${L.length?esc(dsumTxt(L)):'Aaj abhi kuch nahi likha'}${nt?`<br>Note: ${esc(nt)}`:''}</p>`;
  if(!open)return h+'</div>';
  h+=L.map(([i,e])=>{const qid=`q${c.id}_${i}`;
   if(i==='_amt')return `<div class="row"><span>Sheet wali raqam</span><span>${own()?`<input type="number" inputmode="decimal" class="qi" id="${qid}" value="${e.a}" onchange="setD('${c.id}','_amt',this.value)" aria-label="Raqam">`:f(n(e.a))}</span></div>`;
@@ -682,6 +690,7 @@ function dcard(c){const L=dlines(date,c.id),open=dOpen===c.id;
  if(lp)h+=`<button class="btn full" style="margin-top:10px" onclick="copyD('${c.id}','${lp}')">Pichli dafa jaisa (${pk(lp).slice(0,5)}): ${esc(dsumTxt(dlines(lp,c.id).filter(([i])=>i!=='_amt')))}</button>`;
  return h+`<div class="qc">${F.map(i=>`<button onclick="addD('${c.id}','${i}')">+ ${esc(iname(i))}</button>`).join('')}</div>
  <select style="margin-top:8px" onchange="if(this.value)addD('${c.id}',this.value)" aria-label="Aur item"><option value="">+ Aur item chunein</option>${act().map(it=>`<option value="${it.id}">${esc(it.name)}</option>`).join('')}</select>
+ <input type="text" style="margin-top:8px" value="${esc(nt)}" placeholder="Note (agar ho), jaise: ghar band tha" onchange="setNote('${c.id}',this.value)" aria-label="${esc(c.name)}: note">
  <p class="hint" style="margin-top:8px">Doodh litre mein likhein (jaise 1.5). Bread, anday wagaira ginti mein. Naagha ho to kuch na likhein.</p></div>`}
 function dlistV(){const s=dq.toLowerCase(),C=custs().filter(c=>(c.name+' '+(c.addr||'')).toLowerCase().includes(s)&&(dflt==='all'||(dflt==='done')===(dlines(date,c.id).length>0)));
  return C.map(dcard).join('')||`<p class="hint" style="text-align:center;padding:20px">${dflt==='left'?'Sab customers ho gaye ✓':'Koi customer nahi mila.'}</p>`}
@@ -689,6 +698,8 @@ function dlistV(){const s=dq.toLowerCase(),C=custs().filter(c=>(c.name+' '+(c.ad
 function putD(c,i,v){const C=(S.dl.d[date]=S.dl.d[date]||{}),L=(C[c]=C[c]||{}),e=L[i]||(L[i]={q:'',r:'',a:'',del:false,u:0});v=String(v).trim();
  if(i==='_amt')e.a=v===''?'':n(v);else{e.q=v===''?'':n(v);if(own()&&!has(e.r))e.r=drOf(itm(i))}
  e.del=v===''||!n(v);e.u=now();mark('dv:'+date+'|'+c+'|'+i)}
+function setNote(c,v){const C=(S.dl.d[date]=S.dl.d[date]||{}),L=(C[c]=C[c]||{}),e=L._note||(L._note={n:'',del:false,u:0});v=v.trim();
+ e.n=v;e.del=!v;e.u=now();mark('dv:'+date+'|'+c+'|_note');render()}
 function setD(c,i,v){if(n(v)<0){alert('Minus mat likhein.');render();return}putD(c,i,v);render()}
 function addD(c,i){const e=((S.dl.d[date]||{})[c]||{})[i];if(!e||e.del)putD(c,i,1);render();const x=document.getElementById(`q${c}_${i}`);if(x){x.focus();x.select()}}
 function copyD(c,from){dlines(from,c).forEach(([i,e])=>{if(i!=='_amt')putD(c,i,e.q)});render()}
@@ -705,9 +716,9 @@ function cbal(c,d){const cu=cst(c);let b=n(cu&&cu.op);
 // One customer's month: items grouped by rate, old sheet amounts, day-wise list, wasooli and what is still due.
 function cmon(c,ym){const it={},days=[];let amt=0,old=0;
  for(const x of Object.keys(S.dl.d).filter(x=>x.startsWith(ym)).sort()){const L=S.dl.d[x][c];if(!L)continue;let ds=0;const parts=[];
-  for(const [i,e] of Object.entries(L)){if(e.del)continue;const a=damt(i,e);ds+=a;
+  for(const [i,e] of Object.entries(L)){if(e.del||i==='_note')continue;const a=damt(i,e);ds+=a;
    if(i==='_amt'){old+=a;continue}const r=has(e.r)?n(e.r):drOf(itm(i)),k=i+'@'+r,o=it[k]||(it[k]={i,r,q:0,a:0});o.q+=n(e.q);o.a+=a;parts.push(iname(i)+' '+fq(n(e.q)))}
-  if(ds)days.push([x,parts,ds]);amt+=ds}
+  const nt=dnote(x,c);if(ds||nt)days.push([x,parts,ds,nt]);amt+=ds}
  const pays=S.dl.py.filter(p=>!p.del&&p.c===c&&p.day.startsWith(ym)).sort((a,b)=>a.day<b.day?-1:1),paid=pays.reduce((s,p)=>s+n(p.a),0),prev=cbal(c,ym+'-01');
  return {items:Object.values(it),old,days,amt,pays,paid,prev,due:prev+amt-paid}}
 function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCase();
@@ -723,7 +734,27 @@ function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCas
  <div class="fld"><label for="cp">WhatsApp number</label><input type="tel" id="cp" placeholder="03xx xxxxxxx"></div>
  <div class="fld"><label for="co">Purana baqaya (agar ho)</label><input type="number" inputmode="decimal" id="co"></div>
  <button class="btn full" onclick="addC()">+ Customer add karein</button></div></details></div>
- ${off.length?`<div class="card"><details><summary>Hataye gaye customers (${off.length})</summary>${off.map(c=>`<div class="row"><span>${esc(c.name)}</span><button class="btn ghost" ${sbtn} onclick="offC('${c.id}',false)">Wapas layein</button></div>`).join('')}</details></div>`:''}`}
+ ${off.length?`<div class="card"><details><summary>Hataye gaye customers (${off.length})</summary>${off.map(c=>`<div class="row"><span>${esc(c.name)}</span><button class="btn ghost" ${sbtn} onclick="offC('${c.id}',false)">Wapas layein</button></div>`).join('')}</details></div>`:''}
+ ${bpV()}`}
+// Bill header and offers, set once by the owner and printed on every bill.
+function bpV(){const B=S.dl.bp,inp=(k,l,t)=>`<div class="fld"><label for="bp_${k}">${l}</label><input type="${t||'text'}" id="bp_${k}" value="${esc(B[k]||'')}" onchange="upBP('${k}',this.value)"></div>`;
+ return `<div class="card"><details ${OPEN.bp?'open':''} ontoggle="OPEN.bp=this.open"><summary>Bill par kya chhapega (naam, number, offers)</summary><div style="margin-top:12px">
+ <p class="hint" style="margin-bottom:10px">Ye sab bill ke upar logo ke saath aur neeche offers mein aata hai. Bill English mein hai, is liye English mein likhein.</p>
+ ${inp('shop','Dukaan ka naam')}${inp('owner','Owner ka naam')}${inp('phone','Phone / WhatsApp number','tel')}${inp('addr','Dukaan ka pata')}
+ <h3 style="margin:16px 0 8px">Offers</h3>
+ ${B.offers.map(o=>`<div class="row" style="align-items:center">${o.img?`<img src="${o.img}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:10px;flex:none">`:''}<span style="flex:1;min-width:0">${esc(o.t)}</span><button class="x" onclick="delOffer('${o.id}')" aria-label="Offer hatayen">✕</button></div>`).join('')||'<p class="hint">Abhi koi offer nahi.</p>'}
+ <div class="fld" style="margin-top:12px"><label for="oft">Naya offer</label><input type="text" id="oft" placeholder="Lassi: 10% off on 5 glasses"></div>
+ <div class="fld"><label for="ofi">Tasveer (agar ho), Facebook/Instagram se phone mein save kar ke yahan chunein</label><input type="file" id="ofi" accept="image/*"></div>
+ <button class="btn full" onclick="addOffer()">+ Offer add karein</button></div></details></div>`}
+function upBP(k,v){const B=S.dl.bp;B[k]=v.trim();B.u=now();mark('bp:bill')}
+// Pictures are shrunk to a small JPEG so the bill stays light and syncs quickly.
+function shrink(file){return new Promise((ok,no)=>{const r=new FileReader();r.onerror=no;r.onload=()=>{const im=new Image();im.onerror=no;im.onload=()=>{
+ const k=Math.min(1,600/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=Math.round(im.width*k);cv.height=Math.round(im.height*k);
+ cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);ok(cv.toDataURL('image/jpeg',.7))};im.src=r.result};r.readAsDataURL(file)})}
+async function addOffer(){const t=$('#oft').value.trim(),fl=$('#ofi').files[0];if(!t){alert('Offer likhein, jaise: Lassi 10% off on 5 glasses');return}
+ let img='';if(fl)try{img=await shrink(fl)}catch(e){alert('Ye tasveer nahi khul saki. Doosri chunein.');return}
+ const B=S.dl.bp;B.offers.push({id:nid(),t,img});B.u=now();OPEN.bp=true;mark('bp:bill');render()}
+function delOffer(id){if(!confirm('Ye offer hatana hai?'))return;const B=S.dl.bp;B.offers=B.offers.filter(o=>o.id!==id);B.u=now();mark('bp:bill');render()}
 function billV(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),R=(l,v,k)=>`<div class="sum${k?' '+k:''}"><span>${l}</span><b>${v}</b></div>`;
  return `<button class="link" onclick="bc=null;render()">← Sab customers</button>
  <div class="card"><h3>${esc(c.name)}</h3>${c.addr?`<p class="hint">${esc(c.addr)}</p>`:''}<p class="hint">Bill: ${monName(ym)}</p>
@@ -741,7 +772,7 @@ function billV(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),R=(l,v,k)=>`<
  <div class="fld"><label for="pm">Kahan aaye</label><select id="pm"><option value="cash">Galle mein (cash)</option><option value="online">Online / seedha owner ko</option></select></div></div>
  <div class="fld"><label for="pn">Note (agar ho)</label><input type="text" id="pn"></div><button class="btn full" onclick="addPay('${id}')">+ Wasooli save karein</button>
  <p class="hint" style="margin-top:8px">Galle wali wasooli us din ke galle ke hisaab mein bhi judti hai.</p></div>
- <div class="card"><details><summary>Roz ka hisaab (${m.days.length} din)</summary>${m.days.map(([d,p,a])=>`<div class="row"><span>${pk(d).slice(0,5)}${p.length?' · '+esc(p.join(', ')):''}</span><b>${f(a)}</b></div>`).join('')||'<p class="hint">Is mahine kuch nahi gaya.</p>'}</details></div>
+ <div class="card"><details><summary>Roz ka hisaab (${m.days.length} din)</summary>${m.days.map(([d,p,a,nt])=>`<div class="row"><span>${pk(d).slice(0,5)}${p.length?' · '+esc(p.join(', ')):''}${nt?`<br><span class="hint">Note: ${esc(nt)}</span>`:''}</span><b>${f(a)}</b></div>`).join('')||'<p class="hint">Is mahine kuch nahi gaya.</p>'}</details></div>
  <div class="card"><details><summary>Customer ki maloomat</summary><div style="margin-top:12px">
  <div class="fld"><label for="en">Naam</label><input type="text" id="en" value="${esc(c.name)}" onchange="upC('${id}','name',this.value)"></div>
  <div class="fld"><label for="ea">Pata</label><input type="text" id="ea" value="${esc(c.addr||'')}" onchange="upC('${id}','addr',this.value)"></div>
@@ -757,11 +788,14 @@ function addPay(id){const a=n($('#pa').value);if(!a){alert('Raqam likhein.');ret
  const p={id:nid(),day:date,c:id,a,m:$('#pm').value,note:$('#pn').value.trim(),del:false,u:now()};S.dl.py.push(p);mark('dp:'+p.id);render()}
 function delPay(pid){if(!confirm('Ye wasooli hatani hai?'))return;const p=S.dl.py.find(x=>x.id===pid);p.del=true;p.u=now();mark('dp:'+pid);render()}
 // The bill that goes to the customer (WhatsApp and print) is in English; the app screens stay in Roman Urdu.
-function billText(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),L=['*Gujjar Dairies*','Bill: '+monName(ym),c.name];if(c.addr)L.push(c.addr);L.push('');
- if(m.days.length){L.push('Daily details:');m.days.forEach(([d,p,a])=>L.push(`${pk(d).slice(0,5)}: ${p.length?p.join(', ')+' = ':''}Rs ${f(a)}`));L.push('')}
+function billText(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,L=[`*${B.shop||'Gujjar Dairies'}*`];
+ const who=[B.owner,B.phone].filter(Boolean).join(' · ');if(who)L.push(who);if(B.addr)L.push(B.addr);L.push('','Bill: '+monName(ym),c.name);if(c.addr)L.push(c.addr);L.push('');
+ if(m.days.length){L.push('Daily details:');m.days.forEach(([d,p,a,nt])=>L.push(`${pk(d).slice(0,5)}: ${p.length?p.join(', ')+' = ':''}${a?'Rs '+f(a):''}${nt?` (Remarks: ${nt})`:''}`));L.push('')}
  m.items.forEach(x=>L.push(`${iname(x.i)}: ${fq(x.q)} × ${fq(x.r)} = Rs ${f(x.a)}`));
  L.push(`Total for ${monName(ym)}: Rs ${f(m.amt)}`);if(m.prev)L.push(`Previous balance: Rs ${f(m.prev)}`);
- m.pays.forEach(p=>L.push(`Payment received ${pk(p.day)}: Rs ${f(p.a)}`));L.push(`*Total due: Rs ${f(m.due)}*`,'','Thank you!');return L.join('\n')}
+ m.pays.forEach(p=>L.push(`Payment received ${pk(p.day)}: Rs ${f(p.a)}`));L.push(`*Total due: Rs ${f(m.due)}*`);
+ if(B.offers.length){L.push('','*Offers:*');B.offers.forEach(o=>L.push('• '+o.t))}
+ L.push('','Thank you!');return L.join('\n')}
 // Pakistani number "0300 1234567" -> "923001234567" for wa.me. No number opens WhatsApp to pick the contact.
 const waNum=p=>{let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('0'))d='92'+d.slice(1);else if(d.length===10&&d[0]==='3')d='92'+d;return d};
 function sendWA(id){const c=cst(id),ym=bm||ymOf(date);window.open(`https://wa.me/${waNum(c.phone)}?text=${encodeURIComponent(billText(id))}`,'_blank');
@@ -769,13 +803,18 @@ function sendWA(id){const c=cst(id),ym=bm||ymOf(date);window.open(`https://wa.me
 function nextBill(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},x=custs().find(c=>c.id!==bc&&!sent[c.id]&&Math.round(cmon(c.id,ym).due)>0);
  if(!x){alert('Sab customers ko is mahine ka bill bhej diya ✓');return}bc=x.id;render();scrollTo(0,0)}
 // Printing (or "Save as PDF") shows only this bill.
-function printBill(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym);let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.appendChild(p)}
- const R=(l,v)=>`<tr><td colspan="2">${l}</td><td>${v}</td></tr>`;
- p.innerHTML=`<h1>Gujjar Dairies</h1><p>Bill: ${monName(ym)}</p><h2>${esc(c.name)}</h2>${c.addr?`<p>${esc(c.addr)}</p>`:''}
- <table><tr><th>Date</th><th class="l">Item</th><th>Amount (Rs)</th></tr>${m.days.map(([d,pa,a])=>`<tr><td>${pk(d)}</td><td class="l">${pa.length?esc(pa.join(', ')):'Milk / items (as per register)'}</td><td>${f(a)}</td></tr>`).join('')}
+function billHTML(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,rm=m.days.some(x=>x[3]),cs=rm?3:2;
+ const R=(l,v)=>`<tr><td colspan="${cs}">${l}</td><td>${v}</td></tr>`;
+ return `<div class="ph"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}</div></div>
+ <div class="pb"><div><h2>${esc(c.name)}</h2>${c.addr?`<p>${esc(c.addr)}</p>`:''}</div><div style="text-align:right"><b>Bill: ${monName(ym)}</b>${c.phone?`<p>${esc(c.phone)}</p>`:''}</div></div>
+ <table><tr><th>Date</th><th class="l">Item</th>${rm?'<th class="l">Remarks</th>':''}<th>Amount (Rs)</th></tr>${m.days.map(([d,pa,a,nt])=>`<tr><td>${pk(d)}</td><td class="l">${pa.length?esc(pa.join(', ')):a?'Milk / items (as per register)':''}</td>${rm?`<td class="l">${esc(nt||'')}</td>`:''}<td>${a?f(a):''}</td></tr>`).join('')}
  ${m.items.map(x=>R(`${esc(iname(x.i))}: ${fq(x.q)} × ${fq(x.r)}`,f(x.a))).join('')}${R('<b>Total for '+monName(ym)+'</b>','<b>'+f(m.amt)+'</b>')}${R('Previous balance',f(m.prev))}
- ${m.pays.map(x=>R('Payment received '+pk(x.day),'−'+f(x.a))).join('')}${R('<b>Total due</b>','<b>Rs '+f(m.due)+'</b>')}</table><p>Thank you!</p>`;
- window.print()}
+ ${m.pays.map(x=>R('Payment received '+pk(x.day),'−'+f(x.a))).join('')}${R('<b>Total due</b>','<b>Rs '+f(m.due)+'</b>')}</table>
+ ${B.offers.length?`<div class="pof"><h2 style="margin-top:16px">Offers for you</h2><div class="po">${B.offers.map(o=>`<div>${o.img?`<img src="${o.img}" alt="">`:''}<p>${esc(o.t)}</p></div>`).join('')}</div></div>`:''}
+ <p style="margin-top:12px">Thank you!</p>`}
+// Printing (or "Save as PDF") shows only this bill. Waits for the logo and offer pictures so they are not blank.
+async function printBill(id){let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.appendChild(p)}
+ p.innerHTML=billHTML(id);await Promise.all([...p.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));window.print()}
 
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
@@ -849,7 +888,7 @@ const PK={items:'id',prices:'item_id',settings:'key',day_stock:'day,item_id',ent
 const OWNER_ONLY={it:1,pr:1,set:1,mp:1,mpr:1,mob:1,ba:1,bt:1,cs:1};
 const OWNER_TABLES={prices:1,settings:1,milk_party_rates:1,bank_accounts:1,bank_tx:1,costs:1};
 // Home delivery tables. The delivery man only reads item names and customers and writes deliveries.
-Object.assign(PK,{customers:'id',deliveries:'day,cust_id,item_id',dpay:'id'});Object.assign(OWNER_ONLY,{dc:1,dp:1});OWNER_TABLES.dpay=1;
+Object.assign(PK,{customers:'id',deliveries:'day,cust_id,item_id',dpay:'id'});Object.assign(OWNER_ONLY,{dc:1,dp:1,bp:1});OWNER_TABLES.dpay=1;
 const DLV_TABLES={items:1,customers:1,deliveries:1};
 const canPush=t=>role()==='delivery'?t==='dv':own()||!OWNER_ONLY[t];
 const canPull=tb=>role()==='delivery'?!!DLV_TABLES[tb]:own()||!OWNER_TABLES[tb];
@@ -869,7 +908,8 @@ function toRow(t,r){
  if(t==='dc'){const c=S.dl.cs.find(x=>x.id===r);return c?['customers',{id:c.id,name:c.name,addr:c.addr||null,phone:c.phone||null,op:n(c.op),ord:c.ord??null,off:!!c.off,u:c.u}]:null}
  if(t==='dp'){const p=S.dl.py.find(x=>x.id===r);return p?['dpay',{id:p.id,day:p.day,cust_id:p.c,amount:n(p.a),mode:p.m,note:p.note||null,deleted:!!p.del,u:p.u}]:null}
  if(t==='dv'){const [d,c,i]=r.split('|'),e=((S.dl.d[d]||{})[c]||{})[i];if(!e)return null;
-  return['deliveries',{day:d,cust_id:c,item_id:i,qty:num(e.q),rate:num(e.r),amount:num(e.a),deleted:!!e.del,u:e.u}]}
+  return['deliveries',{day:d,cust_id:c,item_id:i,qty:num(e.q),rate:num(e.r),amount:num(e.a),note:e.n||null,deleted:!!e.del,u:e.u}]}
+ if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,offers:B.offers},u:B.u}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
  if(t==='ba'){const a=S.bk.ac.find(x=>x.id===r);return a?['bank_accounts',{id:a.id,name:a.name,op:n(a.op),off:!!a.off,u:a.u}]:null}
@@ -905,8 +945,9 @@ function merge(tb,r){
  if(tb==='deliveries'){const C=(S.dl.d[r.day]=S.dl.d[r.day]||{}),L=(C[r.cust_id]=C[r.cust_id]||{}),x=L[r.item_id];
   // The server fills in the rate after an upload, so a same-time row with a rate is still taken.
   if(x&&(r.u<x.u||(r.u===x.u&&(!has(r.rate)||has(x.r)))))return false;
-  L[r.item_id]={q:r.qty??'',r:r.rate??'',a:r.amount??'',del:r.deleted,u:r.u};return true}
+  L[r.item_id]={q:r.qty??'',r:r.rate??'',a:r.amount??'',n:r.note||'',del:r.deleted,u:r.u};return true}
  if(tb==='settings'){if(r.key==='cash0'&&r.u>S.c0u){S.cash0=n(r.value);S.c0u=r.u;return true}
+  if(r.key==='bill'){if(r.u>(S.dl.bp.u||0)){S.dl.bp=Object.assign({shop:'',owner:'',phone:'',addr:'',offers:[]},r.value||{},{u:r.u});return true}return false}
   if(r.key.startsWith('mob:')){const id=r.key.slice(4),O=S.mk.ob[id],v=r.value||{};if(!O||r.u>(O.u||0)){S.mk.ob[id]={v:n(v.v),d:v.d||'',u:r.u};return true}}return false}
  if(tb==='milk_party_rates'){const P=S.mk.pr[r.party_id]=S.mk.pr[r.party_id]||{},x=P[r.from_day];if(x&&r.u<=(x.u||0))return false;
   P[r.from_day]={b:r.br??'',c:r.cr??'',l:r.ladj??'',s:r.sadj??'',u:r.u};return true}

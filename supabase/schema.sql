@@ -338,3 +338,7 @@ create policy milk_day_info_member_select on public.milk_day_info for select to 
 create policy milk_day_info_member_insert on public.milk_day_info for insert to authenticated with check (public.is_member());
 create policy milk_day_info_member_update on public.milk_day_info for update to authenticated using (public.is_member()) with check (public.is_member());
 revoke all on public.milk_day_info from anon;
+
+-- Remarks for a customer's day are kept on the special item_id '_note'.
+alter table public.deliveries add column note text;
+-- Bill header (shop name, owner name, phone, address) and offers with images: settings key 'bill', owner only.
