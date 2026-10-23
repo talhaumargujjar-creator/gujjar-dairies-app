@@ -374,3 +374,5 @@ create policy production_member_update on public.production for update to authen
 revoke all on public.recipes, public.production from anon;
 -- Batch yield: y units of item_id come out of one batch; each ingredient keeps b (amount put in the batch) and q = b / y.
 alter table public.recipes add column if not exists y numeric;
+-- Hisaab (cashbook) entry names that count as payments for a milk party, e.g. Johar paying the owner from the shop's galla.
+alter table public.milk_parties add column hk jsonb not null default '[]';
