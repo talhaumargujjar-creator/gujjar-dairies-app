@@ -381,6 +381,10 @@ alter table public.milk_parties add column hk jsonb not null default '[]';
 alter table public.milk_days add column gm numeric, add column ge numeric, add column kc numeric;
 alter table public.milk_party_rates add column gadj numeric;
 
+-- Bandhi (fixed daily quota, mun per day) per party rate, and the milk that really came per slot (x bhains, y gaye, kg).
+alter table public.milk_party_rates add column qb numeric, add column qc numeric;
+alter table public.milk_days add column xm numeric, add column xe numeric, add column ym numeric, add column ye numeric;
+
 -- Employees and their monthly salary. sal = {"YYYY-MM": salary from that month on}; start = first month of work.
 -- Payments are the Hisaab "Salary" (sl) entries written with the employee's name. Owner only.
 create table public.employees (
