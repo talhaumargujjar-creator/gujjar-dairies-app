@@ -412,3 +412,5 @@ create policy fixed_costs_owner_select on public.fixed_costs for select to authe
 create policy fixed_costs_owner_insert on public.fixed_costs for insert to authenticated with check (public.is_owner());
 create policy fixed_costs_owner_update on public.fixed_costs for update to authenticated using (public.is_owner()) with check (public.is_owner());
 revoke all on public.fixed_costs from anon;
+-- Shop stock item a Doodh party's milk goes into (e.g. Johar -> FULL FAT MILK): counted as that item's purchase in litres.
+alter table public.milk_parties add column si text;
