@@ -55,8 +55,8 @@ button:focus-visible{outline:3px solid var(--butter);outline-offset:2px}
 .muted{color:var(--mut)}
 .neg{color:var(--red)!important}.pos{color:var(--grn)!important}
 .tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:6}
-.tabs button{flex:1;border:0;background:none;color:var(--mut);padding:7px 2px 8px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:62px}
-.tabs i{display:grid;place-items:center;width:52px;height:30px;border-radius:15px}
+.tabs button{flex:1;min-width:0;border:0;background:none;color:var(--mut);padding:7px 0 8px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:62px}
+.tabs i{display:grid;place-items:center;width:42px;height:30px;border-radius:15px}
 .tabs svg{width:23px;height:23px}
 .tabs button[aria-current=true]{color:var(--brand);font-weight:700}
 .tabs button[aria-current=true] i{background:var(--brandbg)}
@@ -168,6 +168,7 @@ function migrate(o,t){const q={};
   for(const k of KINDS)D[k]=(D[k]||[]).map(r=>{const e={id:r.id||nid(),n:r.n,a:n(r.a),del:!!r.del,u:t};q['en:'+d+'|'+k+'|'+e.id]=1;return e});
   if(D.cash===undefined)D.cash=null;D.cu=t;if(D.cash!=null)q['ca:'+d]=1}
  o.c0u=t;q['set:cash0']=1;
+ if(o.cs)for(const [id,C] of Object.entries(o.cs))for(const [d,c] of Object.entries(C)){c.u=t;q['cs:'+id+'|'+d]=1}
  if(o.mk){o.mk.ps.forEach(p=>{p.u=t;q['mp:'+p.id]=1});
   for(const [d,R] of Object.entries(o.mk.mr)){R.u=t;q['mr:'+d]=1}
   for(const [d,P] of Object.entries(o.mk.d))for(const [id,r] of Object.entries(P)){r.u=t;q['md:'+d+'|'+id]=1}}
@@ -186,7 +187,8 @@ const MK_SEED=[['p_wasif','Wasif Chacho','sup'],['p_bikri','Bikri Bara','sup'],[
 const MF=['bm','be','cm','ce','lm','le','sm','se'];
 function mkInit(s){if(s.mk)return;s.mk={ps:MK_SEED.map(([id,name,kind])=>({id,name,kind,off:false,u:1})),mr:{},d:{}};MK_SEED.forEach(r=>s.q['mp:'+r[0]]=s.q['mp:'+r[0]]||1)}
 // Bank book: bk = {ac:[{id,name,op,off,u}], tx:[{id,day,ac,type,party,a,no,cd,st,note,del,u}]}; st = pending|clear|bounce.
-function bkInit(s){if(!s.bk)s.bk={ac:[],tx:[]}}
+function bkInit(s){if(!s.bk)s.bk={ac:[],tx:[]};if(!s.cs)s.cs={}}
+// Costs by date: cs = {itemId:{day:{c,u}}}. A cost holds from its day until the next change.
 let S=load(),MEMO={};mkInit(S);bkInit(S);
 const save=()=>{MEMO={};try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Save nahi hua. Phone ki storage check karein aur Backup lein.')}};
 save();
@@ -213,12 +215,15 @@ function opening(it,d){for(const x of before(d)){const s=S.days[x].st[it.id];if(
 function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q2(opening(it,d)+n(s.pu)-n(s.us)-n(s.cl))}
 // A day can carry its own rate (eggs change daily); otherwise the item's rate.
 const rateOf=(it,d)=>{const s=day(d).st[it.id];return s&&has(s.rt)?n(s.rt):n(it.rate)};
+// Cost on a day = the latest cost change on or before it (Cost tab), otherwise the item's starting cost.
+function costAt(it,d){const C=S.cs[it.id];let best=null;if(C)for(const x in C)if(x<=d&&has(C[x].c)&&(!best||x>best))best=x;return best?{c:n(C[best].c),from:best}:{c:n(it.cost),from:null}}
+const costOf=(it,d)=>costAt(it,d).c;
 // Opening galla = previous working day's counted cash, or what it should have been if not counted.
 function gOpen(d){for(const x of before(d)){const D=S.days[x];if(!active(D))continue;return D.cash!=null?n(D.cash):tot(x).exp}return n(S.cash0)}
 // Galla like the khata's TOTAL HISAAB: opening + counter sale + wasool (+ bank se nikala) = cash in (A);
 // minus total paid (1) to (5) and cash put in the bank = what should be in the galla.
 function tot(d){if(MEMO['t'+d])return MEMO['t'+d];const D=day(d);let sale=0,prof=0;
- S.items.forEach(it=>{const s=sold(it,d),r=rateOf(it,d);sale+=s*r;prof+=s*(r-n(it.cost))});
+ S.items.forEach(it=>{const s=sold(it,d),r=rateOf(it,d);sale+=s*r;prof+=s*(r-costOf(it,d))});
  const T={};KINDS.forEach(k=>T[k]=live(D,k).reduce((a,b)=>a+n(b.a),0));
  let bin=0,bout=0;btx(d).forEach(x=>{const g=BT[x.type][2];if(g>0)bin+=n(x.a);if(g<0)bout+=n(x.a)});
  const op=gOpen(d),cin=op+sale+T.rc+bin,paid=KINDS.filter(k=>k!=='rc').reduce((a,k)=>a+T[k],0),exp=cin-paid-bout;
@@ -233,9 +238,10 @@ const ICON={stock:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"
  items:'<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1.3"/><circle cx="4" cy="12" r="1.3"/><circle cx="4" cy="18" r="1.3"/>',
  doodh:'<path d="M12 3s-6 7-6 11.5a6 6 0 0 0 12 0C18 10 12 3 12 3z"/>',
  bank:'<path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
+ cost:'<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
  acct:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>'};
 // [key, label, staff can open, shown in the bottom bar]. Items opens from the Account page.
-const TABS=[['stock','Stock',1,1],['hisaab','Hisaab',1,1],['doodh','Doodh',1,1],['bank','Bank',0,1],['report','Report',0,1],['acct','Account',1,1],['items','Items',0,0]];
+const TABS=[['stock','Stock',1,1],['hisaab','Hisaab',1,1],['doodh','Doodh',1,1],['bank','Bank',0,1],['cost','Cost',0,1],['report','Report',0,1],['acct','Account',1,1],['items','Items',0,0]];
 const tabs=()=>TABS.filter(t=>own()||t[2]);
 function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button aria-current="${tab==k||(tab==='items'&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
 function go(t){tab=t;render();scrollTo(0,0);if(t==='acct')loadMembers()}
@@ -251,7 +257,7 @@ function render(){const a=$('#app');
  if(!S.me||!S.me.email){a.innerHTML=loginV();return}
  if(S.me.role==='pending'){a.innerHTML=pendingV();return}
  if(!tabs().some(t=>t[0]===tab))tab='stock';
- a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,bank,report,items,acct})[tab]()}</main>`+navV();status()}
+ a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,bank,cost,report,items,acct})[tab]()}</main>`+navV();status()}
 
 // Stock
 const isDone=it=>has((day(date).st[it.id]||{}).cl);
@@ -294,7 +300,7 @@ const custNames=()=>[...new Set([...SECS.ud[1],...SECS.rc[1],...Object.values(S.
 function sec(k){const D=day(date),[title,names,,hint]=SECS[k],L=live(D,k),tt=L.reduce((a,b)=>a+n(b.a),0),cust=k==='ud'||k==='rc';
  return `<div class="card"><details ${(OPEN[k]??L.length>0)?'open':''} ontoggle="OPEN['${k}']=this.open"><summary><span>${title}${L.length?` <span class="muted" style="font-weight:400">(${L.length})</span>`:''}</span><b style="margin-left:auto;padding-right:8px">${f(tt)}</b></summary>
  <p class="hint" style="margin-top:4px">${hint}</p>
- ${L.length?`<div style="margin-top:8px">${L.map(r=>`<div class="row"><span>${esc(r.n)}</span><span>${f(n(r.a))}<button class="x" aria-label="${esc(r.n)} hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')}</div>`:''}
+ ${L.length?`<div style="margin-top:8px">${L.map(r=>`<div class="row"><span>${esc(r.n)}</span><span>${f(n(r.a))}<button class="x" style="color:var(--bink)" aria-label="${esc(r.n)} badlein" onclick="edE('${k}','${r.id}')">✎</button><button class="x" aria-label="${esc(r.n)} hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')}</div>`:''}
  <div class="qc">${names.map(x=>`<button onclick="pick('${k}',this.textContent)">${esc(x)}</button>`).join('')}</div>
  <div class="addr"><input type="text" id="n${k}" placeholder="Naam" aria-label="${title}: naam"${cust?` list="custs"`:''}><input type="text" inputmode="decimal" id="a${k}" placeholder="Raqam" aria-label="${title}: raqam"><button class="btn" onclick="addL('${k}')">+ Add karein</button></div>
  <p class="hint" style="margin-top:6px;font-size:13px">Do raqam hon to jaise khaate mein: 900+900</p></details></div>`}
@@ -304,6 +310,12 @@ function addL(k){const raw=$('#a'+k).value.replace(/\s/g,''),parts=raw.split('+'
  if(!nm||!a||parts.some(x=>isNaN(parseFloat(x)))){alert('Naam aur raqam dono likhein.');return}
  if(k==='ud'||k==='rc')nm=nkey(nm);if(parts.length>1)nm+=` (${parts.join('+')})`;
  const e={id:nid(),n:nm,a,del:false,u:now()};dd(date)[k].push(e);OPEN[k]=true;mark('en:'+date+'|'+k+'|'+e.id);render()}
+// Fix a name or amount later (entries read from the paper khata may need correcting).
+function edE(k,id){const e=dd(date)[k].find(x=>x.id===id);if(!e)return;
+ const nm=prompt('Naam theek karein:',e.n);if(nm===null)return;const raw=prompt('Raqam theek karein (900+900 bhi likh sakte hain):',e.a);if(raw===null)return;
+ const parts=String(raw).replace(/\s/g,'').split('+').filter(Boolean),a=parts.reduce((s,x)=>s+n(x),0);
+ if(!nm.trim()||!a||parts.some(x=>isNaN(parseFloat(x)))){alert('Naam aur raqam dono sahi likhein.');return}
+ e.n=k==='ud'||k==='rc'?nkey(nm):nm.trim();e.a=a;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
 function del(k,id){if(!confirm('Ye entry hatani hai?'))return;const e=dd(date)[k].find(x=>x.id===id);if(!e)return;e.del=true;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
 // Udhaar khata: per customer, everything given on credit minus everything received back, up to this day.
 function ledger(d){const B={};const base=s=>nkey(s).replace(/\s*\([\d+.\s]*\)$/,'');
@@ -414,6 +426,19 @@ function addBT(){const chq=btType==='chq_diya'||btType==='chq_mila',cash=btType=
 function stBT(id,st){if(st==='bounce'&&!confirm('Ye cheque bounce hua? Balance mein nahi judega.'))return;const x=S.bk.tx.find(t=>t.id===id);x.st=st;x.u=now();mark('bt:'+id);render()}
 function delBT(id){if(!confirm('Ye bank entry hatani hai?'))return;const x=S.bk.tx.find(t=>t.id===id);x.del=true;x.u=now();mark('bt:'+id);render()}
 
+// Cost (khareed rate). A change written on a date holds from that day until the next change.
+function cost(){const A=act();
+ return `<div class="card"><h3>Cost (khareed rate)</h3><p class="hint" style="margin-top:6px">Upar wali tareekh se cost badlein. Nayi cost <b>${pk(date)}</b> se aage har din lagegi jab tak dobara na badlein. Pichle din waise hi rahenge. Anday ki cost roz badal sakte hain.</p></div>
+ <input type="search" placeholder="Item dhoondein" value="${esc(q)}" oninput="q=this.value;$('#clist').innerHTML=costList()" aria-label="Item dhoondein" style="margin-bottom:12px">
+ <div id="clist">${costList()}</div>`}
+function costList(){return act().filter(i=>i.name.toLowerCase().includes(q.toLowerCase())).map(it=>{const c=costAt(it,date),here=c.from===date,r=n(it.rate);
+ return `<div class="card item"><div class="ih"><b>${esc(it.name)}</b><span class="tag">Rate ${fq(r)}</span></div>
+ <div class="g3" style="grid-template-columns:1fr 1fr;align-items:end"><div class="f"><label for="cs${it.id}">Cost</label><input type="number" inputmode="decimal" id="cs${it.id}" value="${q2(c.c)}" onchange="setCost('${it.id}',this.value)"></div>
+ <div class="f"><span class="l">Munafa fi unit</span><div class="v ${r-c.c<0?'neg':''}">${fq(r-c.c)}</div></div></div>
+ <div class="res"><span>${c.from?(here?'Ye cost isi din se lagi hai':'Cost '+pk(c.from)+' se'):'Shuru wali cost'}</span>${here?`<button class="link" style="padding:0" onclick="setCost('${it.id}','')">Ye tabdeeli hatayen</button>`:''}</div></div>`}).join('')||'<p class="hint">Koi item nahi mila.</p>'}
+function setCost(id,v){const C=S.cs[id]=S.cs[id]||{};C[date]={c:v===''?'':n(v),u:now()};mark('cs:'+id+'|'+date);
+ const y=scrollY;render();scrollTo(0,y)}
+
 // Report
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
@@ -482,9 +507,9 @@ async function logout(){if(!confirm('Logout karna hai? Is phone ka hisaab phone 
 
 // ---- Online sync (Supabase). Everything is saved on the phone first, then sent when internet is available.
 let sb=null,who=null,busy=false,syncErr='',lastSync=null,kickT=null,MEM=null,syncP=null;
-const PK={items:'id',prices:'item_id',settings:'key',day_stock:'day,item_id',entries:'id',cash:'day',milk_parties:'id',milk_rates:'day',milk_days:'day,party_id',bank_accounts:'id',bank_tx:'id'};
-const OWNER_ONLY={it:1,pr:1,set:1,mp:1,ba:1,bt:1};
-const OWNER_TABLES={prices:1,settings:1,bank_accounts:1,bank_tx:1};
+const PK={items:'id',prices:'item_id',settings:'key',day_stock:'day,item_id',entries:'id',cash:'day',milk_parties:'id',milk_rates:'day',milk_days:'day,party_id',bank_accounts:'id',bank_tx:'id',costs:'item_id,day'};
+const OWNER_ONLY={it:1,pr:1,set:1,mp:1,ba:1,bt:1,cs:1};
+const OWNER_TABLES={prices:1,settings:1,bank_accounts:1,bank_tx:1,costs:1};
 function sbInit(){if(sb||!window.supabase)return;
  sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
  sb.auth.onAuthStateChange((ev,s)=>{who=s&&s.user?s.user.email:null;setTimeout(()=>{
@@ -499,6 +524,7 @@ function toRow(t,r){
  if(t==='it'||t==='pr'){const it=itm(r);if(!it)return null;
   return t==='it'?['items',{id:it.id,name:it.name,op:n(it.op),off:!!it.off,ord:it.ord??null,u:it.u}]:['prices',{item_id:it.id,rate:n(it.rate),cost:n(it.cost),u:it.pru}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
+ if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
  if(t==='ba'){const a=S.bk.ac.find(x=>x.id===r);return a?['bank_accounts',{id:a.id,name:a.name,op:n(a.op),off:!!a.off,u:a.u}]:null}
  if(t==='bt'){const x=S.bk.tx.find(y=>y.id===r);return x?['bank_tx',{id:x.id,day:x.day,account_id:x.ac,type:x.type,party:x.party||null,amount:n(x.a),chq_no:x.no||null,chq_date:x.cd||null,status:x.st,note:x.note||null,deleted:!!x.del,u:x.u}]:null}
  if(t==='mp'){const p=S.mk.ps.find(x=>x.id===r);return p?['milk_parties',{id:p.id,name:p.name,kind:p.kind,off:!!p.off,u:p.u}]:null}
@@ -515,6 +541,7 @@ async function push(){const snap={...S.q},R=Object.fromEntries(Object.keys(PK).m
 function merge(tb,r){
  if(tb==='items'){const it=itm(r.id),o={name:r.name,op:n(r.op),off:r.off,ord:r.ord??undefined,u:r.u};if(!it){S.items.push(Object.assign({id:r.id,rate:0,cost:0,pru:0},o));return true}
   if(r.u>it.u){Object.assign(it,o);return true}return false}
+ if(tb==='costs'){const C=S.cs[r.item_id]=S.cs[r.item_id]||{},c=C[r.day];if(c&&r.u<=(c.u||0))return false;C[r.day]={c:r.cost??'',u:r.u};return true}
  if(tb==='bank_accounts'){const a=S.bk.ac.find(x=>x.id===r.id),o={name:r.name,op:n(r.op),off:r.off,u:r.u};if(!a){S.bk.ac.push(Object.assign({id:r.id},o));return true}
   if(r.u>a.u){Object.assign(a,o);return true}return false}
  if(tb==='bank_tx'){const i=S.bk.tx.findIndex(x=>x.id===r.id),o={id:r.id,day:r.day,ac:r.account_id,type:r.type,party:r.party||'',a:n(r.amount),no:r.chq_no||'',cd:r.chq_date||'',st:r.status,note:r.note||'',del:r.deleted,u:r.u};
