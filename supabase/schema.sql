@@ -345,3 +345,30 @@ alter table public.deliveries add column note text;
 
 -- Per-day mandi commission (sheet COMM), added to the mandi rate for that day's taken and sold milk.
 alter table public.milk_days add column k numeric;
+
+-- Production: a recipe makes one unit of a shop item (e.g. 1 kg DAHI) from ingredients.
+-- ins = [{t:'it', id:item_id, q} | {t:'raw', name, unit, q, c}] where q is per one unit made and c is the raw material price per unit.
+create table public.recipes (
+  id text primary key, item_id text not null, ins jsonb not null default '[]', off boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+create table public.production (
+  day date not null, recipe_id text not null, qty numeric,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid,
+  primary key (day, recipe_id)
+);
+do $$
+declare t text;
+begin
+  foreach t in array array['recipes','production'] loop
+    execute format('create trigger %I_lww before insert or update on public.%I for each row execute function public.lww()', t, t);
+    execute format('create index %I_sa_idx on public.%I (sa)', t, t);
+    execute format('alter table public.%I enable row level security', t);
+    execute format('create policy %I_member_select on public.%I for select to authenticated using (public.is_member())', t, t);
+  end loop;
+end $$;
+create policy recipes_owner_insert on public.recipes for insert to authenticated with check (public.is_owner());
+create policy recipes_owner_update on public.recipes for update to authenticated using (public.is_owner()) with check (public.is_owner());
+create policy production_member_insert on public.production for insert to authenticated with check (public.is_member());
+create policy production_member_update on public.production for update to authenticated using (public.is_member()) with check (public.is_member());
+revoke all on public.recipes, public.production from anon;

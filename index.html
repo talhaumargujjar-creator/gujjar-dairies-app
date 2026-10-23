@@ -194,6 +194,7 @@ function migrate(o,t){const q={};
   if(D.cash===undefined)D.cash=null;D.cu=t;if(D.cash!=null)q['ca:'+d]=1}
  o.c0u=t;q['set:cash0']=1;
  if(o.cs)for(const [id,C] of Object.entries(o.cs))for(const [d,c] of Object.entries(C)){c.u=t;q['cs:'+id+'|'+d]=1}
+ if(o.pr){for(const r of Object.values(o.pr.rc)){r.u=t;q['rp:'+r.id]=1}for(const [d,P] of Object.entries(o.pr.d))for(const [rid,x] of Object.entries(P)){x.u=t;q['pd:'+d+'|'+rid]=1}}
  if(o.mk){o.mk.ps.forEach(p=>{p.u=t;q['mp:'+p.id]=1});
   for(const [d,R] of Object.entries(o.mk.mr)){R.u=t;q['mr:'+d]=1}
   for(const [d,P] of Object.entries(o.mk.d))for(const [id,r] of Object.entries(P)){r.u=t;q['md:'+d+'|'+id]=1}
@@ -233,7 +234,12 @@ function bkInit(s){if(!s.bk)s.bk={ac:[],tx:[]};if(!s.cs)s.cs={}}
 // bp = bill header and offers printed on every bill: {shop,owner,phone,addr,offers:[{id,t,img}],u}; img is a small JPEG data URL.
 // A day's remarks for a customer sit on the special item '_note' as {n,del,u}.
 function dlInit(s){if(!s.dl)s.dl={cs:[],d:{},py:[]};s.dl.sent=s.dl.sent||{};s.dl.bp=s.dl.bp||{shop:'Gujjar Dairies',owner:'',phone:'',addr:'',web:'',offers:[],u:0}}
-let S=load(),MEMO={};mkInit(S);bkInit(S);dlInit(S);
+// Production: pr = {rc:{id:{id,out,ins,off,u}} recipes making ONE unit of item `out`,
+//   ins = [{t:'it',id,q} shop item used | {t:'raw',name,unit,q,c} other material with price c per unit], d:{day:{recipeId:{q,u}}} made that day}.
+const PR_SEED=[['r_dahi','i2',[{t:'it',id:'i0',q:0}]],['r_lassi','i10',[{t:'it',id:'i2',q:0},{t:'it',id:'i0',q:0},{t:'raw',name:'CHEENI',unit:'kg',q:0,c:0},{t:'raw',name:'BARF',unit:'kg',q:0,c:0}]],
+ ['r_bottle','i9',[{t:'it',id:'i0',q:0},{t:'raw',name:'CHEENI',unit:'kg',q:0,c:0},{t:'raw',name:'PISTA',unit:'kg',q:0,c:0},{t:'raw',name:'BADAM',unit:'kg',q:0,c:0}]]];
+function prInit(s){if(s.pr)return;s.pr={rc:{},d:{}};PR_SEED.forEach(([id,out,ins])=>{s.pr.rc[id]={id,out,ins,off:false,u:1};s.q['rp:'+id]=s.q['rp:'+id]||1})}
+let S=load(),MEMO={};mkInit(S);bkInit(S);dlInit(S);prInit(S);
 const save=()=>{MEMO={};try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Save nahi hua. Phone ki storage check karein aur Backup lein.')}};
 save();
 const mark=k=>{S.q[k]=now();save();kick()};
@@ -255,8 +261,13 @@ const before=d=>keys().filter(x=>x<d).reverse();
 const btx=d=>S.bk.tx.filter(x=>!x.del&&x.day===d);
 const active=D=>D.cash!=null||KINDS.some(k=>live(norm(D),k).length)||Object.values(D.st).some(s=>has(s.cl));
 function opening(it,d){for(const x of before(d)){const s=S.days[x].st[it.id];if(s&&has(s.cl))return n(s.cl)}return n(it.op)}
-// Sold = opening + purchase - used in shop - closing. Without a closing the item is not counted.
-function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q2(opening(it,d)+n(s.pu)-n(s.us)-n(s.cl))}
+// Production of a day: what an item gained (made) and what recipes took from it (used). All recipes count, even switched-off ones, so old days stay the same.
+const prq=(d,rid)=>n(((S.pr.d[d]||{})[rid]||{}).q);
+function made(it,d){return Object.values(S.pr.rc).filter(r=>r.out===it.id).reduce((a,r)=>a+prq(d,r.id),0)}
+function usedP(it,d){return Object.values(S.pr.rc).reduce((a,r)=>{const m=prq(d,r.id);return m?a+r.ins.filter(x=>x.t==='it'&&x.id===it.id).reduce((b,x)=>b+n(x.q)*m,0):a},0)}
+// Sold = opening + purchase + made - used in shop - used in production - closing. Without a closing the item is not counted.
+// Delivered quantity is part of sold; csold() splits it off.
+function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q2(opening(it,d)+n(s.pu)+made(it,d)-n(s.us)-usedP(it,d)-n(s.cl))}
 // A day can carry its own rate (eggs change daily); otherwise the item's rate.
 const rateOf=(it,d)=>{const s=day(d).st[it.id];return s&&has(s.rt)?n(s.rt):n(it.rate)};
 // Cost on a day = the latest cost change on or before it (Cost tab), otherwise the item's starting cost.
@@ -300,7 +311,7 @@ const ICON={stock:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"
  dlv:'<path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'};
 // [key, label, who can open (o owner, s staff, d delivery), shown in the bottom bar].
 // Items and Cost open from the Account page so the bar fits a phone.
-const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','osd',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0]];
+const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','osd',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0],['prd','Production','os',0]];
 const tabs=()=>TABS.filter(t=>t[2].includes(role()[0]));
 const ROLE={owner:'Owner',staff:'Staff',delivery:'Delivery',pending:'Manzoori baqi'};
 function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button aria-current="${tab==k||((tab==='items'||tab==='cost')&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
@@ -317,16 +328,17 @@ function render(){const a=$('#app');
  if(!S.me||!S.me.email){a.innerHTML=loginV();return}
  if(S.me.role==='pending'){a.innerHTML=pendingV();return}
  if(!tabs().some(t=>t[0]===tab))tab=tabs()[0][0];
- a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank,cost,report,items,acct,kc})[tab]()}</main>`+navV();status()}
+ a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank,cost,report,items,acct,kc,prd})[tab]()}</main>`+navV();status()}
 
 // Stock
 const isDone=it=>has((day(date).st[it.id]||{}).cl);
-function line(it){const s=day(date).st[it.id]||{},tin=opening(it,date)+n(s.pu);
- if(!has(s.cl))return `<span>Total ${fq(tin)}</span><span>Closing likhni hai</span>`;
- const sd=sold(it,date);if(sd<0)return `<span class="neg">Closing total se zyada hai. Dobara check karein.</span>`;
+function line(it){const s=day(date).st[it.id]||{},mk=made(it,date),up=usedP(it,date),tin=opening(it,date)+n(s.pu)+mk-up;
+ const pl=mk||up?`<span style="flex-basis:100%">Production: ${mk?'+'+fq(mk)+' bana':''}${mk&&up?', ':''}${up?'−'+fq(up)+' recipe mein laga':''}</span>`:'';
+ if(!has(s.cl))return pl+`<span>Total ${fq(tin)}</span><span>Closing likhni hai</span>`;
+ const sd=sold(it,date);if(sd<0)return pl+`<span class="neg">Closing total se zyada hai. Dobara check karein.</span>`;
  const dq=dday(date).q[it.id]||0,cs=q2(sd-dq);
- if(cs<0)return `<span class="neg">Delivery mein ${fq(dq)} gaya, lekin stock se sirf ${fq(sd)} nikla. Closing ya delivery check karein.</span>`;
- return `<span>Total ${fq(tin)} · Bika <b>${fq(sd)}</b>${dq?` (delivery ${fq(dq)}, counter ${fq(cs)})`:''}</span>`+(own()?`<span><b>Rs ${f(cs*rateOf(it,date))}</b></span>`:'')}
+ if(cs<0)return pl+`<span class="neg">Delivery mein ${fq(dq)} gaya, lekin stock se sirf ${fq(sd)} nikla. Closing ya delivery check karein.</span>`;
+ return pl+`<span>Total ${fq(tin)} · Bika <b>${fq(sd)}</b>${dq?` (delivery ${fq(dq)}, counter ${fq(cs)})`:''}</span>`+(own()?`<span><b>Rs ${f(cs*rateOf(it,date))}</b></span>`:'')}
 function card(it){const s=day(date).st[it.id]||{};
  const inp=(k,l)=>`<div class="f"><label for="${k}${it.id}">${l}</label><input type="number" inputmode="decimal" enterkeyhint="next" id="${k}${it.id}" value="${s[k]??''}" onchange="setS('${it.id}','${k}',this)"></div>`;
  return `<div class="card item${isDone(it)?' done':''}"><div class="ih"><b>${esc(it.name)}</b>${own()?`<button class="tag rt" onclick="setRt('${it.id}')" aria-label="${esc(it.name)}: aaj ka rate">${has(s.rt)?'Aaj ka rate '+fq(s.rt):'Rate '+fq(it.rate)} ✎</button>`:''}</div>
@@ -342,8 +354,9 @@ function listV(){const L=act().filter(i=>i.name.toLowerCase().includes(q.toLower
  return L.map(card).join('')||`<p class="hint" style="text-align:center;padding:20px">${flt==='left'?'Sab items ho gaye ✓':'Koi item nahi mila.'}</p>`}
 function progV(){const A=act(),d=A.filter(isDone).length;return {d,t:A.length,p:A.length?d*100/A.length:0}}
 const capBtn=()=>`<button class="card capbtn" onclick="go('kc')"><span>📷</span>Khata ki tasveer se bharein</button>`;
+const prdBtn=()=>`<button class="card capbtn" onclick="go('prd')"><span>🥛</span>Production (dahi, lassi, bottle) likhein</button>`;
 function stock(){const p=progV();
- return capBtn()+`<div class="card"><div class="sh"><h3>Stock ki ginti</h3><span class="muted" id="pc">${p.d} / ${p.t} items</span></div><div class="prog"><i id="pb" style="width:${p.p}%"></i></div>
+ return prdBtn()+capBtn()+`<div class="card"><div class="sh"><h3>Stock ki ginti</h3><span class="muted" id="pc">${p.d} / ${p.t} items</span></div><div class="prog"><i id="pb" style="width:${p.p}%"></i></div>
  <p class="hint" style="margin-top:10px">Har item ki <b>Purchase</b> aur <b>Closing</b> likhein. <b>Istemal</b> sirf tab likhein jab maal bika nahi balke dukaan mein kaam aaya (jaise doodh se dahi).</p></div>
  <input type="search" placeholder="Item dhoondein" value="${esc(q)}" oninput="q=this.value;$('#list').innerHTML=listV()" aria-label="Item dhoondein">
  <div class="chips">${[['all','Sab'],['left','Baqi'],['done','Ho gaye']].map(([k,l])=>`<button class="chip" aria-pressed="${flt===k}" onclick="flt='${k}';render()">${l}</button>`).join('')}</div>
@@ -665,6 +678,49 @@ function kc(){let h=`<button class="link" onclick="go('stock')">← Wapas</butto
   <button class="btn ghost full" onclick="open('/khata-form.html','_blank')">🖨 Form kholein / chhapein</button></div>`;
  return h}
 
+// ---- Production (recipes): what is made in the shop (dahi, lassi, milk bottle) and what it takes.
+let PRE=null;
+const rcList=()=>Object.values(S.pr.rc).filter(r=>!r.off&&itm(r.out)).sort((a,b)=>itm(a.out).name.localeCompare(itm(b.out).name));
+const inName=x=>x.t==='it'?(itm(x.id)||{name:'?'}).name:x.name;
+// Cost of making one unit: shop items at their cost that day, other materials at the price written in the recipe.
+const laagat=(r,d)=>r.ins.reduce((a,x)=>a+n(x.q)*(x.t==='it'?(itm(x.id)?costOf(itm(x.id),d):0):n(x.c)),0);
+function setPQ(rid,v){const P=S.pr.d[date]=S.pr.d[date]||{};P[rid]={q:v===''?'':n(v),u:now()};mark('pd:'+date+'|'+rid);
+ const y=scrollY;render();scrollTo(0,y)}
+function rcSave(r){r.u=now();mark('rp:'+r.id);const y=scrollY;render();scrollTo(0,y)}
+function rcIn(rid,i,k,v){const r=S.pr.rc[rid],x=r.ins[i];if(k==='t'){r.ins[i]=v==='it'?{t:'it',id:act()[0].id,q:x.q}:{t:'raw',name:'',unit:'kg',q:x.q,c:0}}else x[k]=k==='q'||k==='c'?n(v):k==='name'?nkey(v):v;rcSave(r)}
+function rcAddIn(rid,t){S.pr.rc[rid].ins.push(t==='it'?{t:'it',id:act()[0].id,q:0}:{t:'raw',name:'',unit:'kg',q:0,c:0});rcSave(S.pr.rc[rid])}
+function rcDelIn(rid,i){S.pr.rc[rid].ins.splice(i,1);rcSave(S.pr.rc[rid])}
+function rcOut(rid,v){S.pr.rc[rid].out=v;rcSave(S.pr.rc[rid])}
+function rcOff(rid){if(!confirm('Ye recipe band karein? Purane din ka hisaab waisa hi rahega.'))return;const r=S.pr.rc[rid];r.off=true;PRE=null;rcSave(r)}
+function rcNew(){const id='r'+Date.now().toString(36);S.pr.rc[id]={id,out:act()[0].id,ins:[{t:'it',id:act()[0].id,q:0}],off:false,u:now()};PRE=id;rcSave(S.pr.rc[id])}
+function rcCost(rid){const r=S.pr.rc[rid],it=itm(r.out),c=q2(laagat(r,date));if(!confirm(`${it.name} ki cost ${pk(date)} se Rs ${fq(c)} lagayein?`))return;setCost(it.id,c)}
+function rcEditV(r){const opt=sel=>act().map(it=>`<option value="${it.id}"${it.id===sel?' selected':''}>${esc(it.name)}</option>`).join('');
+ return `<div class="fld" style="margin-top:10px"><label>Kya banta hai</label><select onchange="rcOut('${r.id}',this.value)">${opt(r.out)}</select></div>
+ <p class="hint">1 (kg / glass / bottle) banane mein kitna lagta hai:</p>
+ ${r.ins.map((x,i)=>`<div class="card" style="margin:8px 0;padding:10px;background:var(--field)">
+  <div class="g3" style="grid-template-columns:1fr auto"><select onchange="rcIn('${r.id}',${i},'t',this.value)"><option value="it"${x.t==='it'?' selected':''}>Dukaan ka item</option><option value="raw"${x.t==='raw'?' selected':''}>Doosra saman</option></select><button class="x" aria-label="Hatayen" onclick="rcDelIn('${r.id}',${i})">✕</button></div>
+  ${x.t==='it'?`<select style="margin-top:6px" onchange="rcIn('${r.id}',${i},'id',this.value)">${opt(x.id)}</select>`:
+   `<div class="g3" style="grid-template-columns:2fr 1fr;margin-top:6px"><input type="text" value="${esc(x.name)}" placeholder="Naam (jaise CHEENI)" onchange="rcIn('${r.id}',${i},'name',this.value)"><input type="text" value="${esc(x.unit)}" placeholder="kg" onchange="rcIn('${r.id}',${i},'unit',this.value)"></div>`}
+  <div class="g3" style="grid-template-columns:1fr 1fr;margin-top:6px"><div class="f"><label>Kitna</label><input type="number" inputmode="decimal" value="${x.q||''}" onchange="rcIn('${r.id}',${i},'q',this.value)"></div>
+  ${x.t==='raw'?`<div class="f"><label>Qeemat fi ${esc(x.unit||'unit')}</label><input type="number" inputmode="decimal" value="${x.c||''}" onchange="rcIn('${r.id}',${i},'c',this.value)"></div>`:`<div class="f"><span class="l">Cost fi unit</span><div class="v">${itm(x.id)?fq(costOf(itm(x.id),date)):'—'}</div></div>`}</div></div>`).join('')}
+ <div class="btns"><button class="btn ghost" onclick="rcAddIn('${r.id}','it')">+ Dukaan ka item</button><button class="btn ghost" onclick="rcAddIn('${r.id}','raw')">+ Doosra saman</button></div>
+ <div class="btns" style="margin-top:8px"><button class="btn" onclick="PRE=null;render()">Ho gaya</button><button class="btn danger" onclick="rcOff('${r.id}')">Recipe band karein</button></div>`}
+function prd(){const L=rcList(),P=S.pr.d[date]||{},raw={};
+ let h=`<button class="link" onclick="go('stock')">← Stock</button>
+ <div class="card"><h3>Production — ${dayName(date)}, ${pk(date)}</h3><p class="hint" style="margin-top:6px">Aaj jo bana us ki miqdaar likhein. Recipe se jo doodh/dahi laga wo stock se khud kam ho jayega, aur bani hui cheez stock mein jud jayegi. Stock mein "Istemal" sirf baqi kaam ke liye likhein, production ke liye dobara nahi.</p></div>`;
+ h+=L.map(r=>{const it=itm(r.out),m=n((P[r.id]||{}).q),set=r.ins.some(x=>n(x.q));
+  r.ins.forEach(x=>{if(x.t==='raw'&&m){const k=x.name+'|'+x.unit;raw[k]=(raw[k]||0)+n(x.q)*m}});
+  return `<div class="card item"><div class="ih"><b>${esc(it.name)}</b>${own()?`<button class="tag" onclick="PRE=PRE==='${r.id}'?null:'${r.id}';render()">Recipe ✎</button>`:''}</div>
+  ${set?'':'<p class="msg" style="margin:0 0 8px">Recipe ki miqdaar abhi nahi likhi.'+(own()?' "Recipe ✎" daba kar likhein.':' Owner se likhwayein.')+'</p>'}
+  <div class="f"><label for="pq${r.id}">Aaj kitna bana</label><input type="number" inputmode="decimal" id="pq${r.id}" value="${(P[r.id]||{}).q??''}" onchange="setPQ('${r.id}',this.value)"></div>
+  ${m&&set?`<div style="margin-top:8px">${r.ins.filter(x=>n(x.q)).map(x=>`<div class="sum"><span>${esc(inName(x))}</span><b>${fq(n(x.q)*m)} ${x.t==='raw'?esc(x.unit):''}</b></div>`).join('')}</div>`:''}
+  ${own()&&set?`<div class="res"><span>Laagat fi unit: <b>Rs ${fq(laagat(r,date))}</b> (rate ${fq(it.rate)})</span><button class="link" style="padding:0" onclick="rcCost('${r.id}')">Cost mein lagayein</button></div>`:''}
+  ${PRE===r.id?rcEditV(r):''}</div>`}).join('');
+ const RW=Object.entries(raw);
+ if(RW.length)h+=`<div class="card"><h3>Aaj doosra saman kitna laga</h3>${RW.map(([k,v])=>{const [nm,u]=k.split('|');return `<div class="sum"><span>${esc(nm)}</span><b>${fq(v)} ${esc(u)}</b></div>`}).join('')}<p class="hint" style="margin-top:6px">Ye saman ka hisaab hai. Is ki kharidari Hisaab ke Kharcha mein likhte rahein.</p></div>`;
+ if(own())h+=`<button class="btn ghost full" onclick="rcNew()">+ Nayi recipe</button>`;
+ return h}
+
 // Report
 // Delivery: what the delivery man took to each customer today (any role), and for the owner the monthly bills,
 // wasooli and WhatsApp/PDF bill. Replaces the Milk Delivery Bill sheet.
@@ -920,6 +976,8 @@ const OWNER_ONLY={it:1,pr:1,set:1,mp:1,mpr:1,mob:1,ba:1,bt:1,cs:1};
 const OWNER_TABLES={prices:1,settings:1,milk_party_rates:1,bank_accounts:1,bank_tx:1,costs:1};
 // Home delivery tables. The delivery man only reads item names and customers and writes deliveries.
 Object.assign(PK,{customers:'id',deliveries:'day,cust_id,item_id',dpay:'id'});Object.assign(OWNER_ONLY,{dc:1,dp:1,bp:1});OWNER_TABLES.dpay=1;
+// Production: recipes are written by the owner only; owner and staff write what was made.
+Object.assign(PK,{recipes:'id',production:'day,recipe_id'});OWNER_ONLY.rp=1;
 const DLV_TABLES={items:1,customers:1,deliveries:1};
 const canPush=t=>role()==='delivery'?t==='dv':own()||!OWNER_ONLY[t];
 const canPull=tb=>role()==='delivery'?!!DLV_TABLES[tb]:own()||!OWNER_TABLES[tb];
@@ -943,6 +1001,8 @@ function toRow(t,r){
  if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,web:B.web,offers:B.offers},u:B.u}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
+ if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,off:!!x.off,u:x.u}]:null}
+ if(t==='pd'){const [d,rid]=r.split('|'),x=(S.pr.d[d]||{})[rid];return x?['production',{day:d,recipe_id:rid,qty:num(x.q),u:x.u}]:null}
  if(t==='ba'){const a=S.bk.ac.find(x=>x.id===r);return a?['bank_accounts',{id:a.id,name:a.name,op:n(a.op),off:!!a.off,u:a.u}]:null}
  if(t==='bt'){const x=S.bk.tx.find(y=>y.id===r);return x?['bank_tx',{id:x.id,day:x.day,account_id:x.ac,type:x.type,party:x.party||null,amount:n(x.a),chq_no:x.no||null,chq_date:x.cd||null,status:x.st,note:x.note||null,deleted:!!x.del,u:x.u}]:null}
  if(t==='mp'){const p=S.mk.ps.find(x=>x.id===r);return p?['milk_parties',{id:p.id,name:p.name,kind:p.kind,off:!!p.off,u:p.u}]:null}
@@ -963,6 +1023,8 @@ async function push(){const snap={...S.q},R=Object.fromEntries(Object.keys(PK).m
 function merge(tb,r){
  if(tb==='items'){const it=itm(r.id),o={name:r.name,op:n(r.op),off:r.off,ord:r.ord??undefined,u:r.u};if(!it){S.items.push(Object.assign({id:r.id,rate:0,cost:0,pru:0},o));return true}
   if(r.u>it.u){Object.assign(it,o);return true}return false}
+ if(tb==='recipes'){const x=S.pr.rc[r.id];if(x&&r.u<=(x.u||0))return false;S.pr.rc[r.id]={id:r.id,out:r.item_id,ins:r.ins||[],off:r.off,u:r.u};return true}
+ if(tb==='production'){const P=S.pr.d[r.day]=S.pr.d[r.day]||{},x=P[r.recipe_id];if(x&&r.u<=(x.u||0))return false;P[r.recipe_id]={q:r.qty??'',u:r.u};return true}
  if(tb==='costs'){const C=S.cs[r.item_id]=S.cs[r.item_id]||{},c=C[r.day];if(c&&r.u<=(c.u||0))return false;C[r.day]={c:r.cost??'',u:r.u};return true}
  if(tb==='bank_accounts'){const a=S.bk.ac.find(x=>x.id===r.id),o={name:r.name,op:n(r.op),off:r.off,u:r.u};if(!a){S.bk.ac.push(Object.assign({id:r.id},o));return true}
   if(r.u>a.u){Object.assign(a,o);return true}return false}
@@ -1048,7 +1110,7 @@ function acct(){const c=Object.keys(S.q).length,r=role();
  return h+`<button class="btn danger full" onclick="logout()">Logout</button>`}
 function exp(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='hisaab-backup-'+tz()+'.json';a.click()}
 function imp(file){if(!file)return;file.text().then(t=>{try{const d=JSON.parse(t);if(!d.items||!d.days)throw 0;
- if(confirm('Is phone ka data is file se badalna hai?')){const me=S.me,cur=S.cur,seeded=S.seeded;S=migrate(d,now());Object.assign(S,{me,cur,seeded});mkInit(S);bkInit(S);dlInit(S);save();render();kick()}}catch(e){alert('Ye sahi backup file nahi hai.')}})}
+ if(confirm('Is phone ka data is file se badalna hai?')){const me=S.me,cur=S.cur,seeded=S.seeded;S=migrate(d,now());Object.assign(S,{me,cur,seeded});mkInit(S);bkInit(S);dlInit(S);prInit(S);save();render();kick()}}catch(e){alert('Ye sahi backup file nahi hai.')}})}
 
 window.addEventListener('online',()=>{status();sync()});window.addEventListener('offline',status);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync()});
