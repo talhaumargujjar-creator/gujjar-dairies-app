@@ -398,3 +398,17 @@ create policy employees_owner_select on public.employees for select to authentic
 create policy employees_owner_insert on public.employees for insert to authenticated with check (public.is_owner());
 create policy employees_owner_update on public.employees for update to authenticated using (public.is_owner()) with check (public.is_owner());
 revoke all on public.employees from anon;
+
+-- Fixed monthly costs (rent, bijli) shared over the days of each month in the daily munafa.
+-- amt = {"YYYY-MM": monthly amount from that month on}. Payments written in Hisaab with the same name only reduce the galla.
+create table public.fixed_costs (
+  id text primary key, name text not null, amt jsonb not null default '{}', off boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+create trigger fixed_costs_lww before insert or update on public.fixed_costs for each row execute function public.lww();
+create index fixed_costs_sa_idx on public.fixed_costs (sa);
+alter table public.fixed_costs enable row level security;
+create policy fixed_costs_owner_select on public.fixed_costs for select to authenticated using (public.is_owner());
+create policy fixed_costs_owner_insert on public.fixed_costs for insert to authenticated with check (public.is_owner());
+create policy fixed_costs_owner_update on public.fixed_costs for update to authenticated using (public.is_owner()) with check (public.is_owner());
+revoke all on public.fixed_costs from anon;

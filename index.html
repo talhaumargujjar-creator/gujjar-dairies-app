@@ -215,6 +215,7 @@ function migrate(o,t){const q={};
  o.c0u=t;q['set:cash0']=1;
  if(o.cs)for(const [id,C] of Object.entries(o.cs))for(const [d,c] of Object.entries(C)){c.u=t;q['cs:'+id+'|'+d]=1}
  if(o.em)o.em.forEach(e=>{e.u=t;q['em:'+e.id]=1});
+ if(o.fx)o.fx.forEach(x=>{x.u=t;q['fx:'+x.id]=1});
  if(o.pr){for(const r of Object.values(o.pr.rc)){r.u=t;q['rp:'+r.id]=1}for(const [d,P] of Object.entries(o.pr.d))for(const [rid,x] of Object.entries(P)){x.u=t;q['pd:'+d+'|'+rid]=1}}
  if(o.mk){o.mk.ps.forEach(p=>{p.u=t;q['mp:'+p.id]=1});
   for(const [d,R] of Object.entries(o.mk.mr)){R.u=t;q['mr:'+d]=1}
@@ -264,7 +265,9 @@ const PR_SEED=[['r_dahi','i2',[{t:'it',id:'i0',q:0}]],['r_lassi','i10',[{t:'it',
 function prInit(s){if(s.pr)return;s.pr={rc:{},d:{}};PR_SEED.forEach(([id,out,ins])=>{s.pr.rc[id]={id,out,ins,off:false,u:1};s.q['rp:'+id]=s.q['rp:'+id]||1})}
 // Employees: em = [{id,name,phone,start:'YYYY-MM',sal:{'YYYY-MM':salary from that month},off,u}].
 // Salary paid = Hisaab "Salary" entries written with the employee's name.
-function emInit(s){if(!s.em)s.em=[]}
+function emInit(s){if(!s.em)s.em=[];if(!s.fx)s.fx=[]}
+// Fixed costs: fx = [{id,name,amt:{'YYYY-MM':monthly amount from that month},off,u}] (rent, bijli). Their monthly amount,
+// and every employee's salary, is shared over the days of the month in the daily munafa; paying them only moves the galla.
 let S=load(),MEMO={};mkInit(S);bkInit(S);dlInit(S);prInit(S);emInit(S);
 const save=()=>{MEMO={};try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Save nahi hua. Phone ki storage check karein aur Backup lein.')}};
 save();
@@ -321,7 +324,18 @@ function tot(d){if(MEMO['t'+d])return MEMO['t'+d];const D=day(d),V=dday(d);let s
  let bin=0,bout=0;btx(d).forEach(x=>{const g=BT[x.type][2];if(g>0)bin+=n(x.a);if(g<0)bout+=n(x.a)});
  // Delivery sale is on credit, so only the cash later received from delivery customers comes into the galla.
  const op=gOpen(d),cin=op+sale+T.rc+V.cash+bin,paid=KINDS.filter(k=>k!=='rc').reduce((a,k)=>a+T[k],0),exp=cin-paid-bout;prof+=V.prof;
- return MEMO['t'+d]=Object.assign(T,{sale,dsale:V.sale,dcash:V.cash,prof,op,cin,paid,bin,bout,exp,pl:prof-T.ex-T.sl,diff:D.cash!=null?n(D.cash)-exp:null,cash:D.cash})}
+ // Munafa: kharcha and salary paid today count, except rent/bijli (fixed costs) and known employees' salary;
+ // those come in as the day's share of their monthly amount instead.
+ const fxN=fixNames(),emN=new Set(S.em.map(e=>nkey(e.name))),exV=live(D,'ex').filter(e=>!fxN.has(nkey(baseN(e.n)))).reduce((a,e)=>a+n(e.a),0),
+  slV=live(D,'sl').filter(e=>!emN.has(nkey(baseN(e.n)))).reduce((a,e)=>a+n(e.a),0),fxd=fixedDay(d);
+ return MEMO['t'+d]=Object.assign(T,{sale,dsale:V.sale,dcash:V.cash,prof,op,cin,paid,bin,bout,exp,exV,slV,fxd,pl:prof-exV-slV-fxd,diff:D.cash!=null?n(D.cash)-exp:null,cash:D.cash})}
+const atM=(o,m)=>{const k=Object.keys(o||{}).filter(x=>x<=m).sort().pop();return k?n(o[k]):0};
+const dim=m=>new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),0)).getUTCDate();
+const fixNames=()=>MEMO.fxn||(MEMO.fxn=new Set(S.fx.map(x=>nkey(x.name))));
+// This month's fixed costs and salaries ÷ days in the month.
+function fixedMonth(m){if(MEMO['fm'+m])return MEMO['fm'+m];const F=S.fx.map(x=>[x.name,atM(x.amt,m)]),E=S.em.filter(e=>(e.start||'')<=m).map(e=>[e.name,atM(e.sal,m)]);
+ const L=F.concat(E).filter(x=>x[1]);return MEMO['fm'+m]={L,t:L.reduce((a,x)=>a+x[1],0),fx:F.reduce((a,x)=>a+x[1],0),sl:E.reduce((a,x)=>a+x[1],0)}}
+const fixedDay=d=>{const m=d.slice(0,7);return fixedMonth(m).t/dim(m)};
 const $=s=>document.querySelector(s);
 const itm=id=>S.items.find(x=>x.id===id);
 
@@ -406,6 +420,8 @@ const DR={};
 const baseN=s=>String(s).trim().replace(/\s*\([\d+.\s]*\)$/,'');
 function prevRows(k,d){for(const x of before(d)){const L=live(norm(S.days[x]),k);if(L.length)return L}return []}
 const emNames=()=>S.em.filter(e=>!e.off).map(e=>e.name);
+// Marks payments that only move the galla because their monthly amount is already shared over the days.
+const fxTag=(k,nm)=>{const b=nkey(baseN(nm));return (k==='ex'&&fixNames().has(b))||(k==='sl'&&S.em.some(e=>nkey(e.name)===b))?'<br><span class="hint" style="font-size:12px">Munafa mein roz ka hissa, yahan sirf galla</span>':''};
 function secNames(k){if(k==='ud'||k==='rc')return custNames();const s=new Set([...SECS[k][1],...(k==='sl'?emNames():[])]);for(const D of Object.values(S.days))(D[k]||[]).forEach(e=>{if(!e.del)s.add(baseN(e.n))});return [...s].sort()}
 function drafts(k){const key=date+'|'+k;
  if(!DR[key]){const have=new Set(live(day(date),k).map(e=>nkey(baseN(e.n))));DR[key]=prevRows(k,date).filter(e=>!have.has(nkey(baseN(e.n)))).map(e=>({n:baseN(e.n),a:'',ph:n(e.a)}))}
@@ -416,7 +432,7 @@ function sec(k){const D=day(date),[title,names0,,hint]=SECS[k],L=live(D,k),tt=L.
  const names=k==='sl'&&emNames().length?emNames():names0;
  return `<div class="card"><details ${(OPEN[k]??(L.length>0||sug))?'open':''} ontoggle="OPEN['${k}']=this.open"><summary><span>${title}${L.length?` <span class="muted" style="font-weight:400">(${L.length})</span>`:''}${fl?` <span class="neg" style="font-weight:400">· ${fl} save baqi</span>`:''}</span><b style="margin-left:auto;padding-right:8px">${f(tt)}</b></summary>
  <p class="hint" style="margin-top:4px">${hint}</p>${k==='sl'&&own()?`<button class="link" style="padding:4px 0" onclick="go('emp')">Employees ki salary aur baqaya dekhein ›</button>`:''}
- ${L.length?`<div style="margin-top:8px">${L.map(r=>`<div class="row"><span>${esc(r.n)}</span><span>${f(n(r.a))}<button class="x" style="color:var(--bink)" aria-label="${esc(r.n)} badlein" onclick="edE('${k}','${r.id}')">✎</button><button class="x" aria-label="${esc(r.n)} hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')}</div>`:''}
+ ${L.length?`<div style="margin-top:8px">${L.map(r=>`<div class="row"><span>${esc(r.n)}${fxTag(k,r.n)}</span><span>${f(n(r.a))}<button class="x" style="color:var(--bink)" aria-label="${esc(r.n)} badlein" onclick="edE('${k}','${r.id}')">✎</button><button class="x" aria-label="${esc(r.n)} hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')}</div>`:''}
  <datalist id="dl${k}">${secNames(k).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
  <div style="margin-top:6px">${R.map((r,i)=>drRow(k,r,i)).join('')}</div>
  <button class="btn full" style="margin-top:10px" onclick="drSave('${k}')">Save karein${fl?` (${fl})`:''}</button>
@@ -908,11 +924,24 @@ function emp(){emM=emM||date.slice(0,7);const E=S.em.filter(e=>!e.off),st=E.map(
  <button class="btn full" onclick="emAdd()">+ Employee add karein</button>
  <p class="hint" style="margin-top:8px">Roz Hisaab ke "Salary" hisse mein employee ka naam likh kar jo raqam denge, wo yahan us ki salary mein se kat jayegi.</p></div>`;
  const off=S.em.filter(e=>e.off);if(off.length)h+=`<div class="card"><h3>Hataye gaye</h3>${off.map(e=>`<div class="row"><span>${esc(e.name)}</span><button class="btn ghost" onclick="emUp('${e.id}','off',false)">Wapas</button></div>`).join('')}</div>`;
- return h}
+ return h+fxV()}
 function emSave(e){e.u=now();mark('em:'+e.id);const y=scrollY;render();scrollTo(0,y)}
 function emUp(id,k,v){const e=S.em.find(x=>x.id===id);if(k==='name'){v=nkey(v);if(!v)return}e[k]=v;emOpen=id;emSave(e)}
 function emSal(id,v){const e=S.em.find(x=>x.id===id);e.sal=e.sal||{};e.sal[emM]=n(v);emOpen=id;emSave(e)}
-function emOff(id){if(!confirm('Ye employee list se hata dein? Purana hisaab waisa hi rahega.'))return;const e=S.em.find(x=>x.id===id);e.off=true;emSave(e)}
+// Leaving stops the salary from the next month, so earlier months keep their hisaab.
+function emOff(id){if(!confirm('Ye employee list se hata dein? Agle mahine se salary band ho jayegi, purana hisaab waisa hi rahega.'))return;const e=S.em.find(x=>x.id===id);e.off=true;e.sal=e.sal||{};e.sal[addMon(emM,1)]=0;emSave(e)}
+// Fixed costs (rent, bijli): monthly amount from a month on.
+function fxV(){const L=S.fx.filter(x=>!x.off),fm=fixedMonth(emM);
+ return `<h2>Fixed kharche (har mahine)</h2><div class="card"><p class="hint" style="margin-bottom:8px">Rent, bijli jaise kharche. Mahine ki raqam ${dim(emM)} din par baant kar roz ke munafa mein kat'ti hai. Jis din Hisaab ke Kharcha mein <b>isi naam</b> se paise denge, us din sirf galla kam hoga, munafa dobara nahi katega. Bijli ka asal bill aaye to us mahine ki raqam yahan badal dein.</p>
+ ${L.map(x=>`<div class="row"><span style="flex:1;min-width:0"><b>${esc(x.name)}</b></span><input type="number" inputmode="decimal" style="width:130px" value="${atM(x.amt,emM)||''}" aria-label="${esc(x.name)} ${monLbl(emM)} ki raqam" onchange="fxAmt('${x.id}',this.value)"><button class="x" aria-label="${esc(x.name)} hatayen" onclick="fxOff('${x.id}')">✕</button></div>`).join('')||'<p class="hint">Abhi koi fixed kharcha nahi.</p>'}
+ <div class="addr" style="margin-top:12px"><input type="text" id="fxn" placeholder="Naam (jaise RENT, BIJLI BILL)" list="dlex"><input type="number" inputmode="decimal" id="fxa" placeholder="Mahine ka"><button class="btn" onclick="fxAdd()">+ Fixed kharcha add karein</button></div>
+ <div class="sum tot" style="margin-top:12px"><span>${monLbl(emM)}: fixed ${f(fm.fx)} + salary ${f(fm.sl)}</span><b>${f(fm.t)}</b></div>
+ <div class="sum"><span>Roz ke munafa se katega</span><b>${f(fm.t/dim(emM))}</b></div></div>`}
+function fxSave(x){x.u=now();mark('fx:'+x.id);const y=scrollY;render();scrollTo(0,y)}
+function fxAmt(id,v){const x=S.fx.find(y=>y.id===id);x.amt=x.amt||{};x.amt[emM]=n(v);fxSave(x)}
+function fxOff(id){if(!confirm('Ye fixed kharcha band karein? Agle mahine se nahi katega, pichla hisaab waisa hi rahega.'))return;const x=S.fx.find(y=>y.id===id);x.off=true;x.amt=x.amt||{};x.amt[addMon(emM,1)]=0;fxSave(x)}
+function fxAdd(){const nm=nkey($('#fxn').value),a=n($('#fxa').value);if(!nm||!a){alert('Naam aur mahine ki raqam likhein.');return}
+ if(S.fx.some(x=>nkey(x.name)===nm&&!x.off)){alert('Ye pehle se hai.');return}const x={id:'fx'+Date.now().toString(36),name:nm,amt:{[emM]:a},off:false,u:now()};S.fx.push(x);fxSave(x)}
 function emAdd(nm0){const nm=nkey(nm0||$('#enm').value);if(!nm){alert('Naam likhein.');return}if(S.em.some(e=>nkey(e.name)===nm)){alert('Ye employee pehle se hai.');return}
  const st=nm0?emM:($('#est').value||emM),sl=nm0?n(prompt(`${nm} ki mahine ki salary?`,'')):n($('#esl').value);
  const e={id:'em'+Date.now().toString(36),name:nm,phone:'',start:st,sal:{[st]:sl},off:false,u:now()};S.em.push(e);emSave(e)}
@@ -1117,25 +1146,29 @@ async function printBill(id){let p=$('#prt');if(!p){p=document.createElement('di
 // Value of stock left at the end of a day: closing (or opening if no closing yet) × cost on that day.
 function stockVal(d){return act().reduce((a,it)=>{const s=day(d).st[it.id],q=s&&has(s.cl)?n(s.cl):opening(it,d);return a+Math.max(0,q)*costOf(it,d)},0)}
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-function monthRows(m){return keys().filter(d=>d.startsWith(m)&&active(S.days[d])).map(d=>{const x=tot(d);return {d,sale:x.sale+x.dsale,ex:x.ex+x.sl,pl:x.pl,sp:x.sp,ud:x.ud,diff:x.diff}})}
-function monthV(){const m=date.slice(0,7),R=monthRows(m),S2=k=>R.reduce((a,r)=>a+(r[k]||0),0),[y,mo]=m.split('-');
+function monthRows(m){return keys().filter(d=>d.startsWith(m)&&active(S.days[d])).map(d=>{const x=tot(d);return {d,sale:x.sale+x.dsale,ex:x.exV+x.slV,pl:x.pl,pl0:x.pl+x.fxd,sp:x.sp,ud:x.ud,diff:x.diff}})}
+// Month munafa takes the fixed costs for every day of the month so far, also days with no entries.
+function monthSum(m){const R=monthRows(m),S2=k=>R.reduce((a,r)=>a+(r[k]||0),0),last=m===tz().slice(0,7)?+tz().slice(8):dim(m),fx=fixedMonth(m).t*last/dim(m);
+ return {R,S2,last,fx,pl:S2('pl0')-fx}}
+function monthV(){const m=date.slice(0,7),{R,S2,last,fx,pl}=monthSum(m),[y,mo]=m.split('-');
  return `<div class="card"><h3>${MONTHS[+mo-1]} ${y} ka hisaab</h3><div style="margin-top:6px"></div>
  <div class="sum"><span>Din jin ka hisaab hai</span><b>${R.length}</b></div><div class="sum"><span>Kul sale</span><b>${f(S2('sale'))}</b></div>
- <div class="sum"><span>Kharcha + salary</span><b>${f(S2('ex'))}</b></div><div class="sum"><span>Supplier payments</span><b>${f(S2('sp'))}</b></div>
- <div class="sum"><span>Udhaar diya</span><b>${f(S2('ud'))}</b></div><div class="sum tot"><span>Asal munafa</span><b class="${S2('pl')<0?'neg':'pos'}">${f(S2('pl'))}</b></div>
+ <div class="sum"><span>Kharcha (roz wala)</span><b>${f(S2('ex'))}</b></div><div class="sum"><span>Fixed kharcha + salary (${last} din ka hissa)</span><b>${f(fx)}</b></div>
+ <div class="sum"><span>Supplier payments</span><b>${f(S2('sp'))}</b></div>
+ <div class="sum"><span>Udhaar diya</span><b>${f(S2('ud'))}</b></div><div class="sum tot"><span>Asal munafa</span><b class="${pl<0?'neg':'pos'}">${f(pl)}</b></div>
  <div class="btns" style="margin-top:12px"><button class="btn ghost" onclick="monthCsv()">Excel (CSV) download</button><button class="btn ghost" onclick="shareMonth()">WhatsApp par bhejein</button></div></div>`}
 function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
 // CSV opens in Excel; the BOM keeps Excel from mangling the text.
 function monthCsv(){const m=date.slice(0,7),R=monthRows(m),q=v=>`"${String(v).replace(/"/g,'""')}"`;
- const lines=[['Tareekh','Sale','Kharcha + salary','Supplier','Udhaar diya','Munafa','Galla farq'].map(q).join(',')].concat(R.map(r=>[pk(r.d),Math.round(r.sale),Math.round(r.ex),Math.round(r.sp),Math.round(r.ud),Math.round(r.pl),r.diff==null?'':Math.round(r.diff)].join(',')));
+ const lines=[['Tareekh','Sale','Kharcha (roz wala)','Supplier','Udhaar diya','Munafa (fixed hissa kat kar)','Galla farq'].map(q).join(',')].concat(R.map(r=>[pk(r.d),Math.round(r.sale),Math.round(r.ex),Math.round(r.sp),Math.round(r.ud),Math.round(r.pl),r.diff==null?'':Math.round(r.diff)].join(',')));
  dl(`hisaab-${m}.csv`,'﻿'+lines.join('\r\n'),'text/csv')}
 const wa=t=>open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
-function shareDay(){const t=tot(date);wa(`*Gujjar Dairies — ${dayName(date)} ${pk(date)}*\nSale: Rs ${f(t.sale+t.dsale)}\nKharcha + salary: Rs ${f(t.ex+t.sl)}\nSupplier: Rs ${f(t.sp)}\nUdhaar diya: Rs ${f(t.ud)}\nMunafa: Rs ${f(t.pl)}\nGalla farq: ${t.diff==null?'—':'Rs '+f(t.diff)}`)}
-function shareMonth(){const m=date.slice(0,7),R=monthRows(m),S2=k=>R.reduce((a,r)=>a+(r[k]||0),0),[y,mo]=m.split('-');
- wa(`*Gujjar Dairies — ${MONTHS[+mo-1]} ${y}*\n${R.length} din\nKul sale: Rs ${f(S2('sale'))}\nKharcha + salary: Rs ${f(S2('ex'))}\nSupplier: Rs ${f(S2('sp'))}\nUdhaar diya: Rs ${f(S2('ud'))}\nMunafa: Rs ${f(S2('pl'))}`)}
+function shareDay(){const t=tot(date);wa(`*Gujjar Dairies — ${dayName(date)} ${pk(date)}*\nSale: Rs ${f(t.sale+t.dsale)}\nKharcha: Rs ${f(t.exV+t.slV)}\nFixed kharcha + salary (aaj ka hissa): Rs ${f(t.fxd)}\nSupplier: Rs ${f(t.sp)}\nUdhaar diya: Rs ${f(t.ud)}\nMunafa: Rs ${f(t.pl)}\nGalla farq: ${t.diff==null?'—':'Rs '+f(t.diff)}`)}
+function shareMonth(){const m=date.slice(0,7),{R,S2,last,fx,pl}=monthSum(m),[y,mo]=m.split('-');
+ wa(`*Gujjar Dairies — ${MONTHS[+mo-1]} ${y}*\n${R.length} din\nKul sale: Rs ${f(S2('sale'))}\nKharcha: Rs ${f(S2('ex'))}\nFixed kharcha + salary (${last} din): Rs ${f(fx)}\nSupplier: Rs ${f(S2('sp'))}\nUdhaar diya: Rs ${f(S2('ud'))}\nMunafa: Rs ${f(pl)}`)}
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
- return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Kharcha + salary',f(t.ex+t.sl))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Udhaar diya',f(t.ud))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
+ return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Kharcha (roz wala)',f(t.exV+t.slV))}${T('Fixed + salary (aaj ka hissa)',f(t.fxd))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Udhaar diya',f(t.ud))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
  <div class="btns" style="margin:12px 0"><button class="btn" onclick="shareDay()">WhatsApp par bhejein</button></div>
  ${monthV()}
  <h2>Pichle din</h2><div class="card">${days.length?`<table><tr><th>Tareekh</th><th>Sale</th><th>Kharcha</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr onclick="date='${d}';render();scrollTo(0,0)"><td>${pk(d).slice(0,5)}</td><td>${f(x.sale+x.dsale)}</td><td>${f(x.ex+x.sl)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table>`:'<p class="hint">Abhi koi din ka hisaab nahi.</p>'}</div>
@@ -1211,6 +1244,7 @@ Object.assign(PK,{customers:'id',deliveries:'day,cust_id,item_id',dpay:'id'});Ob
 // Production: recipes are written by the owner only; owner and staff write what was made.
 Object.assign(PK,{recipes:'id',production:'day,recipe_id'});OWNER_ONLY.rp=1;
 Object.assign(PK,{employees:'id'});OWNER_ONLY.em=1;OWNER_TABLES.employees=1;
+Object.assign(PK,{fixed_costs:'id'});OWNER_ONLY.fx=1;OWNER_TABLES.fixed_costs=1;
 const DLV_TABLES={items:1,customers:1,deliveries:1};
 const canPush=t=>role()==='delivery'?t==='dv':own()||!OWNER_ONLY[t];
 const canPull=tb=>role()==='delivery'?!!DLV_TABLES[tb]:own()||!OWNER_TABLES[tb];
@@ -1234,6 +1268,7 @@ function toRow(t,r){
  if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,web:B.web,offers:B.offers},u:B.u}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
+ if(t==='fx'){const x=S.fx.find(y=>y.id===r);return x?['fixed_costs',{id:x.id,name:x.name,amt:x.amt||{},off:!!x.off,u:x.u}]:null}
  if(t==='em'){const e=S.em.find(x=>x.id===r);return e?['employees',{id:e.id,name:e.name,phone:e.phone||null,start:e.start||null,sal:e.sal||{},off:!!e.off,u:e.u}]:null}
  if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,y:x.y??null,off:!!x.off,u:x.u}]:null}
  if(t==='pd'){const [d,rid]=r.split('|'),x=(S.pr.d[d]||{})[rid];return x?['production',{day:d,recipe_id:rid,qty:num(x.q),u:x.u}]:null}
@@ -1257,6 +1292,8 @@ async function push(){const snap={...S.q},R=Object.fromEntries(Object.keys(PK).m
 function merge(tb,r){
  if(tb==='items'){const it=itm(r.id),o={name:r.name,op:n(r.op),off:r.off,ord:r.ord??undefined,u:r.u};if(!it){S.items.push(Object.assign({id:r.id,rate:0,cost:0,pru:0},o));return true}
   if(r.u>it.u){Object.assign(it,o);return true}return false}
+ if(tb==='fixed_costs'){const i=S.fx.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,amt:r.amt||{},off:r.off,u:r.u};
+  if(i<0){S.fx.push(o);return true}if(r.u>S.fx[i].u){S.fx[i]=o;return true}return false}
  if(tb==='employees'){const i=S.em.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,phone:r.phone||'',start:r.start||'',sal:r.sal||{},off:r.off,u:r.u};
   if(i<0){S.em.push(o);return true}if(r.u>S.em[i].u){S.em[i]=o;return true}return false}
  if(tb==='recipes'){const x=S.pr.rc[r.id];if(x&&r.u<=(x.u||0))return false;S.pr.rc[r.id]={id:r.id,out:r.item_id,ins:r.ins||[],y:r.y??undefined,off:r.off,u:r.u};return true}
@@ -1330,7 +1367,7 @@ function acct(){const c=Object.keys(S.q).length,r=role();
  <button class="btn ghost full" onclick="sync().then(render)">Abhi sync karein</button></div>`;
  if(own())h+=`<button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('items')"><span>Items, rate aur cost</span><span class="muted">›</span></button>
  <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('cost')"><span>Cost (tareekh ke hisaab se)</span><span class="muted">›</span></button>
- <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('emp')"><span>Employees aur salary</span><span class="muted">›</span></button>
+ <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('emp')"><span>Employees, salary aur fixed kharche</span><span class="muted">›</span></button>
  <div class="card"><details><summary>Khata tasveer se parhne ki setup (ek baar)</summary><ol style="margin:10px 0 0;padding-left:20px;line-height:1.6">
  <li>aistudio.google.com par apne Google account se login karein.</li><li>"Get API key" → "Create API key" dabayein aur key copy karein. Ye free hai.</li>
  <li>vercel.com → gujjar-dairies-app → Settings → Environment Variables mein naya variable: naam <b>GEMINI_API_KEY</b>, value wahi key. Save karein.</li>
