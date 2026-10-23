@@ -126,6 +126,7 @@ th{font-size:13px;color:var(--mut);font-weight:600}
 .mk{display:grid;grid-template-columns:1fr 1fr;gap:4px}
 .mk input{min-height:46px;padding:6px 2px;text-align:center;font-size:16px}
 .fld input[type=date]{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font-size:17px}
+.qc button[aria-pressed=true]{background:var(--blue);border-color:var(--blue);color:#fff}
 .mk.u i{font-style:normal;font-size:12px;color:var(--mut);text-align:center}
 select{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font:inherit;font-size:17px;color:inherit}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
@@ -231,7 +232,7 @@ function bkInit(s){if(!s.bk)s.bk={ac:[],tx:[]};if(!s.cs)s.cs={}}
 //   py:[{id,day,c,a,m:'cash'|'online',note,del,u}] money received, sent:{'YYYY-MM':{custId:1}} bills sent from this phone}.
 // bp = bill header and offers printed on every bill: {shop,owner,phone,addr,offers:[{id,t,img}],u}; img is a small JPEG data URL.
 // A day's remarks for a customer sit on the special item '_note' as {n,del,u}.
-function dlInit(s){if(!s.dl)s.dl={cs:[],d:{},py:[]};s.dl.sent=s.dl.sent||{};s.dl.bp=s.dl.bp||{shop:'Gujjar Dairies',owner:'',phone:'',addr:'',offers:[],u:0}}
+function dlInit(s){if(!s.dl)s.dl={cs:[],d:{},py:[]};s.dl.sent=s.dl.sent||{};s.dl.bp=s.dl.bp||{shop:'Gujjar Dairies',owner:'',phone:'',addr:'',web:'',offers:[],u:0}}
 let S=load(),MEMO={};mkInit(S);bkInit(S);dlInit(S);
 const save=()=>{MEMO={};try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Save nahi hua. Phone ki storage check karein aur Backup lein.')}};
 save();
@@ -416,7 +417,9 @@ function prate(id,d){const R=S.mk.pr[id]||{},k=Object.keys(R).filter(x=>x<=d).so
 const mpays=(d,id)=>(S.mk.pay[d]||[]).filter(e=>!e.del&&e.p===id);
 // A party's amount for the day, like the sheet: bandhi + cow + taken from mandi - sold to mandi,
 // mandi milk at that slot's mandi rate less the party's commission.
-function mamt(d,id){const r=mrow(d,id),R=prate(id,d)||{},M=S.mk.mr[d]||{},l=n(R.l),s=n(R.s),mm=n(M.m),me=n(M.e);
+// A day's own commission `k` (like the sheet's COMM, added to the mandi rate) replaces the party's rate commission
+// for all of that day's mandi milk, taken and sold.
+function mamt(d,id){const r=mrow(d,id),R=prate(id,d)||{},M=S.mk.mr[d]||{},dk=has(r.k),l=dk?-n(r.k):n(R.l),s=dk?-n(r.k):n(R.s),mm=n(M.m),me=n(M.e);
  const x={bk:n(r.bm)+n(r.be),ck:n(r.cm)+n(r.ce),lk:n(r.lm)+n(r.le),sk:n(r.sm)+n(r.se)};
  x.b=x.bk/40*n(R.b);x.c=x.ck/40*n(R.c);
  x.l=n(r.lm)/40*(mm-l)+n(r.le)/40*(me-l);x.s=n(r.sm)/40*(mm-s)+n(r.se)/40*(me-s);
@@ -437,7 +440,14 @@ function mcard(p){const r=mrow(date,p.id);
  return `<div class="card"><div class="ih"><b>${esc(p.name)}</b><span class="tag">${p.kind==='sup'?'Yahan se doodh aata hai':'Yahan doodh jata hai'}</span></div>
  <div class="mg" id="mg"><span></span><span class="h">Subah</span><span class="h">Shaam</span><span></span><span class="mk u"><i>mann</i><i>kg</i></span><span class="mk u"><i>mann</i><i>kg</i></span>
  ${MROWS.map(([k,l])=>`<span class="rl">${l}</span>${cell(k+'m',l+' subah')}${cell(k+'e',l+' shaam')}`).join('')}</div>
- <div class="res"><span>Aaj ka kul doodh</span><b id="mpt">${fmk(mtot(date,p.id))}</b></div></div>`}
+ <div class="res"><span>Aaj ka kul doodh</span><b id="mpt">${fmk(mtot(date,p.id))}</b></div>${own()?mcommV(p,r):''}</div>`}
+const sgn=v=>(v>0?'+':v<0?'−':'')+f(Math.abs(v));
+// Per-day mandi commission, editable for any day; quick buttons for the usual values.
+function mcommV(p,r){const R=prate(p.id,date)||{},dk=has(r.k);
+ return `<div class="fld" style="margin:14px 0 0"><label for="mkk">Aaj ka mandi commission (mandi rate mein + ya −)</label><input type="number" inputmode="decimal" id="mkk" value="${dk?r.k:''}" placeholder="Rate wala" onchange="setK('${p.id}',this.value)"></div>
+ <div class="qc" style="margin-top:8px">${[-230,-300,-2500,0].map(v=>`<button aria-pressed="${dk&&n(r.k)===v}" onclick="setK('${p.id}',${v})">${sgn(v)||'0'}</button>`).join('')}${dk?`<button onclick="setK('${p.id}',${-n(r.k)})">± ulta</button><button onclick="setK('${p.id}','')">Rate wala</button>`:''}</div>
+ <p class="hint" style="margin-top:6px">${dk?`Aaj ki saari mandi (liya aur becha) par mandi rate ${sgn(n(r.k))} laga, sheet ke COMM jaisa.`:`Khali hai, is liye rate wala lag raha hai: mandi se liya ${sgn(-n(R.l))}, mandi ko becha ${sgn(-n(R.s))}.`}</p>`}
+function setK(id,v){const D=S.mk.d[date]=S.mk.d[date]||{},r=D[id]=D[id]||{u:0};r.k=v===''?'':n(v);r.u=now();mark('md:'+date+'|'+id);render()}
 // Updates only the totals so the keyboard stays on the next field.
 function setM(id,k,el){const w=el.parentNode.querySelectorAll('input'),a=w[0].value,b=w[1].value,v=a===''&&b===''?'':r2(n(a)*40+n(b));
  if(v!==''&&v<0){alert('Minus mat likhein. Mandi ko doodh becha ho to "Mandi ko becha" wali line mein likhein.');render();return}
@@ -740,7 +750,7 @@ function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCas
 function bpV(){const B=S.dl.bp,inp=(k,l,t)=>`<div class="fld"><label for="bp_${k}">${l}</label><input type="${t||'text'}" id="bp_${k}" value="${esc(B[k]||'')}" onchange="upBP('${k}',this.value)"></div>`;
  return `<div class="card"><details ${OPEN.bp?'open':''} ontoggle="OPEN.bp=this.open"><summary>Bill par kya chhapega (naam, number, offers)</summary><div style="margin-top:12px">
  <p class="hint" style="margin-bottom:10px">Ye sab bill ke upar logo ke saath aur neeche offers mein aata hai. Bill English mein hai, is liye English mein likhein.</p>
- ${inp('shop','Dukaan ka naam')}${inp('owner','Owner ka naam')}${inp('phone','Phone / WhatsApp number','tel')}${inp('addr','Dukaan ka pata')}
+ ${inp('shop','Dukaan ka naam')}${inp('owner','Owner ka naam')}${inp('phone','Phone / WhatsApp number','tel')}${inp('addr','Dukaan ka pata')}${inp('web','Facebook / website link')}
  <h3 style="margin:16px 0 8px">Offers</h3>
  ${B.offers.map(o=>`<div class="row" style="align-items:center">${o.img?`<img src="${o.img}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:10px;flex:none">`:''}<span style="flex:1;min-width:0">${esc(o.t)}</span><button class="x" onclick="delOffer('${o.id}')" aria-label="Offer hatayen">✕</button></div>`).join('')||'<p class="hint">Abhi koi offer nahi.</p>'}
  <div class="fld" style="margin-top:12px"><label for="oft">Naya offer</label><input type="text" id="oft" placeholder="Lassi: 10% off on 5 glasses"></div>
@@ -795,7 +805,7 @@ function billText(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,
  L.push(`Total for ${monName(ym)}: Rs ${f(m.amt)}`);if(m.prev)L.push(`Previous balance: Rs ${f(m.prev)}`);
  m.pays.forEach(p=>L.push(`Payment received ${pk(p.day)}: Rs ${f(p.a)}`));L.push(`*Total due: Rs ${f(m.due)}*`);
  if(B.offers.length){L.push('','*Offers:*');B.offers.forEach(o=>L.push('• '+o.t))}
- L.push('','Thank you!');return L.join('\n')}
+ L.push('','Thank you!');if(B.web)L.push(B.web);return L.join('\n')}
 // Pakistani number "0300 1234567" -> "923001234567" for wa.me. No number opens WhatsApp to pick the contact.
 const waNum=p=>{let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('0'))d='92'+d.slice(1);else if(d.length===10&&d[0]==='3')d='92'+d;return d};
 function sendWA(id){const c=cst(id),ym=bm||ymOf(date);window.open(`https://wa.me/${waNum(c.phone)}?text=${encodeURIComponent(billText(id))}`,'_blank');
@@ -805,7 +815,7 @@ function nextBill(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},x=custs().fin
 // Printing (or "Save as PDF") shows only this bill.
 function billHTML(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,rm=m.days.some(x=>x[3]),cs=rm?3:2;
  const R=(l,v)=>`<tr><td colspan="${cs}">${l}</td><td>${v}</td></tr>`;
- return `<div class="ph"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}</div></div>
+ return `<div class="ph"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}${B.web?`<p>${esc(B.web)}</p>`:''}</div></div>
  <div class="pb"><div><h2>${esc(c.name)}</h2>${c.addr?`<p>${esc(c.addr)}</p>`:''}</div><div style="text-align:right"><b>Bill: ${monName(ym)}</b>${c.phone?`<p>${esc(c.phone)}</p>`:''}</div></div>
  <table><tr><th>Date</th><th class="l">Item</th>${rm?'<th class="l">Remarks</th>':''}<th>Amount (Rs)</th></tr>${m.days.map(([d,pa,a,nt])=>`<tr><td>${pk(d)}</td><td class="l">${pa.length?esc(pa.join(', ')):a?'Milk / items (as per register)':''}</td>${rm?`<td class="l">${esc(nt||'')}</td>`:''}<td>${a?f(a):''}</td></tr>`).join('')}
  ${m.items.map(x=>R(`${esc(iname(x.i))}: ${fq(x.q)} × ${fq(x.r)}`,f(x.a))).join('')}${R('<b>Total for '+monName(ym)+'</b>','<b>'+f(m.amt)+'</b>')}${R('Previous balance',f(m.prev))}
@@ -909,14 +919,14 @@ function toRow(t,r){
  if(t==='dp'){const p=S.dl.py.find(x=>x.id===r);return p?['dpay',{id:p.id,day:p.day,cust_id:p.c,amount:n(p.a),mode:p.m,note:p.note||null,deleted:!!p.del,u:p.u}]:null}
  if(t==='dv'){const [d,c,i]=r.split('|'),e=((S.dl.d[d]||{})[c]||{})[i];if(!e)return null;
   return['deliveries',{day:d,cust_id:c,item_id:i,qty:num(e.q),rate:num(e.r),amount:num(e.a),note:e.n||null,deleted:!!e.del,u:e.u}]}
- if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,offers:B.offers},u:B.u}]}
+ if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,web:B.web,offers:B.offers},u:B.u}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
  if(t==='ba'){const a=S.bk.ac.find(x=>x.id===r);return a?['bank_accounts',{id:a.id,name:a.name,op:n(a.op),off:!!a.off,u:a.u}]:null}
  if(t==='bt'){const x=S.bk.tx.find(y=>y.id===r);return x?['bank_tx',{id:x.id,day:x.day,account_id:x.ac,type:x.type,party:x.party||null,amount:n(x.a),chq_no:x.no||null,chq_date:x.cd||null,status:x.st,note:x.note||null,deleted:!!x.del,u:x.u}]:null}
  if(t==='mp'){const p=S.mk.ps.find(x=>x.id===r);return p?['milk_parties',{id:p.id,name:p.name,kind:p.kind,off:!!p.off,u:p.u}]:null}
  if(t==='mr'){const R=S.mk.mr[r];return R?['milk_rates',{day:r,mor:num(R.m),eve:num(R.e),u:R.u}]:null}
- if(t==='md'){const [d,id]=r.split('|'),x=(S.mk.d[d]||{})[id];if(!x)return null;const o={day:d,party_id:id,u:x.u};MF.forEach(k=>o[k]=num(x[k]));return['milk_days',o]}
+ if(t==='md'){const [d,id]=r.split('|'),x=(S.mk.d[d]||{})[id];if(!x)return null;const o={day:d,party_id:id,k:num(x.k),u:x.u};MF.forEach(k=>o[k]=num(x[k]));return['milk_days',o]}
  if(t==='mpr'){const [id,d]=r.split('|'),x=(S.mk.pr[id]||{})[d];return x?['milk_party_rates',{party_id:id,from_day:d,br:num(x.b),cr:num(x.c),ladj:num(x.l),sadj:num(x.s),u:x.u}]:null}
  if(t==='mob'){const O=S.mk.ob[r];return O?['settings',{key:'mob:'+r,value:{v:n(O.v),d:O.d||null},u:O.u}]:null}
  if(t==='mx'){const X=S.mk.x[r];return X?['milk_day_info',{day:r,suzuki:num(X.sz),why:X.w||null,note:X.n||null,u:X.u}]:null}
@@ -947,7 +957,7 @@ function merge(tb,r){
   if(x&&(r.u<x.u||(r.u===x.u&&(!has(r.rate)||has(x.r)))))return false;
   L[r.item_id]={q:r.qty??'',r:r.rate??'',a:r.amount??'',n:r.note||'',del:r.deleted,u:r.u};return true}
  if(tb==='settings'){if(r.key==='cash0'&&r.u>S.c0u){S.cash0=n(r.value);S.c0u=r.u;return true}
-  if(r.key==='bill'){if(r.u>(S.dl.bp.u||0)){S.dl.bp=Object.assign({shop:'',owner:'',phone:'',addr:'',offers:[]},r.value||{},{u:r.u});return true}return false}
+  if(r.key==='bill'){if(r.u>(S.dl.bp.u||0)){S.dl.bp=Object.assign({shop:'',owner:'',phone:'',addr:'',web:'',offers:[]},r.value||{},{u:r.u});return true}return false}
   if(r.key.startsWith('mob:')){const id=r.key.slice(4),O=S.mk.ob[id],v=r.value||{};if(!O||r.u>(O.u||0)){S.mk.ob[id]={v:n(v.v),d:v.d||'',u:r.u};return true}}return false}
  if(tb==='milk_party_rates'){const P=S.mk.pr[r.party_id]=S.mk.pr[r.party_id]||{},x=P[r.from_day];if(x&&r.u<=(x.u||0))return false;
   P[r.from_day]={b:r.br??'',c:r.cr??'',l:r.ladj??'',s:r.sadj??'',u:r.u};return true}
@@ -958,7 +968,7 @@ function merge(tb,r){
   if(r.u>p.u){Object.assign(p,{name:r.name,kind:r.kind,off:r.off,u:r.u});return true}return false}
  if(tb==='milk_rates'){const R=S.mk.mr[r.day];if(!R||r.u>(R.u||0)){S.mk.mr[r.day]={m:r.mor??'',e:r.eve??'',u:r.u};return true}return false}
  if(tb==='milk_days'){const P=S.mk.d[r.day]=S.mk.d[r.day]||{},x=P[r.party_id];if(x&&r.u<=(x.u||0))return false;
-  const o={u:r.u};MF.forEach(k=>o[k]=r[k]??'');P[r.party_id]=o;return true}
+  const o={k:r.k??'',u:r.u};MF.forEach(k=>o[k]=r[k]??'');P[r.party_id]=o;return true}
  const D=dd(r.day);
  if(tb==='day_stock'){const s=D.st[r.item_id];if(!s||r.u>(s.u||0)){D.st[r.item_id]={pu:r.pu??'',us:r.us??'',cl:r.cl??'',rt:r.rt??'',u:r.u};return true}return false}
  if(tb==='entries'){const L=D[r.kind]||(D[r.kind]=[]),i=L.findIndex(x=>x.id===r.id),e={id:r.id,n:r.name,a:n(r.amount),del:r.deleted,u:r.u};

@@ -342,3 +342,6 @@ revoke all on public.milk_day_info from anon;
 -- Remarks for a customer's day are kept on the special item_id '_note'.
 alter table public.deliveries add column note text;
 -- Bill header (shop name, owner name, phone, address) and offers with images: settings key 'bill', owner only.
+
+-- Per-day mandi commission (sheet COMM), added to the mandi rate for that day's taken and sold milk.
+alter table public.milk_days add column k numeric;
