@@ -719,11 +719,12 @@ function offC(id,v){if(v&&!confirm('Ye customer list se hata dein? Us ka hisaab 
 function addPay(id){const a=n($('#pa').value);if(!a){alert('Raqam likhein.');return}
  const p={id:nid(),day:date,c:id,a,m:$('#pm').value,note:$('#pn').value.trim(),del:false,u:now()};S.dl.py.push(p);mark('dp:'+p.id);render()}
 function delPay(pid){if(!confirm('Ye wasooli hatani hai?'))return;const p=S.dl.py.find(x=>x.id===pid);p.del=true;p.u=now();mark('dp:'+pid);render()}
+// The bill that goes to the customer (WhatsApp and print) is in English; the app screens stay in Roman Urdu.
 function billText(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),L=['*Gujjar Dairies*','Bill: '+monName(ym),c.name];if(c.addr)L.push(c.addr);L.push('');
- if(m.days.length){L.push('Roz ka hisaab:');m.days.forEach(([d,p,a])=>L.push(`${pk(d).slice(0,5)}: ${p.length?p.join(', ')+' = ':''}Rs ${f(a)}`));L.push('')}
+ if(m.days.length){L.push('Daily details:');m.days.forEach(([d,p,a])=>L.push(`${pk(d).slice(0,5)}: ${p.length?p.join(', ')+' = ':''}Rs ${f(a)}`));L.push('')}
  m.items.forEach(x=>L.push(`${iname(x.i)}: ${fq(x.q)} × ${fq(x.r)} = Rs ${f(x.a)}`));
- L.push(`${monName(ym)} ka maal: Rs ${f(m.amt)}`);if(m.prev)L.push(`Pichla baqaya: Rs ${f(m.prev)}`);
- m.pays.forEach(p=>L.push(`Wasooli ${pk(p.day)}: Rs ${f(p.a)}`));L.push(`*Kul baqi: Rs ${f(m.due)}*`,'','Shukriya!');return L.join('\n')}
+ L.push(`Total for ${monName(ym)}: Rs ${f(m.amt)}`);if(m.prev)L.push(`Previous balance: Rs ${f(m.prev)}`);
+ m.pays.forEach(p=>L.push(`Payment received ${pk(p.day)}: Rs ${f(p.a)}`));L.push(`*Total due: Rs ${f(m.due)}*`,'','Thank you!');return L.join('\n')}
 // Pakistani number "0300 1234567" -> "923001234567" for wa.me. No number opens WhatsApp to pick the contact.
 const waNum=p=>{let d=String(p||'').replace(/\D/g,'');if(d.startsWith('00'))d=d.slice(2);if(d.startsWith('0'))d='92'+d.slice(1);else if(d.length===10&&d[0]==='3')d='92'+d;return d};
 function sendWA(id){const c=cst(id),ym=bm||ymOf(date);window.open(`https://wa.me/${waNum(c.phone)}?text=${encodeURIComponent(billText(id))}`,'_blank');
@@ -734,9 +735,9 @@ function nextBill(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},x=custs().fin
 function printBill(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym);let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.appendChild(p)}
  const R=(l,v)=>`<tr><td colspan="2">${l}</td><td>${v}</td></tr>`;
  p.innerHTML=`<h1>Gujjar Dairies</h1><p>Bill: ${monName(ym)}</p><h2>${esc(c.name)}</h2>${c.addr?`<p>${esc(c.addr)}</p>`:''}
- <table><tr><th>Tareekh</th><th>Maal</th><th>Rs</th></tr>${m.days.map(([d,pa,a])=>`<tr><td>${pk(d)}</td><td>${esc(pa.join(', '))}</td><td>${f(a)}</td></tr>`).join('')}
- ${m.items.map(x=>R(`${esc(iname(x.i))}: ${fq(x.q)} × ${fq(x.r)}`,f(x.a))).join('')}${R('<b>'+monName(ym)+' ka maal</b>','<b>'+f(m.amt)+'</b>')}${R('Pichla baqaya',f(m.prev))}
- ${m.pays.map(x=>R('Wasooli '+pk(x.day),'−'+f(x.a))).join('')}${R('<b>Kul baqi</b>','<b>Rs '+f(m.due)+'</b>')}</table><p>Shukriya!</p>`;
+ <table><tr><th>Date</th><th>Item</th><th>Amount (Rs)</th></tr>${m.days.map(([d,pa,a])=>`<tr><td>${pk(d)}</td><td>${esc(pa.join(', '))}</td><td>${f(a)}</td></tr>`).join('')}
+ ${m.items.map(x=>R(`${esc(iname(x.i))}: ${fq(x.q)} × ${fq(x.r)}`,f(x.a))).join('')}${R('<b>Total for '+monName(ym)+'</b>','<b>'+f(m.amt)+'</b>')}${R('Previous balance',f(m.prev))}
+ ${m.pays.map(x=>R('Payment received '+pk(x.day),'−'+f(x.a))).join('')}${R('<b>Total due</b>','<b>Rs '+f(m.due)+'</b>')}</table><p>Thank you!</p>`;
  window.print()}
 
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
