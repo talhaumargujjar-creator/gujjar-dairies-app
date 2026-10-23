@@ -376,3 +376,7 @@ revoke all on public.recipes, public.production from anon;
 alter table public.recipes add column if not exists y numeric;
 -- Hisaab (cashbook) entry names that count as payments for a milk party, e.g. Johar paying the owner from the shop's galla.
 alter table public.milk_parties add column hk jsonb not null default '[]';
+
+-- Cow milk sold to the mandi is kept apart from buffalo milk because its commission is different.
+alter table public.milk_days add column gm numeric, add column ge numeric, add column kc numeric;
+alter table public.milk_party_rates add column gadj numeric;
