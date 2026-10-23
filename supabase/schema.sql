@@ -380,3 +380,17 @@ alter table public.milk_parties add column hk jsonb not null default '[]';
 -- Cow milk sold to the mandi is kept apart from buffalo milk because its commission is different.
 alter table public.milk_days add column gm numeric, add column ge numeric, add column kc numeric;
 alter table public.milk_party_rates add column gadj numeric;
+
+-- Employees and their monthly salary. sal = {"YYYY-MM": salary from that month on}; start = first month of work.
+-- Payments are the Hisaab "Salary" (sl) entries written with the employee's name. Owner only.
+create table public.employees (
+  id text primary key, name text not null, phone text, start text, sal jsonb not null default '{}', off boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+create trigger employees_lww before insert or update on public.employees for each row execute function public.lww();
+create index employees_sa_idx on public.employees (sa);
+alter table public.employees enable row level security;
+create policy employees_owner_select on public.employees for select to authenticated using (public.is_owner());
+create policy employees_owner_insert on public.employees for insert to authenticated with check (public.is_owner());
+create policy employees_owner_update on public.employees for update to authenticated using (public.is_owner()) with check (public.is_owner());
+revoke all on public.employees from anon;

@@ -214,6 +214,7 @@ function migrate(o,t){const q={};
   if(D.cash===undefined)D.cash=null;D.cu=t;if(D.cash!=null)q['ca:'+d]=1}
  o.c0u=t;q['set:cash0']=1;
  if(o.cs)for(const [id,C] of Object.entries(o.cs))for(const [d,c] of Object.entries(C)){c.u=t;q['cs:'+id+'|'+d]=1}
+ if(o.em)o.em.forEach(e=>{e.u=t;q['em:'+e.id]=1});
  if(o.pr){for(const r of Object.values(o.pr.rc)){r.u=t;q['rp:'+r.id]=1}for(const [d,P] of Object.entries(o.pr.d))for(const [rid,x] of Object.entries(P)){x.u=t;q['pd:'+d+'|'+rid]=1}}
  if(o.mk){o.mk.ps.forEach(p=>{p.u=t;q['mp:'+p.id]=1});
   for(const [d,R] of Object.entries(o.mk.mr)){R.u=t;q['mr:'+d]=1}
@@ -261,7 +262,10 @@ function dlInit(s){if(!s.dl)s.dl={cs:[],d:{},py:[]};s.dl.sent=s.dl.sent||{};s.dl
 const PR_SEED=[['r_dahi','i2',[{t:'it',id:'i0',q:0}]],['r_lassi','i10',[{t:'it',id:'i2',q:0},{t:'it',id:'i0',q:0},{t:'raw',name:'CHEENI',unit:'kg',q:0,c:0},{t:'raw',name:'BARF',unit:'kg',q:0,c:0}]],
  ['r_bottle','i9',[{t:'it',id:'i0',q:0},{t:'raw',name:'CHEENI',unit:'kg',q:0,c:0},{t:'raw',name:'PISTA',unit:'kg',q:0,c:0},{t:'raw',name:'BADAM',unit:'kg',q:0,c:0}]]];
 function prInit(s){if(s.pr)return;s.pr={rc:{},d:{}};PR_SEED.forEach(([id,out,ins])=>{s.pr.rc[id]={id,out,ins,off:false,u:1};s.q['rp:'+id]=s.q['rp:'+id]||1})}
-let S=load(),MEMO={};mkInit(S);bkInit(S);dlInit(S);prInit(S);
+// Employees: em = [{id,name,phone,start:'YYYY-MM',sal:{'YYYY-MM':salary from that month},off,u}].
+// Salary paid = Hisaab "Salary" entries written with the employee's name.
+function emInit(s){if(!s.em)s.em=[]}
+let S=load(),MEMO={};mkInit(S);bkInit(S);dlInit(S);prInit(S);emInit(S);
 const save=()=>{MEMO={};try{localStorage.setItem(K,JSON.stringify(S))}catch(e){alert('Save nahi hua. Phone ki storage check karein aur Backup lein.')}};
 save();
 const mark=k=>{S.q[k]=now();save();kick()};
@@ -334,10 +338,10 @@ const ICON={stock:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"
  prd:'<path d="M5 9h14l-1.5 11a1 1 0 0 1-1 .9h-9a1 1 0 0 1-1-.9z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/><path d="M9 14h6"/>'};
 // [key, label, who can open (o owner, s staff, d delivery), shown in the bottom bar].
 // Items and Cost open from the Account page so the bar fits a phone.
-const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','osd',1],['prd','Production','os',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0]];
+const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','osd',1],['prd','Production','os',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0],['emp','Employees','o',0]];
 const tabs=()=>TABS.filter(t=>t[2].includes(role()[0]));
 const ROLE={owner:'Owner',staff:'Staff',delivery:'Delivery',pending:'Manzoori baqi'};
-function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button data-k="${k}" aria-current="${tab==k||((tab==='items'||tab==='cost')&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
+function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button data-k="${k}" aria-current="${tab==k||((tab==='items'||tab==='cost'||tab==='emp')&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
 function go(t){tab=t;render();scrollTo(0,0);if(t==='acct')loadMembers()}
 function statsV(){if(tab==='doodh')return mstatsV();if(tab==='bank')return bstatsV();if(tab==='dlv')return dstatsV();const t=tot(date);return `<div class="stat"><span>Sale</span><b>${f(t.sale+t.dsale)}</b></div><div class="stat"><span>Munafa</span><b class="y">${f(t.pl)}</b></div><div class="stat"><span>Galla farq</span><b>${t.diff==null?'—':f(t.diff)}</b></div>`}
 function hdr(){return `<header class="hdr"><div class="top"><div class="brand"><img src="/img/logo.png" alt="Gujjar Dairies"><small><b>${ROLE[role()]}</b><br>Hisaab</small></div><button class="pill" id="sy" onclick="go('acct')"></button></div>
@@ -351,7 +355,7 @@ function render(){const a=$('#app');
  if(!S.me||!S.me.email){a.innerHTML=loginV();return}
  if(S.me.role==='pending'){a.innerHTML=pendingV();return}
  if(!tabs().some(t=>t[0]===tab))tab=tabs()[0][0];
- a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank,cost,report,items,acct,kc,prd})[tab]()}</main>`+navV();status()}
+ a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank,cost,report,items,acct,kc,prd,emp})[tab]()}</main>`+navV();status()}
 
 // Stock
 const isDone=it=>has((day(date).st[it.id]||{}).cl);
@@ -401,15 +405,17 @@ const custNames=()=>[...new Set([...SECS.ud[1],...SECS.rc[1],...Object.values(S.
 const DR={};
 const baseN=s=>String(s).trim().replace(/\s*\([\d+.\s]*\)$/,'');
 function prevRows(k,d){for(const x of before(d)){const L=live(norm(S.days[x]),k);if(L.length)return L}return []}
-function secNames(k){if(k==='ud'||k==='rc')return custNames();const s=new Set(SECS[k][1]);for(const D of Object.values(S.days))(D[k]||[]).forEach(e=>{if(!e.del)s.add(baseN(e.n))});return [...s].sort()}
+const emNames=()=>S.em.filter(e=>!e.off).map(e=>e.name);
+function secNames(k){if(k==='ud'||k==='rc')return custNames();const s=new Set([...SECS[k][1],...(k==='sl'?emNames():[])]);for(const D of Object.values(S.days))(D[k]||[]).forEach(e=>{if(!e.del)s.add(baseN(e.n))});return [...s].sort()}
 function drafts(k){const key=date+'|'+k;
  if(!DR[key]){const have=new Set(live(day(date),k).map(e=>nkey(baseN(e.n))));DR[key]=prevRows(k,date).filter(e=>!have.has(nkey(baseN(e.n)))).map(e=>({n:baseN(e.n),a:'',ph:n(e.a)}))}
  const R=DR[key];if(!R.length||R[R.length-1].n||R[R.length-1].a)R.push({n:'',a:''});return R}
 const drFilled=k=>(DR[date+'|'+k]||[]).filter(r=>r.n.trim()&&String(r.a).trim()).length;
 function drRow(k,r,i){return `<div class="addr" style="grid-template-columns:1fr 110px;margin-top:6px"><input type="text" class="dn" id="dn${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.n)}" placeholder="Naam" list="dl${k}" autocomplete="off" enterkeyhint="next" aria-label="Naam" oninput="drSet('${k}',${i},'n',this.value)"><input type="text" inputmode="decimal" class="da" id="da${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.a)}" placeholder="${r.ph?'Kal '+f(r.ph):'Raqam'}" enterkeyhint="next" aria-label="Raqam" oninput="drSet('${k}',${i},'a',this.value)"></div>`}
-function sec(k){const D=day(date),[title,names,,hint]=SECS[k],L=live(D,k),tt=L.reduce((a,b)=>a+n(b.a),0),R=drafts(k),sug=R.some(r=>r.ph),fl=drFilled(k);
+function sec(k){const D=day(date),[title,names0,,hint]=SECS[k],L=live(D,k),tt=L.reduce((a,b)=>a+n(b.a),0),R=drafts(k),sug=R.some(r=>r.ph),fl=drFilled(k);
+ const names=k==='sl'&&emNames().length?emNames():names0;
  return `<div class="card"><details ${(OPEN[k]??(L.length>0||sug))?'open':''} ontoggle="OPEN['${k}']=this.open"><summary><span>${title}${L.length?` <span class="muted" style="font-weight:400">(${L.length})</span>`:''}${fl?` <span class="neg" style="font-weight:400">· ${fl} save baqi</span>`:''}</span><b style="margin-left:auto;padding-right:8px">${f(tt)}</b></summary>
- <p class="hint" style="margin-top:4px">${hint}</p>
+ <p class="hint" style="margin-top:4px">${hint}</p>${k==='sl'&&own()?`<button class="link" style="padding:4px 0" onclick="go('emp')">Employees ki salary aur baqaya dekhein ›</button>`:''}
  ${L.length?`<div style="margin-top:8px">${L.map(r=>`<div class="row"><span>${esc(r.n)}</span><span>${f(n(r.a))}<button class="x" style="color:var(--bink)" aria-label="${esc(r.n)} badlein" onclick="edE('${k}','${r.id}')">✎</button><button class="x" aria-label="${esc(r.n)} hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')}</div>`:''}
  <datalist id="dl${k}">${secNames(k).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
  <div style="margin-top:6px">${R.map((r,i)=>drRow(k,r,i)).join('')}</div>
@@ -844,6 +850,48 @@ function prd(){const L=rcList(),P=S.pr.d[date]||{},raw={};
  if(own())h+=`<button class="btn ghost full" onclick="rcNew()">+ Nayi recipe</button>`;
  return h}
 
+// ---- Employees (owner only): monthly salary, what was paid through Hisaab "Salary", and what is still due.
+let emM=null,emOpen=null;
+const addMon=(m,k)=>{let [y,mo]=m.split('-').map(Number);mo+=k;while(mo>12){mo-=12;y++}while(mo<1){mo+=12;y--}return y+'-'+String(mo).padStart(2,'0')};
+const monLbl=m=>MONTHS[+m.slice(5)-1]+' '+m.slice(0,4);
+function salAt(e,m){const k=Object.keys(e.sal||{}).filter(x=>x<=m).sort().pop();return k?n(e.sal[k]):0}
+function emPaid(e,m){const K=nkey(e.name),L=[];for(const d of keys()){if(d.slice(0,7)!==m)continue;live(day(d),'sl').forEach(x=>{if(nkey(baseN(x.n))===K)L.push({d,a:n(x.a)})})}return L}
+// Baqaya carried into month m = every earlier month's salary minus what was paid, from the starting month.
+function emState(e,m){const st=e.start||m;if(m<st)return null;let carry=0;for(let x=st;x<m;x=addMon(x,1))carry+=salAt(e,x)-emPaid(e,x).reduce((a,p)=>a+p.a,0);
+ const P=emPaid(e,m),paid=P.reduce((a,p)=>a+p.a,0),sal=salAt(e,m);return {sal,carry,P,paid,due:carry+sal-paid}}
+function emp(){emM=emM||date.slice(0,7);const E=S.em.filter(e=>!e.off),st=E.map(e=>[e,emState(e,emM)]).filter(x=>x[1]);
+ const T=st.reduce((a,[,s])=>{a.sal+=s.sal;a.paid+=s.paid;a.due+=s.due;return a},{sal:0,paid:0,due:0});
+ const K=new Set(S.em.map(e=>nkey(e.name))),unk={};keys().filter(d=>d.slice(0,7)===emM).forEach(d=>live(day(d),'sl').forEach(x=>{const b=nkey(baseN(x.n));if(!K.has(b))unk[b]=(unk[b]||0)+n(x.a)}));
+ let h=`<button class="link" onclick="go('acct')">← Account par wapas</button>
+ <div class="card"><div class="dbar" style="background:var(--soft);margin:0"><button style="color:var(--ink)" onclick="emM=addMon(emM,-1);render()" aria-label="Pichla mahina">‹</button><div class="dmid"><b>${monLbl(emM)}</b><small style="color:var(--mut)">Salary ka mahina</small></div><button style="color:var(--ink)" onclick="emM=addMon(emM,1);render()" aria-label="Agla mahina">›</button></div>
+ ${st.length?`<div class="sum" style="margin-top:10px"><span>Kul salary</span><b>${f(T.sal)}</b></div><div class="sum"><span>Is mahine diya</span><b>${f(T.paid)}</b></div><div class="sum tot"><span>Mahine ke aakhir par dena hai</span><b>${f(T.due)}</b></div>`:''}</div>`;
+ h+=st.map(([e,s])=>`<div class="card"><div class="ih"><b>${esc(e.name)}</b><span class="tag">Salary ${f(s.sal)}</span></div>
+  ${s.carry?`<div class="sum"><span>Pichle mahinon ka ${s.carry>0?'baqaya':'advance'}</span><b class="${s.carry<0?'pos':''}">${f(s.carry)}</b></div>`:''}
+  <div class="sum"><span>+ Is mahine ki salary</span><b>${f(s.sal)}</b></div>
+  ${s.P.map(p=>`<div class="sum"><span class="muted">− Diya ${pk(p.d)}</span><b>${f(p.a)}</b></div>`).join('')||'<p class="hint">Is mahine abhi kuch nahi diya.</p>'}
+  <div class="sum tot"><span>${s.due>=0?'Dena hai':'Advance diya hua'}</span><b class="${s.due<0?'pos':s.due>0?'neg':''}">${f(Math.abs(s.due))}</b></div>
+  <details ${emOpen===e.id?'open':''} ontoggle="if(this.open)emOpen='${e.id}'"><summary>Detail badlein</summary><div style="margin-top:10px">
+  <div class="fld"><label>Naam (Hisaab mein isi naam se salary likhein)</label><input type="text" value="${esc(e.name)}" onchange="emUp('${e.id}','name',this.value)"></div>
+  <div class="fld"><label>Mahine ki salary (${monLbl(emM)} se)</label><input type="number" inputmode="decimal" value="${s.sal||''}" onchange="emSal('${e.id}',this.value)"></div>
+  <div class="fld"><label>Kis mahine se kaam par</label><input type="month" value="${e.start||''}" onchange="emUp('${e.id}','start',this.value)"></div>
+  <div class="fld"><label>Phone</label><input type="text" inputmode="tel" value="${esc(e.phone||'')}" onchange="emUp('${e.id}','phone',this.value)"></div>
+  <button class="btn danger" onclick="emOff('${e.id}')">Employee hatayein</button></div></details></div>`).join('');
+ const U=Object.entries(unk);
+ if(U.length)h+=`<div class="card"><h3>Salary mein ye naam kisi employee ke nahi</h3>${U.map(([nm,a])=>`<div class="row"><span>${esc(nm)}<br><span class="hint">${monLbl(emM)} mein ${f(a)}</span></span><button class="btn ghost" onclick="emAdd(this.dataset.n)" data-n="${esc(nm)}">Employee banayein</button></div>`).join('')}</div>`;
+ h+=`<div class="card"><h3>Naya employee</h3><div class="fld" style="margin-top:10px"><label for="enm">Naam</label><input type="text" id="enm"></div>
+ <div class="g3" style="grid-template-columns:1fr 1fr"><div class="fld"><label for="esl">Mahine ki salary</label><input type="number" inputmode="decimal" id="esl"></div><div class="fld"><label for="est">Kis mahine se</label><input type="month" id="est" value="${emM}"></div></div>
+ <button class="btn full" onclick="emAdd()">+ Employee add karein</button>
+ <p class="hint" style="margin-top:8px">Roz Hisaab ke "Salary" hisse mein employee ka naam likh kar jo raqam denge, wo yahan us ki salary mein se kat jayegi.</p></div>`;
+ const off=S.em.filter(e=>e.off);if(off.length)h+=`<div class="card"><h3>Hataye gaye</h3>${off.map(e=>`<div class="row"><span>${esc(e.name)}</span><button class="btn ghost" onclick="emUp('${e.id}','off',false)">Wapas</button></div>`).join('')}</div>`;
+ return h}
+function emSave(e){e.u=now();mark('em:'+e.id);const y=scrollY;render();scrollTo(0,y)}
+function emUp(id,k,v){const e=S.em.find(x=>x.id===id);if(k==='name'){v=nkey(v);if(!v)return}e[k]=v;emOpen=id;emSave(e)}
+function emSal(id,v){const e=S.em.find(x=>x.id===id);e.sal=e.sal||{};e.sal[emM]=n(v);emOpen=id;emSave(e)}
+function emOff(id){if(!confirm('Ye employee list se hata dein? Purana hisaab waisa hi rahega.'))return;const e=S.em.find(x=>x.id===id);e.off=true;emSave(e)}
+function emAdd(nm0){const nm=nkey(nm0||$('#enm').value);if(!nm){alert('Naam likhein.');return}if(S.em.some(e=>nkey(e.name)===nm)){alert('Ye employee pehle se hai.');return}
+ const st=nm0?emM:($('#est').value||emM),sl=nm0?n(prompt(`${nm} ki mahine ki salary?`,'')):n($('#esl').value);
+ const e={id:'em'+Date.now().toString(36),name:nm,phone:'',start:st,sal:{[st]:sl},off:false,u:now()};S.em.push(e);emSave(e)}
+
 // Report
 // Delivery: what the delivery man took to each customer today (any role), and for the owner the monthly bills,
 // wasooli and WhatsApp/PDF bill. Replaces the Milk Delivery Bill sheet.
@@ -1137,6 +1185,7 @@ const OWNER_TABLES={prices:1,settings:1,milk_party_rates:1,bank_accounts:1,bank_
 Object.assign(PK,{customers:'id',deliveries:'day,cust_id,item_id',dpay:'id'});Object.assign(OWNER_ONLY,{dc:1,dp:1,bp:1});OWNER_TABLES.dpay=1;
 // Production: recipes are written by the owner only; owner and staff write what was made.
 Object.assign(PK,{recipes:'id',production:'day,recipe_id'});OWNER_ONLY.rp=1;
+Object.assign(PK,{employees:'id'});OWNER_ONLY.em=1;OWNER_TABLES.employees=1;
 const DLV_TABLES={items:1,customers:1,deliveries:1};
 const canPush=t=>role()==='delivery'?t==='dv':own()||!OWNER_ONLY[t];
 const canPull=tb=>role()==='delivery'?!!DLV_TABLES[tb]:own()||!OWNER_TABLES[tb];
@@ -1160,6 +1209,7 @@ function toRow(t,r){
  if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,web:B.web,offers:B.offers},u:B.u}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
+ if(t==='em'){const e=S.em.find(x=>x.id===r);return e?['employees',{id:e.id,name:e.name,phone:e.phone||null,start:e.start||null,sal:e.sal||{},off:!!e.off,u:e.u}]:null}
  if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,y:x.y??null,off:!!x.off,u:x.u}]:null}
  if(t==='pd'){const [d,rid]=r.split('|'),x=(S.pr.d[d]||{})[rid];return x?['production',{day:d,recipe_id:rid,qty:num(x.q),u:x.u}]:null}
  if(t==='ba'){const a=S.bk.ac.find(x=>x.id===r);return a?['bank_accounts',{id:a.id,name:a.name,op:n(a.op),off:!!a.off,u:a.u}]:null}
@@ -1182,6 +1232,8 @@ async function push(){const snap={...S.q},R=Object.fromEntries(Object.keys(PK).m
 function merge(tb,r){
  if(tb==='items'){const it=itm(r.id),o={name:r.name,op:n(r.op),off:r.off,ord:r.ord??undefined,u:r.u};if(!it){S.items.push(Object.assign({id:r.id,rate:0,cost:0,pru:0},o));return true}
   if(r.u>it.u){Object.assign(it,o);return true}return false}
+ if(tb==='employees'){const i=S.em.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,phone:r.phone||'',start:r.start||'',sal:r.sal||{},off:r.off,u:r.u};
+  if(i<0){S.em.push(o);return true}if(r.u>S.em[i].u){S.em[i]=o;return true}return false}
  if(tb==='recipes'){const x=S.pr.rc[r.id];if(x&&r.u<=(x.u||0))return false;S.pr.rc[r.id]={id:r.id,out:r.item_id,ins:r.ins||[],y:r.y??undefined,off:r.off,u:r.u};return true}
  if(tb==='production'){const P=S.pr.d[r.day]=S.pr.d[r.day]||{},x=P[r.recipe_id];if(x&&r.u<=(x.u||0))return false;P[r.recipe_id]={q:r.qty??'',u:r.u};return true}
  if(tb==='costs'){const C=S.cs[r.item_id]=S.cs[r.item_id]||{},c=C[r.day];if(c&&r.u<=(c.u||0))return false;C[r.day]={c:r.cost??'',u:r.u};return true}
@@ -1253,6 +1305,7 @@ function acct(){const c=Object.keys(S.q).length,r=role();
  <button class="btn ghost full" onclick="sync().then(render)">Abhi sync karein</button></div>`;
  if(own())h+=`<button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('items')"><span>Items, rate aur cost</span><span class="muted">›</span></button>
  <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('cost')"><span>Cost (tareekh ke hisaab se)</span><span class="muted">›</span></button>
+ <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('emp')"><span>Employees aur salary</span><span class="muted">›</span></button>
  <div class="card"><details><summary>Khata tasveer se parhne ki setup (ek baar)</summary><ol style="margin:10px 0 0;padding-left:20px;line-height:1.6">
  <li>aistudio.google.com par apne Google account se login karein.</li><li>"Get API key" → "Create API key" dabayein aur key copy karein. Ye free hai.</li>
  <li>vercel.com → gujjar-dairies-app → Settings → Environment Variables mein naya variable: naam <b>GEMINI_API_KEY</b>, value wahi key. Save karein.</li>
@@ -1269,7 +1322,7 @@ function acct(){const c=Object.keys(S.q).length,r=role();
  return h+`<button class="btn danger full" onclick="logout()">Logout</button>`}
 function exp(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='hisaab-backup-'+tz()+'.json';a.click()}
 function imp(file){if(!file)return;file.text().then(t=>{try{const d=JSON.parse(t);if(!d.items||!d.days)throw 0;
- if(confirm('Is phone ka data is file se badalna hai?')){const me=S.me,cur=S.cur,seeded=S.seeded;S=migrate(d,now());Object.assign(S,{me,cur,seeded});mkInit(S);bkInit(S);dlInit(S);prInit(S);save();render();kick()}}catch(e){alert('Ye sahi backup file nahi hai.')}})}
+ if(confirm('Is phone ka data is file se badalna hai?')){const me=S.me,cur=S.cur,seeded=S.seeded;S=migrate(d,now());Object.assign(S,{me,cur,seeded});mkInit(S);bkInit(S);dlInit(S);prInit(S);emInit(S);save();render();kick()}}catch(e){alert('Ye sahi backup file nahi hai.')}})}
 
 window.addEventListener('online',()=>{status();sync()});window.addEventListener('offline',status);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync()});
