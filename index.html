@@ -193,7 +193,8 @@ function migrate(o,t){const q={};
   for(const [d,P] of Object.entries(o.mk.d))for(const [id,r] of Object.entries(P)){r.u=t;q['md:'+d+'|'+id]=1}
   for(const [id,R] of Object.entries(o.mk.pr||{}))for(const [d,x] of Object.entries(R)){x.u=t;q['mpr:'+id+'|'+d]=1}
   for(const [id,x] of Object.entries(o.mk.ob||{})){x.u=t;q['mob:'+id]=1}
-  for(const [d,L] of Object.entries(o.mk.pay||{}))L.forEach(e=>{e.u=t;q['mpy:'+d+'|'+e.id]=1})}
+  for(const [d,L] of Object.entries(o.mk.pay||{}))L.forEach(e=>{e.u=t;q['mpy:'+d+'|'+e.id]=1})
+  for(const [d,x] of Object.entries(o.mk.x||{})){x.u=t;q['mx:'+d]=1}}
  if(o.bk){o.bk.ac.forEach(a=>{a.u=t;q['ba:'+a.id]=1});o.bk.tx.forEach(x=>{x.u=t;q['bt:'+x.id]=1})}
  if(o.dl){o.dl.cs.forEach(c=>{c.u=t;q['dc:'+c.id]=1});o.dl.py.forEach(p=>{p.u=t;q['dp:'+p.id]=1});
   for(const [d,C] of Object.entries(o.dl.d))for(const [c,L] of Object.entries(C))for(const [i,e] of Object.entries(L)){e.u=t;q['dv:'+d+'|'+c+'|'+i]=1}}
@@ -211,10 +212,11 @@ function load(){let s=null,o=null;
 //   or sold to (s) the mandi is counted (commission). A rate applies from its day until the next change.
 // ob[partyId] = {v,d}: baqaya at the end of day d; days up to d are not counted again.
 // pay[day] = [{id,p,a,n,del}]: money paid to a 'sup' party, or received from a 'buy' party.
+// x[day] = {sz,w,n}: Suzuki (transport) kharcha, and why aaya and gaya milk differ (w reason key, n note).
 const MK_SEED=[['p_wasif','Wasif Chacho','sup'],['p_bikri','Bikri Bara','sup'],['p_johar','Johar','buy']];
 const MF=['bm','be','cm','ce','lm','le','sm','se'];
 function mkInit(s){if(!s.mk){s.mk={ps:MK_SEED.map(([id,name,kind])=>({id,name,kind,off:false,u:1})),mr:{},d:{}};MK_SEED.forEach(r=>s.q['mp:'+r[0]]=s.q['mp:'+r[0]]||1)}
- s.mk.pr=s.mk.pr||{};s.mk.ob=s.mk.ob||{};s.mk.pay=s.mk.pay||{}}
+ s.mk.pr=s.mk.pr||{};s.mk.ob=s.mk.ob||{};s.mk.pay=s.mk.pay||{};s.mk.x=s.mk.x||{}}
 // Bank book: bk = {ac:[{id,name,op,off,u}], tx:[{id,day,ac,type,party,a,no,cd,st,note,del,u}]}; st = pending|clear|bounce.
 function bkInit(s){if(!s.bk)s.bk={ac:[],tx:[]};if(!s.cs)s.cs={}}
 // Costs by date: cs = {itemId:{day:{c,u}}}. A cost holds from its day until the next change.
@@ -476,7 +478,40 @@ function msumIn(){const a=mside(date,'sup'),g=mside(date,'buy'),df=r2(a-g);
  const L=k=>S.mk.ps.filter(p=>p.kind===k&&(!p.off||mtot(date,p.id))).map(p=>`<div class="sum"><span>${esc(p.name)}</span><b>${fmk(mtot(date,p.id))}</b></div>`).join('');
  return `<h3>Aaj ka milan</h3><p class="hint" style="margin-top:6px">Jahan se doodh aaya</p>${L('sup')}<div class="sum tot"><span>Kul aaya</span><b>${fmk(a)}</b></div>
  <p class="hint" style="margin-top:12px">Jahan doodh gaya</p>${L('buy')}<div class="sum tot"><span>Kul gaya</span><b>${fmk(g)}</b></div>
- ${!a&&!g?'':!df?'<div class="badge ok">✓ Doodh barabar hai</div>':df>0?`<div class="badge more">${fmk(df)} doodh kam gaya</div>`:`<div class="badge bad">${fmk(-df)} doodh zyada gaya</div>`}`}
+ ${!a&&!g?'':!df?'<div class="badge ok">✓ Doodh barabar hai</div>':df>0?`<div class="badge more">${fmk(df)} doodh kam gaya</div>`:`<div class="badge bad">${fmk(-df)} doodh zyada gaya</div>`}
+ ${(a||g)&&df?whyV():''}`}
+const WHY=[['kharab','Doodh kharab hua'],['ghar','Ghar gaya'],['ghalti','Entry ki ghalti'],['aur','Kuch aur']];
+const mx=d=>S.mk.x[d]||{};
+// Asks why the milk did not match, so the farq is explained instead of silently carried.
+function whyV(){const X=mx(date);
+ return `<p style="margin:12px 0 0;font-weight:600">Farq ki wajah?</p><div class="chips" style="flex-wrap:wrap;margin:8px 0">${WHY.map(([k,l])=>`<button class="chip" aria-pressed="${X.w===k}" onclick="setX('w','${X.w===k?'':k}')">${l}</button>`).join('')}</div>
+ <input type="text" id="mxn" placeholder="Note (marzi se)" aria-label="Farq ka note" value="${esc(X.n||'')}" onchange="setX('n',this.value.trim())">`}
+function setX(k,v){const X=S.mk.x[date]=S.mk.x[date]||{sz:'',w:'',n:'',u:0};X[k]=k==='sz'?(v===''?'':n(v)):v;X.u=now();mark('mx:'+date);
+ if(k==='w'){const s=$('#msum');if(s)s.innerHTML=msumIn()}}
+// Last Suzuki kharcha written before day d, offered as a one-tap fill.
+function lastSz(d){for(const k of Object.keys(S.mk.x).filter(x=>x<d).sort().reverse())if(has(S.mk.x[k].sz))return n(S.mk.x[k].sz);return null}
+function szV(){const X=mx(date),L=lastSz(date);
+ return `<div class="fld" style="margin:14px 0 0"><label for="msz">Suzuki kharcha (aaj)</label><input type="number" inputmode="decimal" id="msz" value="${has(X.sz)?X.sz:''}" onchange="setX('sz',this.value)"></div>
+ ${L!=null&&!has(X.sz)?`<button class="link" onclick="setX('sz','${L}');render()">Pichle din jitna likhein (${f(L)})</button>`:''}`}
+const mhas=d=>Object.values(S.mk.d[d]||{}).some(r=>MF.some(k=>has(r[k])));
+// Days in the last week with no milk written at all (only after the first day that has any).
+function mmissV(){const first=Object.keys(S.mk.d).filter(mhas).sort()[0];if(!first)return '';
+ const L=[];for(let i=7;i>=1;i--){const d=addDay(date,-i);if(d>=first&&!mhas(d))L.push(d)}
+ return L.length?`<div class="msg err" style="margin:0 0 12px">In dinon ka doodh nahi likha:<div class="chips" style="flex-wrap:wrap;margin:8px 0 0">${L.map(d=>`<button class="chip" onclick="date='${d}';render();scrollTo(0,0)">${pk(d).slice(0,5)} ${dayName(d)}</button>`).join('')}</div></div>`:''}
+// Daily munafa like the sheet's PNL: what buyers owe for the day - what suppliers are owed - Suzuki kharcha.
+function mpnl(d){const s=k=>S.mk.ps.filter(p=>p.kind===k).reduce((a,p)=>a+mamt(d,p.id).t,0),k=s('sup'),b=s('buy'),sz=n(mx(d).sz);
+ return {k,b,m:b-k,sz,dm:b-k-sz,noRate:S.mk.ps.some(p=>mamt(d,p.id).noRate||mamt(d,p.id).noMandi)}}
+let mv='e';
+function pnlV(){const t=mpnl(date),R=(l,v,c)=>`<div class="sum${c?' '+c:''}"><span>${l}</span><b class="${v<0?'neg':''}">${f(v)}</b></div>`;
+ const m0=date.slice(0,8)+'01',days=[...new Set([...Object.keys(S.mk.d),...Object.keys(S.mk.x)])].filter(d=>d>=m0&&d<=date&&(mhas(d)||n(mx(d).sz))).sort();
+ const T=days.reduce((a,d)=>{const x=mpnl(d);a.k+=x.k;a.b+=x.b;a.sz+=x.sz;a.dm+=x.dm;return a},{k:0,b:0,sz:0,dm:0});
+ const tile=(l,v)=>`<div class="tile"><span>${l}</span><b class="${v<0?'neg':''}">${f(v)}</b></div>`;
+ return `<div class="card"><h3>${dayName(date)}, ${pk(date)}</h3>
+ ${R('Bikri (jahan doodh gaya)',t.b)}${R('− Kharidari (jahan se aaya)',t.k)}${R('Munafa',t.m,'tot')}${R('− Suzuki kharcha',t.sz)}${R('Din ka munafa',t.dm,'tot')}
+ ${t.noRate?'<p class="msg err">Kisi party ka rate ya mandi rate nahi likha, is liye munafa poora nahi. Entry mein check karein.</p>':''}</div>
+ <h2>${pk(date).slice(3)} ka mahina (aaj tak)</h2><div class="tiles">${tile('Kul bikri',T.b)}${tile('Kul kharidari',T.k)}${tile('Suzuki kharcha',T.sz)}${tile('Mahine ka munafa',T.dm)}</div>
+ <div class="card" style="margin-top:12px">${days.length?`<table><tr><th>Tareekh</th><th>Bikri</th><th>Kharid</th><th>Munafa</th></tr>${days.slice().reverse().map(d=>{const x=mpnl(d);return `<tr onclick="date='${d}';render();scrollTo(0,0)"><td>${pk(d).slice(0,5)}</td><td>${f(x.b)}</td><td>${f(x.k)}</td><td class="${x.dm<0?'neg':'pos'}">${f(x.dm)}</td></tr>`}).join('')}</table>`:'<p class="hint">Is mahine abhi koi din nahi.</p>'}</div>
+ <p class="hint">Munafa = Johar jaisi lene wali parties ki raqam − Wasif Chacho aur Bikri Bara jaisi dene wali parties ki raqam − Suzuki kharcha. Sheet ki PNL jaisa.</p>`}
 function partiesV(){return `<div class="card"><details ${pOpen?'open':''} ontoggle="pOpen=this.open"><summary>Parties</summary>
  ${S.mk.ps.map(p=>`<div class="row"><span style="flex:1;min-width:0"><input type="text" class="nm" value="${esc(p.name)}" onchange="upP('${p.id}',this.value)" aria-label="Party ka naam"><span class="hint" style="padding-left:4px">${p.kind==='sup'?'Doodh dene wali':'Doodh lene wali'}${p.off?' · hatai hui':''}</span></span>${p.off?`<button class="btn ghost" onclick="offP('${p.id}',false)">Wapas</button>`:`<button class="x" aria-label="${esc(p.name)} hatayen" onclick="offP('${p.id}',true)">✕</button>`}</div>`).join('')}
  <input type="text" id="npn" placeholder="Nayi party ka naam" aria-label="Nayi party ka naam" style="margin-top:12px">
@@ -486,8 +521,10 @@ function offP(id,v){if(v&&!confirm('Ye party list se hata dein? Purana hisaab wa
 function addP(k){const nm=$('#npn').value.trim();if(!nm){alert('Party ka naam likhein.');return}
  const id='p'+Date.now().toString(36);S.mk.ps.push({id,name:nm,kind:k,off:false,u:now()});mark('mp:'+id);mp=id;render()}
 function doodh(){const P=mps(),R=S.mk.mr[date]||{};if(!P.some(p=>p.id===mp))mp=P.length?P[0].id:null;const p=S.mk.ps.find(x=>x.id===mp);
+ const sw=own()?`<div class="chips">${[['e','Entry'],['p','Munafa']].map(([k,l])=>`<button class="chip" aria-pressed="${mv===k}" onclick="mv='${k}';render()">${l}</button>`).join('')}</div>`:'';
+ if(own()&&mv==='p')return sw+pnlV();
  const ri=(k,l)=>`<div class="f"><label for="mr${k}">${l}</label><input type="number" inputmode="decimal" id="mr${k}" value="${R[k]??''}" onchange="setMR('${k}',this.value)"></div>`;
- return `<div class="card"><h3>Mandi rate (1 mann ka)</h3><div class="g3" style="grid-template-columns:1fr 1fr;margin-top:10px">${ri('m','Subah')}${ri('e','Shaam')}</div></div>
+ return `${sw}${mmissV()}<div class="card"><h3>Mandi rate (1 mann ka)</h3><div class="g3" style="grid-template-columns:1fr 1fr;margin-top:10px">${ri('m','Subah')}${ri('e','Shaam')}</div>${szV()}</div>
  <div class="chips" style="flex-wrap:wrap">${P.map(x=>`<button class="chip" aria-pressed="${x.id===mp}" onclick="mp='${x.id}';render()">${esc(x.name)}</button>`).join('')}</div>
  ${p?mcard(p)+(own()?`<div class="card" id="mraq">${mraqIn(p)}</div>`:'')+mpayV(p)+(own()?`<div class="card" id="mbal">${mbalIn(p)}</div>`+mrateV(p):''):'<p class="hint" style="text-align:center;padding:20px">Koi party nahi. Neeche Parties mein add karein.</p>'}
  <div class="card" id="msum">${msumIn()}</div>${own()?`<div class="card" id="mball">${mallIn()}</div>`+partiesV():''}`}
@@ -808,7 +845,7 @@ async function logout(){if(!confirm('Logout karna hai? Is phone ka hisaab phone 
 
 // ---- Online sync (Supabase). Everything is saved on the phone first, then sent when internet is available.
 let sb=null,who=null,busy=false,syncErr='',lastSync=null,kickT=null,MEM=null,syncP=null;
-const PK={items:'id',prices:'item_id',settings:'key',day_stock:'day,item_id',entries:'id',cash:'day',milk_parties:'id',milk_rates:'day',milk_days:'day,party_id',milk_party_rates:'party_id,from_day',milk_pay:'id',bank_accounts:'id',bank_tx:'id',costs:'item_id,day'};
+const PK={items:'id',prices:'item_id',settings:'key',day_stock:'day,item_id',entries:'id',cash:'day',milk_parties:'id',milk_rates:'day',milk_days:'day,party_id',milk_party_rates:'party_id,from_day',milk_pay:'id',milk_day_info:'day',bank_accounts:'id',bank_tx:'id',costs:'item_id,day'};
 const OWNER_ONLY={it:1,pr:1,set:1,mp:1,mpr:1,mob:1,ba:1,bt:1,cs:1};
 const OWNER_TABLES={prices:1,settings:1,milk_party_rates:1,bank_accounts:1,bank_tx:1,costs:1};
 // Home delivery tables. The delivery man only reads item names and customers and writes deliveries.
@@ -842,6 +879,7 @@ function toRow(t,r){
  if(t==='md'){const [d,id]=r.split('|'),x=(S.mk.d[d]||{})[id];if(!x)return null;const o={day:d,party_id:id,u:x.u};MF.forEach(k=>o[k]=num(x[k]));return['milk_days',o]}
  if(t==='mpr'){const [id,d]=r.split('|'),x=(S.mk.pr[id]||{})[d];return x?['milk_party_rates',{party_id:id,from_day:d,br:num(x.b),cr:num(x.c),ladj:num(x.l),sadj:num(x.s),u:x.u}]:null}
  if(t==='mob'){const O=S.mk.ob[r];return O?['settings',{key:'mob:'+r,value:{v:n(O.v),d:O.d||null},u:O.u}]:null}
+ if(t==='mx'){const X=S.mk.x[r];return X?['milk_day_info',{day:r,suzuki:num(X.sz),why:X.w||null,note:X.n||null,u:X.u}]:null}
  if(t==='mpy'){const [d,id]=r.split('|'),e=(S.mk.pay[d]||[]).find(x=>x.id===id);return e?['milk_pay',{id:e.id,day:d,party_id:e.p,amount:n(e.a),note:e.n||'',deleted:!!e.del,u:e.u}]:null}
  const [d,a,b]=r.split('|'),D=S.days[d];if(!D)return null;
  if(t==='st'){const s=D.st[a];return s?['day_stock',{day:d,item_id:a,pu:num(s.pu),us:num(s.us),cl:num(s.cl),rt:num(s.rt),u:s.u||0}]:null}
@@ -872,6 +910,7 @@ function merge(tb,r){
   if(r.key.startsWith('mob:')){const id=r.key.slice(4),O=S.mk.ob[id],v=r.value||{};if(!O||r.u>(O.u||0)){S.mk.ob[id]={v:n(v.v),d:v.d||'',u:r.u};return true}}return false}
  if(tb==='milk_party_rates'){const P=S.mk.pr[r.party_id]=S.mk.pr[r.party_id]||{},x=P[r.from_day];if(x&&r.u<=(x.u||0))return false;
   P[r.from_day]={b:r.br??'',c:r.cr??'',l:r.ladj??'',s:r.sadj??'',u:r.u};return true}
+ if(tb==='milk_day_info'){const X=S.mk.x[r.day];if(X&&r.u<=(X.u||0))return false;S.mk.x[r.day]={sz:r.suzuki??'',w:r.why||'',n:r.note||'',u:r.u};return true}
  if(tb==='milk_pay'){const L=S.mk.pay[r.day]=S.mk.pay[r.day]||[],i=L.findIndex(x=>x.id===r.id),e={id:r.id,p:r.party_id,a:n(r.amount),n:r.note||'',del:r.deleted,u:r.u};
   if(i<0){L.push(e);return true}if(r.u>L[i].u){L[i]=e;return true}return false}
  if(tb==='milk_parties'){const p=S.mk.ps.find(x=>x.id===r.id);if(!p){S.mk.ps.push({id:r.id,name:r.name,kind:r.kind,off:r.off,u:r.u});return true}

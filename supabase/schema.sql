@@ -326,3 +326,15 @@ create policy costs_owner_select on public.costs for select to authenticated usi
 create policy costs_owner_insert on public.costs for insert to authenticated with check (public.is_owner());
 create policy costs_owner_update on public.costs for update to authenticated using (public.is_owner()) with check (public.is_owner());
 revoke all on public.costs from anon;
+-- Doodh book step 3: per-day Suzuki kharcha and the reason when aaya and gaya milk differ.
+create table public.milk_day_info (
+  day date primary key, suzuki numeric, why text, note text,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+create trigger milk_day_info_lww before insert or update on public.milk_day_info for each row execute function public.lww();
+create index milk_day_info_sa_idx on public.milk_day_info (sa);
+alter table public.milk_day_info enable row level security;
+create policy milk_day_info_member_select on public.milk_day_info for select to authenticated using (public.is_member());
+create policy milk_day_info_member_insert on public.milk_day_info for insert to authenticated with check (public.is_member());
+create policy milk_day_info_member_update on public.milk_day_info for update to authenticated using (public.is_member()) with check (public.is_member());
+revoke all on public.milk_day_info from anon;
