@@ -125,6 +125,7 @@ th{font-size:13px;color:var(--mut);font-weight:600}
 .mg .rl{font-size:14px;font-weight:600;line-height:1.15}
 .mk{display:grid;grid-template-columns:1fr 1fr;gap:4px}
 .mk input{min-height:46px;padding:6px 2px;text-align:center;font-size:16px}
+.fld input[type=date]{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font-size:17px}
 .mk.u i{font-style:normal;font-size:12px;color:var(--mut);text-align:center}
 select{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font:inherit;font-size:17px;color:inherit}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
@@ -171,7 +172,10 @@ function migrate(o,t){const q={};
  if(o.cs)for(const [id,C] of Object.entries(o.cs))for(const [d,c] of Object.entries(C)){c.u=t;q['cs:'+id+'|'+d]=1}
  if(o.mk){o.mk.ps.forEach(p=>{p.u=t;q['mp:'+p.id]=1});
   for(const [d,R] of Object.entries(o.mk.mr)){R.u=t;q['mr:'+d]=1}
-  for(const [d,P] of Object.entries(o.mk.d))for(const [id,r] of Object.entries(P)){r.u=t;q['md:'+d+'|'+id]=1}}
+  for(const [d,P] of Object.entries(o.mk.d))for(const [id,r] of Object.entries(P)){r.u=t;q['md:'+d+'|'+id]=1}
+  for(const [id,R] of Object.entries(o.mk.pr||{}))for(const [d,x] of Object.entries(R)){x.u=t;q['mpr:'+id+'|'+d]=1}
+  for(const [id,x] of Object.entries(o.mk.ob||{})){x.u=t;q['mob:'+id]=1}
+  for(const [d,L] of Object.entries(o.mk.pay||{}))L.forEach(e=>{e.u=t;q['mpy:'+d+'|'+e.id]=1})}
  if(o.bk){o.bk.ac.forEach(a=>{a.u=t;q['ba:'+a.id]=1});o.bk.tx.forEach(x=>{x.u=t;q['bt:'+x.id]=1})}
  return Object.assign(o,{v:2,q,cur:o.cur||{},me:o.me||null})}
 function load(){let s=null,o=null;
@@ -183,9 +187,14 @@ function load(){let s=null,o=null;
 // Doodh book (replaces the MILK 2026 sheet). Quantities are kg; 1 mann = 40 kg.
 // mk = {ps:[{id,name,kind:'sup'|'buy',off,u}], mr:{day:{m,e,u}} mandi rate per mann, d:{day:{partyId:{bm,be,cm,ce,lm,le,sm,se,u}}}}
 // b = bandhi, c = cow, l = taken from mandi, s = sold to mandi; m = morning, e = evening.
+// pr[partyId][fromDay] = {b,c,l,s}: bandhi and cow rate per mann, and how much below the mandi rate milk taken from (l)
+//   or sold to (s) the mandi is counted (commission). A rate applies from its day until the next change.
+// ob[partyId] = {v,d}: baqaya at the end of day d; days up to d are not counted again.
+// pay[day] = [{id,p,a,n,del}]: money paid to a 'sup' party, or received from a 'buy' party.
 const MK_SEED=[['p_wasif','Wasif Chacho','sup'],['p_bikri','Bikri Bara','sup'],['p_johar','Johar','buy']];
 const MF=['bm','be','cm','ce','lm','le','sm','se'];
-function mkInit(s){if(s.mk)return;s.mk={ps:MK_SEED.map(([id,name,kind])=>({id,name,kind,off:false,u:1})),mr:{},d:{}};MK_SEED.forEach(r=>s.q['mp:'+r[0]]=s.q['mp:'+r[0]]||1)}
+function mkInit(s){if(!s.mk){s.mk={ps:MK_SEED.map(([id,name,kind])=>({id,name,kind,off:false,u:1})),mr:{},d:{}};MK_SEED.forEach(r=>s.q['mp:'+r[0]]=s.q['mp:'+r[0]]||1)}
+ s.mk.pr=s.mk.pr||{};s.mk.ob=s.mk.ob||{};s.mk.pay=s.mk.pay||{}}
 // Bank book: bk = {ac:[{id,name,op,off,u}], tx:[{id,day,ac,type,party,a,no,cd,st,note,del,u}]}; st = pending|clear|bounce.
 function bkInit(s){if(!s.bk)s.bk={ac:[],tx:[]};if(!s.cs)s.cs={}}
 // Costs by date: cs = {itemId:{day:{c,u}}}. A cost holds from its day until the next change.
@@ -347,6 +356,22 @@ function fmk(kg){kg=r2(kg);const a=Math.abs(kg),m=mannOf(a),k=r2(a-m*40);
 // A party's milk for the day, like the sheet's TOTAL MILK: bandhi + cow + taken from mandi - sold to mandi.
 function mtot(d,id){const r=mrow(d,id);return n(r.bm)+n(r.be)+n(r.cm)+n(r.ce)+n(r.lm)+n(r.le)-n(r.sm)-n(r.se)}
 const mside=(d,k)=>S.mk.ps.filter(p=>p.kind===k).reduce((a,p)=>a+mtot(d,p.id),0);
+const RATE0='2000-01-01';
+// Rate in force on day d: the latest change on or before d.
+function prate(id,d){const R=S.mk.pr[id]||{},k=Object.keys(R).filter(x=>x<=d).sort().pop();return k?{...R[k],from:k}:null}
+const mpays=(d,id)=>(S.mk.pay[d]||[]).filter(e=>!e.del&&e.p===id);
+// A party's amount for the day, like the sheet: bandhi + cow + taken from mandi - sold to mandi,
+// mandi milk at that slot's mandi rate less the party's commission.
+function mamt(d,id){const r=mrow(d,id),R=prate(id,d)||{},M=S.mk.mr[d]||{},l=n(R.l),s=n(R.s),mm=n(M.m),me=n(M.e);
+ const x={bk:n(r.bm)+n(r.be),ck:n(r.cm)+n(r.ce),lk:n(r.lm)+n(r.le),sk:n(r.sm)+n(r.se)};
+ x.b=x.bk/40*n(R.b);x.c=x.ck/40*n(R.c);
+ x.l=n(r.lm)/40*(mm-l)+n(r.le)/40*(me-l);x.s=n(r.sm)/40*(mm-s)+n(r.se)/40*(me-s);
+ x.t=x.b+x.c+x.l-x.s;x.p=mpays(d,id).reduce((a,e)=>a+n(e.a),0);
+ x.noRate=(x.bk&&!n(R.b))||(x.ck&&!n(R.c));x.noMandi=((n(r.lm)||n(r.sm))&&!mm)||((n(r.le)||n(r.se))&&!me);return x}
+// Baqaya at the end of day d: opening baqaya + each later day's (amount - payments).
+function mbal(id,d){const O=S.mk.ob[id]||{},from=O.d||'';let v=n(O.v);
+ for(const x of new Set([...Object.keys(S.mk.d),...Object.keys(S.mk.pay)]))if(x>from&&x<=d){const a=mamt(x,id);v+=a.t-a.p}return v}
+const balTxt=(p,v)=>Math.round(v)===0?'Hisaab barabar':p.kind==='sup'?(v>0?'Inhein dene hain':'Inhein zyada de diye (advance)'):(v>0?'In se lene hain':'In se zyada aa gaye (advance)');
 function mstatsV(){const a=mside(date,'sup'),g=mside(date,'buy'),df=r2(a-g);
  return `<div class="stat"><span>Aaya</span><b class="sm">${fmk(a)}</b></div><div class="stat"><span>Gaya</span><b class="sm">${fmk(g)}</b></div><div class="stat"><span>Farq</span><b class="sm${df?' y':''}">${fmk(df)}</b></div>`}
 const MROWS=[['b','Bandhi'],['c','Cow'],['l','Mandi se liya'],['s','Mandi ko becha']];
@@ -362,9 +387,46 @@ function mcard(p){const r=mrow(date,p.id);
 // Updates only the totals so the keyboard stays on the next field.
 function setM(id,k,el){const w=el.parentNode.querySelectorAll('input'),a=w[0].value,b=w[1].value,v=a===''&&b===''?'':r2(n(a)*40+n(b));
  if(v!==''&&v<0){alert('Minus mat likhein. Mandi ko doodh becha ho to "Mandi ko becha" wali line mein likhein.');render();return}
- const D=S.mk.d[date]=S.mk.d[date]||{},r=D[id]=D[id]||{u:0};r[k]=v;r.u=now();mark('md:'+date+'|'+id);
- const t=$('#mpt');if(t)t.textContent=fmk(mtot(date,id));const s=$('#msum');if(s)s.innerHTML=msumIn();head()}
-function setMR(k,v){const R=S.mk.mr[date]=S.mk.mr[date]||{m:'',e:'',u:0};R[k]=v===''?'':n(v);R.u=now();mark('mr:'+date)}
+ const D=S.mk.d[date]=S.mk.d[date]||{},r=D[id]=D[id]||{u:0};r[k]=v;r.u=now();mark('md:'+date+'|'+id);mrefresh(id)}
+function setMR(k,v){const R=S.mk.mr[date]=S.mk.mr[date]||{m:'',e:'',u:0};R[k]=v===''?'':n(v);R.u=now();mark('mr:'+date);if(mp)mrefresh(mp)}
+// Redraws only the totals so the keyboard stays where it is.
+function mrefresh(id){const p=S.mk.ps.find(x=>x.id===id),set=(s,h)=>{const e=$(s);if(e)e.innerHTML=h};
+ set('#mpt',fmk(mtot(date,id)));set('#msum',msumIn());
+ if(own()&&p){set('#mraq',mraqIn(p));set('#mbal',mbalIn(p));set('#mball',mallIn());set('#prh',prHint(p))}head()}
+function mraqIn(p){const a=mamt(date,p.id),R=prate(p.id,date)||{};
+ const L=(l,kg,rate,v,sg)=>kg?`<div class="sum"><span>${l}<br><span class="hint">${fmk(kg)}${rate?' × '+f(rate):''}</span></span><b>${sg}${f(v)}</b></div>`:'';
+ return `<div class="sh"><h3>Aaj ki raqam</h3><b>${f(a.t)}</b></div>${L('Bandhi',a.bk,n(R.b),a.b,'')}${L('Cow',a.ck,n(R.c),a.c,'')}${L('Mandi se liya',a.lk,a.lk&&a.l/(a.lk/40),a.l,'')}${L('Mandi ko becha',a.sk,a.sk&&a.s/(a.sk/40),a.s,'− ')}
+ ${a.noRate?'<p class="msg err">Is party ka rate nahi likha. Neeche "Rate aur purana baqaya" mein likhein.</p>':''}${a.noMandi?'<p class="msg err">Upar is waqt ka mandi rate likhein.</p>':''}
+ ${!a.bk&&!a.ck&&!a.lk&&!a.sk?'<p class="hint" style="margin-top:6px">Upar doodh likhein to raqam yahan banegi.</p>':''}`}
+function mbalIn(p){const prev=mbal(p.id,addDay(date,-1)),cur=mbal(p.id,date),a=mamt(date,p.id),sup=p.kind==='sup';
+ return `<h3>Baqaya</h3><div class="sum" style="margin-top:6px"><span>Pichla baqaya</span><b>${f(prev)}</b></div>
+ <div class="sum"><span>+ Aaj ki raqam</span><b>${f(a.t)}</b></div><div class="sum"><span>− ${sup?'Payment di':'Payment aayi'}</span><b>${f(a.p)}</b></div>
+ <div class="sum tot"><span>Baqaya</span><b class="${cur<0?'neg':''}">${f(cur)}</b></div><p class="hint" style="text-align:right">${balTxt(p,cur)}</p>`}
+function mallIn(){return `<h3>Sab parties ka baqaya</h3><p class="hint" style="margin:4px 0 6px">${pk(date)} ke din ke aakhir tak</p>`+S.mk.ps.filter(p=>!p.off||Math.round(mbal(p.id,date))).map(p=>{const v=mbal(p.id,date);
+ return `<div class="sum"><span>${esc(p.name)}<br><span class="hint">${balTxt(p,v)}</span></span><b class="${v<0?'neg':''}">${f(v)}</b></div>`}).join('')}
+function mpayV(p){const L=mpays(date,p.id),sup=p.kind==='sup',tt=L.reduce((a,e)=>a+n(e.a),0);
+ return `<div class="card"><div class="sh"><h3>${sup?'Inhein payment di':'In se payment aayi'}</h3><b>${f(tt)}</b></div>
+ ${L.length?`<div style="margin-top:8px">${L.map(e=>`<div class="row"><span>${esc(e.n||'Payment')}</span><span>${f(n(e.a))}<button class="x" aria-label="Payment hatayen" onclick="delPay('${e.id}')">✕</button></span></div>`).join('')}</div>`:''}
+ <div class="addr"><input type="text" id="mpn" placeholder="Note (marzi se)" aria-label="Payment ka note"><input type="number" inputmode="decimal" id="mpa" placeholder="Raqam" aria-label="Payment ki raqam"><button class="btn" onclick="addPay('${p.id}')">+ Payment add karein</button></div></div>`}
+function addPay(id){const a=n($('#mpa').value);if(!a){alert('Raqam likhein.');return}
+ const e={id:nid(),p:id,a,n:$('#mpn').value.trim(),del:false,u:now()};(S.mk.pay[date]=S.mk.pay[date]||[]).push(e);mark('mpy:'+date+'|'+e.id);render()}
+function delPay(id){if(!confirm('Ye payment hatani hai?'))return;const e=(S.mk.pay[date]||[]).find(x=>x.id===id);if(!e)return;e.del=true;e.u=now();mark('mpy:'+date+'|'+id);render()}
+let rOpen=false;
+function prHint(p){const R=prate(p.id,date);return R?(R.from===RATE0?'Ye rate shuru se lag rahe hain.':`Ye rate ${pk(R.from)} se lag rahe hain.`)+` Yahan badlein to ${pk(date)} se aage naya rate lagega. Pichle din waise hi rahenge.`:'Abhi rate nahi likha. Pehli dafa likha rate pichle sab dinon par bhi lagega.'}
+function mrateV(p){const R=prate(p.id,date),O=S.mk.ob[p.id]||{},v=k=>R&&has(R[k])?R[k]:'',sup=p.kind==='sup';
+ const ri=(k,l)=>`<div class="fld"><label for="pr${k}">${l}</label><input type="number" inputmode="decimal" id="pr${k}" value="${v(k)}" onchange="setPR('${p.id}','${k}',this.value)"></div>`;
+ return `<div class="card"><details ${rOpen||!R?'open':''} ontoggle="rOpen=this.open"><summary>Rate aur purana baqaya</summary>
+ <p class="hint" id="prh" style="margin:10px 0 14px">${prHint(p)}</p>
+ ${ri('b','Bandhi rate (1 mann)')}${ri('c','Cow rate (1 mann)')}${ri('l','Mandi se liya: mandi rate se kitna kam')}${ri('s','Mandi ko becha: mandi rate se kitna kam (commission)')}
+ <h3 style="margin:20px 0 6px">Purana baqaya</h3><p class="hint" style="margin-bottom:12px">Sheet ke aakhri din ka BAL aur wo tareekh likhein. Us tareekh tak ke din dobara nahi gine jayenge. ${sup?'Inhein advance diya ho':'In se advance aaya ho'} to minus (−) ke saath likhein.</p>
+ <div class="fld"><label for="obv">Baqaya</label><input type="number" inputmode="decimal" id="obv" value="${has(O.v)?O.v:''}" onchange="setOB('${p.id}','v',this.value)"></div>
+ <div class="fld"><label for="obd">Kis tareekh ke aakhir tak</label><input type="date" id="obd" value="${O.d||''}" onchange="setOB('${p.id}','d',this.value)"></div></details></div>`}
+// Filling an empty rate fills the rate already in force (the very first one applies to all days);
+// changing a rate that was set starts a new rate from the day being viewed.
+function setPR(id,k,v){const P=S.mk.pr[id]=S.mk.pr[id]||{},cur=prate(id,date),day=!cur?RATE0:has(cur[k])?date:cur.from;
+ const x=P[day]=P[day]||(cur?{b:cur.b,c:cur.c,l:cur.l,s:cur.s}:{b:'',c:'',l:'',s:''});x[k]=v===''?'':n(v);x.u=now();mark('mpr:'+id+'|'+day);mrefresh(id)}
+function setOB(id,k,v){const O=S.mk.ob[id]=S.mk.ob[id]||{v:0,d:addDay(date,-1),u:0};O[k]=k==='v'?n(v):v;O.u=now();mark('mob:'+id);
+ const e=$('#obd');if(e&&!e.value)e.value=O.d;mrefresh(id)}
 function msumIn(){const a=mside(date,'sup'),g=mside(date,'buy'),df=r2(a-g);
  const L=k=>S.mk.ps.filter(p=>p.kind===k&&(!p.off||mtot(date,p.id))).map(p=>`<div class="sum"><span>${esc(p.name)}</span><b>${fmk(mtot(date,p.id))}</b></div>`).join('');
  return `<h3>Aaj ka milan</h3><p class="hint" style="margin-top:6px">Jahan se doodh aaya</p>${L('sup')}<div class="sum tot"><span>Kul aaya</span><b>${fmk(a)}</b></div>
@@ -382,8 +444,8 @@ function doodh(){const P=mps(),R=S.mk.mr[date]||{};if(!P.some(p=>p.id===mp))mp=P
  const ri=(k,l)=>`<div class="f"><label for="mr${k}">${l}</label><input type="number" inputmode="decimal" id="mr${k}" value="${R[k]??''}" onchange="setMR('${k}',this.value)"></div>`;
  return `<div class="card"><h3>Mandi rate (1 mann ka)</h3><div class="g3" style="grid-template-columns:1fr 1fr;margin-top:10px">${ri('m','Subah')}${ri('e','Shaam')}</div></div>
  <div class="chips" style="flex-wrap:wrap">${P.map(x=>`<button class="chip" aria-pressed="${x.id===mp}" onclick="mp='${x.id}';render()">${esc(x.name)}</button>`).join('')}</div>
- ${p?mcard(p):'<p class="hint" style="text-align:center;padding:20px">Koi party nahi. Neeche Parties mein add karein.</p>'}
- <div class="card" id="msum">${msumIn()}</div>${own()?partiesV():''}`}
+ ${p?mcard(p)+(own()?`<div class="card" id="mraq">${mraqIn(p)}</div>`:'')+mpayV(p)+(own()?`<div class="card" id="mbal">${mbalIn(p)}</div>`+mrateV(p):''):'<p class="hint" style="text-align:center;padding:20px">Koi party nahi. Neeche Parties mein add karein.</p>'}
+ <div class="card" id="msum">${msumIn()}</div>${own()?`<div class="card" id="mball">${mallIn()}</div>`+partiesV():''}`}
 
 // Bank
 const acs=()=>S.bk.ac.filter(a=>!a.off);
@@ -507,9 +569,9 @@ async function logout(){if(!confirm('Logout karna hai? Is phone ka hisaab phone 
 
 // ---- Online sync (Supabase). Everything is saved on the phone first, then sent when internet is available.
 let sb=null,who=null,busy=false,syncErr='',lastSync=null,kickT=null,MEM=null,syncP=null;
-const PK={items:'id',prices:'item_id',settings:'key',day_stock:'day,item_id',entries:'id',cash:'day',milk_parties:'id',milk_rates:'day',milk_days:'day,party_id',bank_accounts:'id',bank_tx:'id',costs:'item_id,day'};
-const OWNER_ONLY={it:1,pr:1,set:1,mp:1,ba:1,bt:1,cs:1};
-const OWNER_TABLES={prices:1,settings:1,bank_accounts:1,bank_tx:1,costs:1};
+const PK={items:'id',prices:'item_id',settings:'key',day_stock:'day,item_id',entries:'id',cash:'day',milk_parties:'id',milk_rates:'day',milk_days:'day,party_id',milk_party_rates:'party_id,from_day',milk_pay:'id',bank_accounts:'id',bank_tx:'id',costs:'item_id,day'};
+const OWNER_ONLY={it:1,pr:1,set:1,mp:1,mpr:1,mob:1,ba:1,bt:1,cs:1};
+const OWNER_TABLES={prices:1,settings:1,milk_party_rates:1,bank_accounts:1,bank_tx:1,costs:1};
 function sbInit(){if(sb||!window.supabase)return;
  sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
  sb.auth.onAuthStateChange((ev,s)=>{who=s&&s.user?s.user.email:null;setTimeout(()=>{
@@ -530,6 +592,9 @@ function toRow(t,r){
  if(t==='mp'){const p=S.mk.ps.find(x=>x.id===r);return p?['milk_parties',{id:p.id,name:p.name,kind:p.kind,off:!!p.off,u:p.u}]:null}
  if(t==='mr'){const R=S.mk.mr[r];return R?['milk_rates',{day:r,mor:num(R.m),eve:num(R.e),u:R.u}]:null}
  if(t==='md'){const [d,id]=r.split('|'),x=(S.mk.d[d]||{})[id];if(!x)return null;const o={day:d,party_id:id,u:x.u};MF.forEach(k=>o[k]=num(x[k]));return['milk_days',o]}
+ if(t==='mpr'){const [id,d]=r.split('|'),x=(S.mk.pr[id]||{})[d];return x?['milk_party_rates',{party_id:id,from_day:d,br:num(x.b),cr:num(x.c),ladj:num(x.l),sadj:num(x.s),u:x.u}]:null}
+ if(t==='mob'){const O=S.mk.ob[r];return O?['settings',{key:'mob:'+r,value:{v:n(O.v),d:O.d||null},u:O.u}]:null}
+ if(t==='mpy'){const [d,id]=r.split('|'),e=(S.mk.pay[d]||[]).find(x=>x.id===id);return e?['milk_pay',{id:e.id,day:d,party_id:e.p,amount:n(e.a),note:e.n||'',deleted:!!e.del,u:e.u}]:null}
  const [d,a,b]=r.split('|'),D=S.days[d];if(!D)return null;
  if(t==='st'){const s=D.st[a];return s?['day_stock',{day:d,item_id:a,pu:num(s.pu),us:num(s.us),cl:num(s.cl),rt:num(s.rt),u:s.u||0}]:null}
  if(t==='en'){const e=(D[a]||[]).find(x=>x.id===b);return e?['entries',{id:e.id,day:d,kind:a,name:e.n,amount:n(e.a),deleted:!!e.del,u:e.u}]:null}
@@ -547,7 +612,12 @@ function merge(tb,r){
  if(tb==='bank_tx'){const i=S.bk.tx.findIndex(x=>x.id===r.id),o={id:r.id,day:r.day,ac:r.account_id,type:r.type,party:r.party||'',a:n(r.amount),no:r.chq_no||'',cd:r.chq_date||'',st:r.status,note:r.note||'',del:r.deleted,u:r.u};
   if(i<0){S.bk.tx.push(o);return true}if(r.u>S.bk.tx[i].u){S.bk.tx[i]=o;return true}return false}
  if(tb==='prices'){const it=itm(r.item_id);if(it&&r.u>it.pru){Object.assign(it,{rate:n(r.rate),cost:n(r.cost),pru:r.u});return true}return false}
- if(tb==='settings'){if(r.key==='cash0'&&r.u>S.c0u){S.cash0=n(r.value);S.c0u=r.u;return true}return false}
+ if(tb==='settings'){if(r.key==='cash0'&&r.u>S.c0u){S.cash0=n(r.value);S.c0u=r.u;return true}
+  if(r.key.startsWith('mob:')){const id=r.key.slice(4),O=S.mk.ob[id],v=r.value||{};if(!O||r.u>(O.u||0)){S.mk.ob[id]={v:n(v.v),d:v.d||'',u:r.u};return true}}return false}
+ if(tb==='milk_party_rates'){const P=S.mk.pr[r.party_id]=S.mk.pr[r.party_id]||{},x=P[r.from_day];if(x&&r.u<=(x.u||0))return false;
+  P[r.from_day]={b:r.br??'',c:r.cr??'',l:r.ladj??'',s:r.sadj??'',u:r.u};return true}
+ if(tb==='milk_pay'){const L=S.mk.pay[r.day]=S.mk.pay[r.day]||[],i=L.findIndex(x=>x.id===r.id),e={id:r.id,p:r.party_id,a:n(r.amount),n:r.note||'',del:r.deleted,u:r.u};
+  if(i<0){L.push(e);return true}if(r.u>L[i].u){L[i]=e;return true}return false}
  if(tb==='milk_parties'){const p=S.mk.ps.find(x=>x.id===r.id);if(!p){S.mk.ps.push({id:r.id,name:r.name,kind:r.kind,off:r.off,u:r.u});return true}
   if(r.u>p.u){Object.assign(p,{name:r.name,kind:r.kind,off:r.off,u:r.u});return true}return false}
  if(tb==='milk_rates'){const R=S.mk.mr[r.day];if(!R||r.u>(R.u||0)){S.mk.mr[r.day]={m:r.mor??'',e:r.eve??'',u:r.u};return true}return false}
