@@ -148,6 +148,24 @@ input[type=tel],input[type=month]{width:100%;min-height:48px;padding:10px 12px;b
 .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;width:100%;border:0;background:none;padding:0;text-align:left;line-height:1.3}
 .dh b{font-size:16px}
 .qi{width:84px!important;min-height:44px!important;text-align:center;padding:6px!important}
+.frow{border-bottom:1px solid var(--line);padding:8px 0}
+.frow:last-child{border-bottom:0}
+.frow.done .fn b::before{content:"✓ ";color:var(--grn)}
+.fl{display:flex;align-items:center;gap:8px}
+.fn{flex:1;min-width:0;line-height:1.25}
+.fn b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fn .hint{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fq{width:84px!important;min-height:48px!important;text-align:center;font-size:18px!important;font-weight:700;padding:6px!important;flex:none}
+.fq::placeholder{font-weight:400;color:var(--mut);opacity:.7}
+.fp{width:48px;height:48px;flex:none;border:1.5px solid var(--line);border-radius:12px;background:var(--field);color:var(--bink);font-size:24px;font-weight:700}
+.fx{display:flex;flex-wrap:wrap;gap:6px}
+.fx:not(:empty){margin-top:6px}
+.fchip{display:inline-flex;align-items:center;gap:2px;background:var(--soft);border-radius:99px;padding:3px 4px 3px 10px;font-size:14px}
+.fchip button{border:0;background:none;color:var(--red);width:28px;height:28px;border-radius:50%}
+.fchip:not(:has(button)){padding-right:10px}
+.fpan{display:grid;grid-template-columns:1fr 70px auto;gap:6px;margin-top:8px}
+.fpan input[type=number]{min-height:48px;text-align:center;padding:6px}
+.fpan input[type=text]{grid-column:1/-1}
 .crow{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 0;text-align:left}
 .crow:last-child{border-bottom:0}
 .crow>b{white-space:nowrap;font-size:17px}
@@ -769,12 +787,48 @@ function setNote(c,v){const C=(S.dl.d[date]=S.dl.d[date]||{}),L=(C[c]=C[c]||{}),
 function setD(c,i,v){if(n(v)<0){alert('Minus mat likhein.');render();return}putD(c,i,v);render()}
 function addD(c,i){const e=((S.dl.d[date]||{})[c]||{})[i];if(!e||e.del)putD(c,i,1);render();const x=document.getElementById(`q${c}_${i}`);if(x){x.focus();x.select()}}
 function copyD(c,from){dlines(from,c).forEach(([i,e])=>{if(i!=='_amt')putD(c,i,e.q)});render()}
+// Line-wise entry like the sheet: one milk box (litre) per customer, Enter goes to the next customer.
+// "+" opens a small panel for bread, dahi or any other item on that line.
+let dmode='line',fOpen=null;
+const milkId=()=>(act().find(it=>isMilk(it.id))||{}).id;
+const milkOf=c=>favs(c).find(isMilk)||milkId();
+// Hint shown in the empty box: milk on the last day, or for old sheet days the amount turned into litres.
+function lastMilk(c,mi){for(const x of Object.keys(S.dl.d).filter(x=>x<date).sort().reverse()){const L=S.dl.d[x][c];if(!L)continue;
+  const e=L[mi];if(e&&!e.del&&n(e.q))return fq(n(e.q));const a=L._amt;if(a&&!a.del&&n(a.a)){const r=drOf(itm(mi));return r?fq(Math.round(n(a.a)/r*4)/4):''}}return ''}
+function fextra(c,mi){const L=dlines(date,c.id).filter(([i])=>i!==mi),nt=dnote(date,c.id);
+ return L.map(([i,e])=>`<span class="fchip">${i==='_amt'?(own()?'Rs '+f(n(e.a)):'Purani entry'):esc(iname(i))+' '+fq(n(e.q))}${i==='_amt'?'':`<button onclick="fdel('${c.id}','${i}')" aria-label="${esc(iname(i))} hatayen">✕</button>`}</span>`).join('')+(nt?`<span class="fchip">Note: ${esc(nt)}</span>`:'')}
+function frow(c){const mi=milkOf(c.id),e=((S.dl.d[date]||{})[c.id]||{})[mi],v=e&&!e.del?e.q:'',op=fOpen===c.id,done=dlines(date,c.id).length>0;
+ return `<div class="frow${done?' done':''}" id="fr_${c.id}"><div class="fl"><span class="fn"><b>${esc(c.name)}</b>${c.addr?`<span class="hint">${esc(c.addr)}</span>`:''}</span>
+ <input type="number" inputmode="decimal" enterkeyhint="next" class="fq" data-c="${c.id}" value="${v}" placeholder="${lastMilk(c.id,mi)}" onchange="fset('${c.id}','${mi}',this.value)" aria-label="${esc(c.name)}: doodh litre">
+ <button class="fp" onclick="fplus('${c.id}')" aria-expanded="${op}" aria-label="${esc(c.name)}: aur item">${op?'−':'+'}</button></div>
+ <div class="fx">${fextra(c,mi)}</div>
+ ${op?`<div class="fpan"><select id="fi_${c.id}" aria-label="Item">${[...new Set([...favs(c.id).filter(i=>i!==mi),...act().map(it=>it.id)])].filter(i=>i!==mi).map(i=>`<option value="${i}">${esc(iname(i))}</option>`).join('')}</select>
+ <input type="number" inputmode="decimal" id="fn_${c.id}" value="1" aria-label="Kitna" onkeydown="if(event.key==='Enter'){event.preventDefault();fadd('${c.id}')}">
+ <button class="btn" onclick="fadd('${c.id}')">Add</button>
+ <input type="text" id="fnt_${c.id}" value="${esc(dnote(date,c.id))}" placeholder="Note (agar ho)" onchange="fnote('${c.id}',this.value)" aria-label="Note"></div>`:''}</div>`}
+function flistV(){const s=dq.toLowerCase(),C=custs().filter(c=>(c.name+' '+(c.addr||'')).toLowerCase().includes(s)&&(dflt==='all'||(dflt==='done')===(dlines(date,c.id).length>0)));
+ return C.map(frow).join('')||`<p class="hint" style="text-align:center;padding:20px">${dflt==='left'?'Sab customers ho gaye ✓':'Koi customer nahi mila.'}</p>`}
+// Redraws only this line so the keyboard and scroll stay where they are.
+function fredraw(c){const r=$('#fr_'+c);if(r)r.outerHTML=frow(cst(c));head()}
+function fset(c,mi,v){if(n(v)<0){alert('Minus mat likhein.');fredraw(c);return}putD(c,mi,v);
+ const r=$('#fr_'+c);if(r){r.classList.toggle('done',dlines(date,c).length>0);r.querySelector('.fx').innerHTML=fextra(cst(c),mi)}head()}
+function fplus(c){fOpen=fOpen===c?null:c;fredraw(c);const x=$('#fn_'+c);if(x){x.focus();x.select()}}
+function fadd(c){const i=$('#fi_'+c).value,v=$('#fn_'+c).value;if(!n(v)||n(v)<0){alert('Kitna likhein.');return}putD(c,i,v);fOpen=null;fredraw(c);fnext(c)}
+function fdel(c,i){putD(c,i,'');fredraw(c)}
+function fnote(c,v){const C=(S.dl.d[date]=S.dl.d[date]||{}),L=(C[c]=C[c]||{}),e=L._note||(L._note={n:'',del:false,u:0});v=v.trim();e.n=v;e.del=!v;e.u=now();mark('dv:'+date+'|'+c+'|_note');
+ const r=$('#fr_'+c);if(r)r.querySelector('.fx').innerHTML=fextra(cst(c),milkOf(c))}
+// Focus the milk box of the line after customer c.
+function fnext(c){const L=[...document.querySelectorAll('.fq')],i=L.findIndex(x=>x.dataset.c===c),x=L[i+1];if(x){x.focus();x.select();x.scrollIntoView({block:'center'})}}
+document.addEventListener('keydown',e=>{if(e.key!=='Enter'||!e.target.classList.contains('fq'))return;e.preventDefault();fnext(e.target.dataset.c)});
 function dlv(){const top=own()?`<div class="chips">${[['day','Roz ki entry'],['bill','Bill aur wasooli']].map(([k,l])=>`<button class="chip" aria-pressed="${dv===k}" onclick="dv='${k}';bc=null;render()">${l}</button>`).join('')}</div>`:'';
  if(own()&&dv==='bill')return top+(bc&&cst(bc)?billV(bc):billsV());
  if(!custs().length)return top+`<div class="card"><h3>Abhi koi customer nahi</h3><p class="hint" style="margin-top:6px">${own()?'"Bill aur wasooli" mein neeche "Naya customer" se customer add karein.':'Owner customers add karega, phir yahan nazar aayenge.'}</p></div>`;
- return top+`<input type="search" placeholder="Customer ka naam ya pata" value="${esc(dq)}" oninput="dq=this.value;$('#dl').innerHTML=dlistV()" aria-label="Customer dhoondein">
+ const line=dmode==='line',L=line?flistV:dlistV;
+ return top+`<div class="chips">${[['line','Line se entry'],['card','Card se entry']].map(([k,l])=>`<button class="chip" aria-pressed="${dmode===k}" onclick="dmode='${k}';render()">${l}</button>`).join('')}</div>
+ ${line?`<p class="hint" style="margin:-4px 4px 10px">Har line mein doodh <b>litre</b> mein likhein aur <b>Enter</b> dabayein, agla customer khud aa jayega. Bread, dahi ya koi aur cheez ho to <b>+</b> dabayein. Halki likhi ginti pichli dafa ki hai.</p>`:''}
+ <input type="search" placeholder="Customer ka naam ya pata" value="${esc(dq)}" oninput="dq=this.value;$('#dl').innerHTML=${line?'flistV':'dlistV'}()" aria-label="Customer dhoondein">
  <div class="chips">${[['all','Sab'],['left','Baqi'],['done','Ho gaye']].map(([k,l])=>`<button class="chip" aria-pressed="${dflt===k}" onclick="dflt='${k}';render()">${l}</button>`).join('')}</div>
- <div id="dl">${dlistV()}</div>`}
+ <div id="dl"${line?' class="card" style="padding:4px 12px"':''}>${L()}</div>`}
 // Customer's baqaya before day d: old baqaya + everything delivered - everything received.
 function cbal(c,d){const cu=cst(c);let b=n(cu&&cu.op);
  for(const [x,C] of Object.entries(S.dl.d)){if(x>=d||!C[c])continue;for(const [i,e] of Object.entries(C[c]))if(!e.del)b+=damt(i,e)}
