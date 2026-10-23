@@ -506,6 +506,8 @@ function setKC(id,v){const D=S.mk.d[date]=S.mk.d[date]||{},r=D[id]=D[id]||{u:0};
 // Updates only the totals so the keyboard stays on the next field.
 function setM(id,k,el){const w=el.parentNode.querySelectorAll('input'),a=w[0].value,b=w[1].value,v=a===''&&b===''?'':r2(n(a)*40+n(b));
  if(v!==''&&v<0){alert('Minus mat likhein. Mandi ko doodh becha ho to "Mandi ko becha" wali line mein likhein.');render();return}
+ // kg stays under 40: 40 kg or more moves into mun (e.g. 2 mun 45 kg shows as 3 mun 5 kg).
+ if(v!==''&&n(b)>=40){const m=mannOf(v);w[0].value=m;w[1].value=r2(v-m*40)}
  const D=S.mk.d[date]=S.mk.d[date]||{},r=D[id]=D[id]||{u:0};r[k]=v;r.u=now();mark('md:'+date+'|'+id);mrefresh(id)}
 function setMR(k,v){const R=S.mk.mr[date]=S.mk.mr[date]||{m:'',e:'',u:0};R[k]=v===''?'':n(v);R.u=now();mark('mr:'+date);if(mp)mrefresh(mp)}
 // Redraws only the totals so the keyboard stays where it is.
