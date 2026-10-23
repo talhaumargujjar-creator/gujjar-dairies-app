@@ -372,3 +372,5 @@ create policy recipes_owner_update on public.recipes for update to authenticated
 create policy production_member_insert on public.production for insert to authenticated with check (public.is_member());
 create policy production_member_update on public.production for update to authenticated using (public.is_member()) with check (public.is_member());
 revoke all on public.recipes, public.production from anon;
+-- Batch yield: y units of item_id come out of one batch; each ingredient keeps b (amount put in the batch) and q = b / y.
+alter table public.recipes add column if not exists y numeric;

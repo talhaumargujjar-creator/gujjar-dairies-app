@@ -256,6 +256,7 @@ function bkInit(s){if(!s.bk)s.bk={ac:[],tx:[]};if(!s.cs)s.cs={}}
 function dlInit(s){if(!s.dl)s.dl={cs:[],d:{},py:[]};s.dl.sent=s.dl.sent||{};s.dl.bp=s.dl.bp||{shop:'Gujjar Dairies',owner:'',phone:'',addr:'',web:'',offers:[],u:0}}
 // Production: pr = {rc:{id:{id,out,ins,off,u}} recipes making ONE unit of item `out`,
 //   ins = [{t:'it',id,q} shop item used | {t:'raw',name,unit,q,c} other material with price c per unit], d:{day:{recipeId:{q,u}}} made that day}.
+//   The owner writes a batch: b of each ingredient gives y units (e.g. 200 milk -> 180 dahi); q = b / y is kept for the maths.
 const PR_SEED=[['r_dahi','i2',[{t:'it',id:'i0',q:0}]],['r_lassi','i10',[{t:'it',id:'i2',q:0},{t:'it',id:'i0',q:0},{t:'raw',name:'CHEENI',unit:'kg',q:0,c:0},{t:'raw',name:'BARF',unit:'kg',q:0,c:0}]],
  ['r_bottle','i9',[{t:'it',id:'i0',q:0},{t:'raw',name:'CHEENI',unit:'kg',q:0,c:0},{t:'raw',name:'PISTA',unit:'kg',q:0,c:0},{t:'raw',name:'BADAM',unit:'kg',q:0,c:0}]]];
 function prInit(s){if(s.pr)return;s.pr={rc:{},d:{}};PR_SEED.forEach(([id,out,ins])=>{s.pr.rc[id]={id,out,ins,off:false,u:1};s.q['rp:'+id]=s.q['rp:'+id]||1})}
@@ -707,8 +708,11 @@ const laagat=(r,d)=>r.ins.reduce((a,x)=>a+n(x.q)*(x.t==='it'?(itm(x.id)?costOf(i
 function setPQ(rid,v){const P=S.pr.d[date]=S.pr.d[date]||{};P[rid]={q:v===''?'':n(v),u:now()};mark('pd:'+date+'|'+rid);
  const y=scrollY;render();scrollTo(0,y)}
 function rcSave(r){r.u=now();mark('rp:'+r.id);const y=scrollY;render();scrollTo(0,y)}
-function rcIn(rid,i,k,v){const r=S.pr.rc[rid],x=r.ins[i];if(k==='t'){r.ins[i]=v==='it'?{t:'it',id:act()[0].id,q:x.q}:{t:'raw',name:'',unit:'kg',q:x.q,c:0}}else x[k]=k==='q'||k==='c'?n(v):k==='name'?nkey(v):v;rcSave(r)}
-function rcAddIn(rid,t){S.pr.rc[rid].ins.push(t==='it'?{t:'it',id:act()[0].id,q:0}:{t:'raw',name:'',unit:'kg',q:0,c:0});rcSave(S.pr.rc[rid])}
+const rcY=r=>n(r.y)||1, rcB=(r,x)=>x.b!=null?n(x.b):q2(n(x.q)*rcY(r));
+function rcIn(rid,i,k,v){const r=S.pr.rc[rid],x=r.ins[i];if(k==='t'){r.ins[i]=v==='it'?{t:'it',id:act()[0].id,q:x.q,b:x.b}:{t:'raw',name:'',unit:'kg',q:x.q,b:x.b,c:0}}
+ else if(k==='b'){x.b=n(v);x.q=x.b/rcY(r)}else x[k]=k==='c'?n(v):k==='name'?nkey(v):v;rcSave(r)}
+function rcSetY(rid,v){const r=S.pr.rc[rid];r.ins.forEach(x=>x.b=rcB(r,x));r.y=n(v)||1;r.ins.forEach(x=>x.q=x.b/r.y);rcSave(r)}
+function rcAddIn(rid,t){S.pr.rc[rid].ins.push(t==='it'?{t:'it',id:act()[0].id,q:0,b:0}:{t:'raw',name:'',unit:'kg',q:0,b:0,c:0});rcSave(S.pr.rc[rid])}
 function rcDelIn(rid,i){S.pr.rc[rid].ins.splice(i,1);rcSave(S.pr.rc[rid])}
 function rcOut(rid,v){S.pr.rc[rid].out=v;rcSave(S.pr.rc[rid])}
 function rcOff(rid){if(!confirm('Ye recipe band karein? Purane din ka hisaab waisa hi rahega.'))return;const r=S.pr.rc[rid];r.off=true;PRE=null;rcSave(r)}
@@ -716,12 +720,14 @@ function rcNew(){const id='r'+Date.now().toString(36);S.pr.rc[id]={id,out:act()[
 function rcCost(rid){const r=S.pr.rc[rid],it=itm(r.out),c=q2(laagat(r,date));if(!confirm(`${it.name} ki cost ${pk(date)} se Rs ${fq(c)} lagayein?`))return;setCost(it.id,c)}
 function rcEditV(r){const opt=sel=>act().map(it=>`<option value="${it.id}"${it.id===sel?' selected':''}>${esc(it.name)}</option>`).join('');
  return `<div class="fld" style="margin-top:10px"><label>Kya banta hai</label><select onchange="rcOut('${r.id}',this.value)">${opt(r.out)}</select></div>
- <p class="hint">1 (kg / glass / bottle) banane mein kitna lagta hai:</p>
+ <p class="hint">Ek dafa mein jo saman dala aur us se jitna bana, wo likhein. Jaise 200 doodh dala to 180 dahi bani, ya 5.5 dahi se 32 glass lassi.</p>
+ <div class="f"><label for="ry${r.id}">Kitna bana (${esc(itm(r.out).name)})</label><input type="number" inputmode="decimal" id="ry${r.id}" value="${rcY(r)}" onchange="rcSetY('${r.id}',this.value)"></div>
+ <p class="hint" style="margin-top:8px">Is ke liye kitna dala:</p>
  ${r.ins.map((x,i)=>`<div class="card" style="margin:8px 0;padding:10px;background:var(--field)">
   <div class="g3" style="grid-template-columns:1fr auto"><select onchange="rcIn('${r.id}',${i},'t',this.value)"><option value="it"${x.t==='it'?' selected':''}>Dukaan ka item</option><option value="raw"${x.t==='raw'?' selected':''}>Doosra saman</option></select><button class="x" aria-label="Hatayen" onclick="rcDelIn('${r.id}',${i})">✕</button></div>
   ${x.t==='it'?`<select style="margin-top:6px" onchange="rcIn('${r.id}',${i},'id',this.value)">${opt(x.id)}</select>`:
    `<div class="g3" style="grid-template-columns:2fr 1fr;margin-top:6px"><input type="text" value="${esc(x.name)}" placeholder="Naam (jaise CHEENI)" onchange="rcIn('${r.id}',${i},'name',this.value)"><input type="text" value="${esc(x.unit)}" placeholder="kg" onchange="rcIn('${r.id}',${i},'unit',this.value)"></div>`}
-  <div class="g3" style="grid-template-columns:1fr 1fr;margin-top:6px"><div class="f"><label>Kitna</label><input type="number" inputmode="decimal" value="${x.q||''}" onchange="rcIn('${r.id}',${i},'q',this.value)"></div>
+  <div class="g3" style="grid-template-columns:1fr 1fr;margin-top:6px"><div class="f"><label>Kitna dala</label><input type="number" inputmode="decimal" value="${rcB(r,x)||''}" onchange="rcIn('${r.id}',${i},'b',this.value)"></div>
   ${x.t==='raw'?`<div class="f"><label>Qeemat fi ${esc(x.unit||'unit')}</label><input type="number" inputmode="decimal" value="${x.c||''}" onchange="rcIn('${r.id}',${i},'c',this.value)"></div>`:`<div class="f"><span class="l">Cost fi unit</span><div class="v">${itm(x.id)?fq(costOf(itm(x.id),date)):'—'}</div></div>`}</div></div>`).join('')}
  <div class="btns"><button class="btn ghost" onclick="rcAddIn('${r.id}','it')">+ Dukaan ka item</button><button class="btn ghost" onclick="rcAddIn('${r.id}','raw')">+ Doosra saman</button></div>
  <div class="btns" style="margin-top:8px"><button class="btn" onclick="PRE=null;render()">Ho gaya</button><button class="btn danger" onclick="rcOff('${r.id}')">Recipe band karein</button></div>`}
@@ -730,7 +736,7 @@ function prd(){const L=rcList(),P=S.pr.d[date]||{},raw={};
  h+=L.map(r=>{const it=itm(r.out),m=n((P[r.id]||{}).q),set=r.ins.some(x=>n(x.q));
   r.ins.forEach(x=>{if(x.t==='raw'&&m){const k=x.name+'|'+x.unit;raw[k]=(raw[k]||0)+n(x.q)*m}});
   return `<div class="card item"><div class="ih"><b>${esc(it.name)}</b>${own()?`<button class="tag" onclick="PRE=PRE==='${r.id}'?null:'${r.id}';render()">Recipe ✎</button>`:''}</div>
-  ${set?'':'<p class="msg" style="margin:0 0 8px">Recipe ki miqdaar abhi nahi likhi.'+(own()?' "Recipe ✎" daba kar likhein.':' Owner se likhwayein.')+'</p>'}
+  ${set?`<p class="hint" style="margin:0 0 8px">Recipe: ${r.ins.filter(x=>n(x.q)).map(x=>fq(rcB(r,x))+' '+esc(inName(x))).join(' + ')} → ${fq(rcY(r))} ${esc(it.name)}</p>`:'<p class="msg" style="margin:0 0 8px">Recipe ki miqdaar abhi nahi likhi.'+(own()?' "Recipe ✎" daba kar likhein.':' Owner se likhwayein.')+'</p>'}
   <div class="f"><label for="pq${r.id}">Aaj kitna bana</label><input type="number" inputmode="decimal" id="pq${r.id}" value="${(P[r.id]||{}).q??''}" onchange="setPQ('${r.id}',this.value)"></div>
   ${m&&set?`<div style="margin-top:8px">${r.ins.filter(x=>n(x.q)).map(x=>`<div class="sum"><span>${esc(inName(x))}</span><b>${fq(n(x.q)*m)} ${x.t==='raw'?esc(x.unit):''}</b></div>`).join('')}</div>`:''}
   ${own()&&set?`<div class="res"><span>Laagat fi unit: <b>Rs ${fq(laagat(r,date))}</b> (rate ${fq(it.rate)})</span><button class="link" style="padding:0" onclick="rcCost('${r.id}')">Cost mein lagayein</button></div>`:''}
@@ -1056,7 +1062,7 @@ function toRow(t,r){
  if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,web:B.web,offers:B.offers},u:B.u}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
- if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,off:!!x.off,u:x.u}]:null}
+ if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,y:x.y??null,off:!!x.off,u:x.u}]:null}
  if(t==='pd'){const [d,rid]=r.split('|'),x=(S.pr.d[d]||{})[rid];return x?['production',{day:d,recipe_id:rid,qty:num(x.q),u:x.u}]:null}
  if(t==='ba'){const a=S.bk.ac.find(x=>x.id===r);return a?['bank_accounts',{id:a.id,name:a.name,op:n(a.op),off:!!a.off,u:a.u}]:null}
  if(t==='bt'){const x=S.bk.tx.find(y=>y.id===r);return x?['bank_tx',{id:x.id,day:x.day,account_id:x.ac,type:x.type,party:x.party||null,amount:n(x.a),chq_no:x.no||null,chq_date:x.cd||null,status:x.st,note:x.note||null,deleted:!!x.del,u:x.u}]:null}
@@ -1078,7 +1084,7 @@ async function push(){const snap={...S.q},R=Object.fromEntries(Object.keys(PK).m
 function merge(tb,r){
  if(tb==='items'){const it=itm(r.id),o={name:r.name,op:n(r.op),off:r.off,ord:r.ord??undefined,u:r.u};if(!it){S.items.push(Object.assign({id:r.id,rate:0,cost:0,pru:0},o));return true}
   if(r.u>it.u){Object.assign(it,o);return true}return false}
- if(tb==='recipes'){const x=S.pr.rc[r.id];if(x&&r.u<=(x.u||0))return false;S.pr.rc[r.id]={id:r.id,out:r.item_id,ins:r.ins||[],off:r.off,u:r.u};return true}
+ if(tb==='recipes'){const x=S.pr.rc[r.id];if(x&&r.u<=(x.u||0))return false;S.pr.rc[r.id]={id:r.id,out:r.item_id,ins:r.ins||[],y:r.y??undefined,off:r.off,u:r.u};return true}
  if(tb==='production'){const P=S.pr.d[r.day]=S.pr.d[r.day]||{},x=P[r.recipe_id];if(x&&r.u<=(x.u||0))return false;P[r.recipe_id]={q:r.qty??'',u:r.u};return true}
  if(tb==='costs'){const C=S.cs[r.item_id]=S.cs[r.item_id]||{},c=C[r.day];if(c&&r.u<=(c.u||0))return false;C[r.day]={c:r.cost??'',u:r.u};return true}
  if(tb==='bank_accounts'){const a=S.bk.ac.find(x=>x.id===r.id),o={name:r.name,op:n(r.op),off:r.off,u:r.u};if(!a){S.bk.ac.push(Object.assign({id:r.id},o));return true}
