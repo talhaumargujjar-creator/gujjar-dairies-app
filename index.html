@@ -593,6 +593,9 @@ function mstate(id,from,to){const op=mbal(id,addDay(from,-1)),rows=[];let bal=op
   const pays=mpays(d,id).map(e=>({n:e.n||'Payment',a:n(e.a)})).concat(hkPays(d,id).map(e=>({n:e.n,a:n(e.a)})));
   bal+=a.t-a.p;T.kg+=kg;T.t+=a.t;T.p+=a.p;rows.push({d,kg,t:a.t,pays,bal})}
  return {op,rows,T,bal}}
+// In the bill table the payment column shows the day's total; a small line under the day names each payment.
+const payTot=r=>r.pays.reduce((a,x)=>a+x.a,0);
+const payLine=(r,st)=>r.pays.length&&r.pays.some(x=>x.n&&x.n!=='Payment')?`<tr><td colspan="5" class="l" style="${st}">${r.pays.map(x=>`${esc(x.n||'Payment')} ${f(x.a)}`).join(' · ')}</td></tr>`:'';
 function mbillV(){const P=S.mk.ps.filter(p=>!p.off);if(!P.some(p=>p.id===mbp))mbp=P.length?P[0].id:null;const p=S.mk.ps.find(x=>x.id===mbp);
  mbt=mbt||date;mbf=mbf||date.slice(0,8)+'01';if(!p)return '<p class="hint">Koi party nahi.</p>';
  const s=mstate(p.id,mbf,mbt),sup=p.kind==='sup';
@@ -600,13 +603,13 @@ function mbillV(){const P=S.mk.ps.filter(p=>!p.off);if(!P.some(p=>p.id===mbp))mb
  <div class="card"><h3>Bill: ${esc(p.name)}</h3><div class="g3" style="grid-template-columns:1fr 1fr;margin-top:10px"><div class="fld"><label for="mbf">Is tareekh se</label><input type="date" id="mbf" value="${mbf}" onchange="mbf=this.value||mbf;render()"></div><div class="fld"><label for="mbt">Is tareekh tak</label><input type="date" id="mbt" value="${mbt}" onchange="mbt=this.value||mbt;render()"></div></div>
  <div class="chips" style="flex-wrap:wrap;margin:0">${[['Is mahine',date.slice(0,8)+'01',date],['Pichle 7 din',addDay(date,-6),date],['Aaj',date,date]].map(([l,a,b])=>`<button class="chip" aria-pressed="${mbf===a&&mbt===b}" onclick="mbf='${a}';mbt='${b}';render()">${l}</button>`).join('')}</div></div>
  <div class="card"><div class="sum"><span>Pichla baqaya (${pk(addDay(mbf,-1))} tak)</span><b>${f(s.op)}</b></div>
- ${s.rows.length?`<table style="margin-top:8px"><tr><th>Tareekh</th><th>Doodh</th><th>Raqam</th><th>${sup?'Payment di':'Payment aayi'}</th><th>Baqaya</th></tr>${s.rows.map(r=>`<tr><td>${pk(r.d).slice(0,5)}</td><td style="font-size:13px">${fmk(r.kg)}</td><td>${f(r.t)}</td><td>${r.pays.length?r.pays.map(x=>f(x.a)).join('<br>'):''}</td><td>${f(r.bal)}</td></tr>`).join('')}</table>`:'<p class="hint">Is dauran koi doodh ya payment nahi.</p>'}
+ ${s.rows.length?`<table style="margin-top:8px"><tr><th>Tareekh</th><th>Doodh</th><th>Raqam</th><th>${sup?'Payment di':'Payment aayi'}</th><th>Baqaya</th></tr>${s.rows.map(r=>`<tr><td>${pk(r.d).slice(0,5)}</td><td style="font-size:13px">${fmk(r.kg)}</td><td>${f(r.t)}</td><td>${r.pays.length?f(payTot(r)):''}</td><td>${f(r.bal)}</td></tr>${payLine(r,'font-size:13px;color:var(--mut);padding-top:0')}`).join('')}</table>`:'<p class="hint">Is dauran koi doodh ya payment nahi.</p>'}
  <div class="sum tot"><span>Kul doodh</span><b>${fmk(s.T.kg)}</b></div><div class="sum"><span>Kul raqam</span><b>${f(s.T.t)}</b></div><div class="sum"><span>Kul payment</span><b>${f(s.T.p)}</b></div>
  <div class="sum tot"><span>Baqaya (${pk(mbt)} tak)</span><b class="${s.bal<0?'neg':''}">${f(s.bal)}</b></div><p class="hint" style="text-align:right">${balTxt(p,s.bal)}</p>
  <div class="btns" style="margin-top:10px"><button class="btn" onclick="mbillPrint()">🖨 PDF / Print</button><button class="btn ghost" onclick="mbillWA()">WhatsApp par bhejein</button></div></div>`}
 function mbillText(){const p=S.mk.ps.find(x=>x.id===mbp),s=mstate(p.id,mbf,mbt),B=S.dl.bp||{},sup=p.kind==='sup',L=[`*${B.shop||'Gujjar Dairies'} — Doodh ka hisaab*`];
  if(B.owner||B.phone)L.push([B.owner,B.phone].filter(Boolean).join(' · '));L.push('',`${p.name}`,`${pk(mbf)} se ${pk(mbt)} tak`,'',`Pichla baqaya: Rs ${f(s.op)}`);
- s.rows.forEach(r=>{L.push(`${pk(r.d).slice(0,5)}: ${fmk(r.kg)} = Rs ${f(r.t)}`);r.pays.forEach(x=>L.push(`   ${sup?'Payment di':'Payment aayi'}: Rs ${f(x.a)}${x.n&&x.n!=='Payment'?' ('+x.n+')':''}`))});
+ s.rows.forEach(r=>{L.push(`${pk(r.d).slice(0,5)}: ${fmk(r.kg)} = Rs ${f(r.t)}`);if(r.pays.length){L.push(`   ${sup?'Payment di':'Payment aayi'}: Rs ${f(payTot(r))}`);if(r.pays.length>1||r.pays[0].n!=='Payment')r.pays.forEach(x=>L.push(`      - ${x.n||'Payment'}: ${f(x.a)}`))}L.push(`   Baqaya: Rs ${f(r.bal)}`)});
  L.push('',`Kul doodh: ${fmk(s.T.kg)}`,`Kul raqam: Rs ${f(s.T.t)}`,`Kul payment: Rs ${f(s.T.p)}`,`*Baqaya: Rs ${f(s.bal)}*`);return L.join('\n')}
 function mbillWA(){open('https://wa.me/?text='+encodeURIComponent(mbillText()),'_blank')}
 async function mbillPrint(){const p=S.mk.ps.find(x=>x.id===mbp),s=mstate(p.id,mbf,mbt),B=S.dl.bp||{},sup=p.kind==='sup',R=(l,v)=>`<tr><td colspan="4" class="l">${l}</td><td>${v}</td></tr>`;
@@ -614,7 +617,7 @@ async function mbillPrint(){const p=S.mk.ps.find(x=>x.id===mbp),s=mstate(p.id,mb
  el.innerHTML=`<div class="ph"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}</div></div>
  <div class="pb"><div><h2>${esc(p.name)}</h2><p>Doodh ka hisaab</p></div><div style="text-align:right"><b>${pk(mbf)} se ${pk(mbt)} tak</b></div></div>
  <table><tr><th class="l">Tareekh</th><th class="l">Doodh</th><th>Raqam (Rs)</th><th>${sup?'Payment di':'Payment aayi'}</th><th>Baqaya</th></tr>${R('Pichla baqaya',f(s.op))}
- ${s.rows.map(r=>`<tr><td class="l">${pk(r.d)}</td><td class="l">${fmk(r.kg)}</td><td>${f(r.t)}</td><td>${r.pays.map(x=>f(x.a)).join('<br>')}</td><td>${f(r.bal)}</td></tr>`).join('')}
+ ${s.rows.map(r=>`<tr><td class="l">${pk(r.d)}</td><td class="l">${fmk(r.kg)}</td><td>${f(r.t)}</td><td>${r.pays.length?f(payTot(r)):''}</td><td>${f(r.bal)}</td></tr>${payLine(r,'font-size:11px;color:#444;padding-top:0')}`).join('')}
  ${R('<b>Kul</b> — '+fmk(s.T.kg),'')}${R('Kul raqam',f(s.T.t))}${R('Kul payment','−'+f(s.T.p))}${R('<b>Baqaya '+pk(mbt)+' tak</b>','<b>Rs '+f(s.bal)+'</b>')}</table><p style="margin-top:12px">Shukriya!</p>`;
  await Promise.all([...el.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));window.print()}
 function partiesV(){return `<div class="card"><details ${pOpen?'open':''} ontoggle="pOpen=this.open"><summary>Parties</summary>
