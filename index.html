@@ -395,19 +395,46 @@ const OPEN={};
 const nkey=s=>String(s).trim().toUpperCase().replace(/\s+/g,' ');
 // Names seen in udhaar and wasool, so the same customer is always spelled the same way.
 const custNames=()=>[...new Set([...SECS.ud[1],...SECS.rc[1],...Object.values(S.days).flatMap(D=>[...(D.ud||[]),...(D.rc||[])].filter(r=>!r.del).map(r=>nkey(r.n)))])].sort();
-function sec(k){const D=day(date),[title,names,,hint]=SECS[k],L=live(D,k),tt=L.reduce((a,b)=>a+n(b.a),0),cust=k==='ud'||k==='rc';
- return `<div class="card"><details ${(OPEN[k]??L.length>0)?'open':''} ontoggle="OPEN['${k}']=this.open"><summary><span>${title}${L.length?` <span class="muted" style="font-weight:400">(${L.length})</span>`:''}</span><b style="margin-left:auto;padding-right:8px">${f(tt)}</b></summary>
+// Line-wise entry like the khata: draft rows per day and section, saved together with "Save karein".
+// The last working day's names come pre-filled with its amount shown faintly; only rows given an amount are saved,
+// so a name left empty today does not come back the next day.
+const DR={};
+const baseN=s=>String(s).trim().replace(/\s*\([\d+.\s]*\)$/,'');
+function prevRows(k,d){for(const x of before(d)){const L=live(norm(S.days[x]),k);if(L.length)return L}return []}
+function secNames(k){if(k==='ud'||k==='rc')return custNames();const s=new Set(SECS[k][1]);for(const D of Object.values(S.days))(D[k]||[]).forEach(e=>{if(!e.del)s.add(baseN(e.n))});return [...s].sort()}
+function drafts(k){const key=date+'|'+k;
+ if(!DR[key]){const have=new Set(live(day(date),k).map(e=>nkey(baseN(e.n))));DR[key]=prevRows(k,date).filter(e=>!have.has(nkey(baseN(e.n)))).map(e=>({n:baseN(e.n),a:'',ph:n(e.a)}))}
+ const R=DR[key];if(!R.length||R[R.length-1].n||R[R.length-1].a)R.push({n:'',a:''});return R}
+const drFilled=k=>(DR[date+'|'+k]||[]).filter(r=>r.n.trim()&&String(r.a).trim()).length;
+function drRow(k,r,i){return `<div class="addr" style="grid-template-columns:1fr 110px;margin-top:6px"><input type="text" class="dn" id="dn${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.n)}" placeholder="Naam" list="dl${k}" autocomplete="off" enterkeyhint="next" aria-label="Naam" oninput="drSet('${k}',${i},'n',this.value)"><input type="text" inputmode="decimal" class="da" id="da${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.a)}" placeholder="${r.ph?'Kal '+f(r.ph):'Raqam'}" enterkeyhint="next" aria-label="Raqam" oninput="drSet('${k}',${i},'a',this.value)"></div>`}
+function sec(k){const D=day(date),[title,names,,hint]=SECS[k],L=live(D,k),tt=L.reduce((a,b)=>a+n(b.a),0),R=drafts(k),sug=R.some(r=>r.ph),fl=drFilled(k);
+ return `<div class="card"><details ${(OPEN[k]??(L.length>0||sug))?'open':''} ontoggle="OPEN['${k}']=this.open"><summary><span>${title}${L.length?` <span class="muted" style="font-weight:400">(${L.length})</span>`:''}${fl?` <span class="neg" style="font-weight:400">· ${fl} save baqi</span>`:''}</span><b style="margin-left:auto;padding-right:8px">${f(tt)}</b></summary>
  <p class="hint" style="margin-top:4px">${hint}</p>
  ${L.length?`<div style="margin-top:8px">${L.map(r=>`<div class="row"><span>${esc(r.n)}</span><span>${f(n(r.a))}<button class="x" style="color:var(--bink)" aria-label="${esc(r.n)} badlein" onclick="edE('${k}','${r.id}')">✎</button><button class="x" aria-label="${esc(r.n)} hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')}</div>`:''}
- <div class="qc">${names.map(x=>`<button onclick="pick('${k}',this.textContent)">${esc(x)}</button>`).join('')}</div>
- <div class="addr"><input type="text" id="n${k}" placeholder="Naam" aria-label="${title}: naam"${cust?` list="custs"`:''}><input type="text" inputmode="decimal" id="a${k}" placeholder="Raqam" aria-label="${title}: raqam"><button class="btn" onclick="addL('${k}')">+ Add karein</button></div>
- <p class="hint" style="margin-top:6px;font-size:13px">Do raqam hon to jaise khaate mein: 900+900</p></details></div>`}
-function pick(k,v){$('#n'+k).value=v;$('#a'+k).focus()}
+ <datalist id="dl${k}">${secNames(k).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+ <div style="margin-top:6px">${R.map((r,i)=>drRow(k,r,i)).join('')}</div>
+ <button class="btn full" style="margin-top:10px" onclick="drSave('${k}')">Save karein${fl?` (${fl})`:''}</button>
+ <p class="hint" style="margin-top:6px;font-size:13px">Naam likh kar Enter, raqam likh kar Enter = agli line. ${sug?'Halki raqam pichle din ki hai; jo aaj likhenge wahi save hogi. ':''}Do raqam hon to: 900+900</p>
+ <div class="qc">${names.map(x=>`<button onclick="drPick('${k}',this.textContent)">${esc(x)}</button>`).join('')}</div></details></div>`}
+function drSet(k,i,f,v){const R=DR[date+'|'+k];if(R&&R[i])R[i][f]=v}
+function drFocus(id){const y=scrollY;render();scrollTo(0,y);const e=$('#'+id);if(e){e.focus();e.scrollIntoView({block:'center'})}}
+// A quick-name chip fills the first empty line.
+function drPick(k,v){const R=drafts(k);let i=R.findIndex(r=>!r.n.trim());if(i<0){R.push({n:'',a:''});i=R.length-1}R[i].n=v;OPEN[k]=true;drFocus('da'+k+i)}
+// Enter on a name goes to its amount; Enter on an amount goes to the next line, making a new one at the end.
+document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const t=e.target,k=t.dataset&&t.dataset.k;if(!k||!(t.classList.contains('dn')||t.classList.contains('da')))return;
+ e.preventDefault();const i=+t.dataset.i;if(t.classList.contains('dn')){$('#da'+k+i).focus();return}
+ const R=drafts(k);if(i+1>=R.length)R.push({n:'',a:''});const nx=R[i+1];if(!R[i].n&&!R[i].a&&!nx.n)return;
+ if(i+1===R.length-1&&!$('#dn'+k+(i+1))){drFocus((nx.n?'da':'dn')+k+(i+1));return}
+ const el=$('#'+(nx.n?'da':'dn')+k+(i+1));if(el)el.focus();else drFocus((nx.n?'da':'dn')+k+(i+1))});
 // "900+900" like the khata adds up; the parts are kept in the name so the khata can be matched later.
-function addL(k){const raw=$('#a'+k).value.replace(/\s/g,''),parts=raw.split('+').filter(Boolean),a=parts.reduce((s,x)=>s+n(x),0);let nm=$('#n'+k).value.trim();
- if(!nm||!a||parts.some(x=>isNaN(parseFloat(x)))){alert('Naam aur raqam dono likhein.');return}
- if(k==='ud'||k==='rc')nm=nkey(nm);if(parts.length>1)nm+=` (${parts.join('+')})`;
- const e={id:nid(),n:nm,a,del:false,u:now()};dd(date)[k].push(e);OPEN[k]=true;mark('en:'+date+'|'+k+'|'+e.id);render()}
+function drSave(k){const key=date+'|'+k,R=drafts(k),keep=[],todo=[];
+ for(const r of R){const nm=r.n.trim(),raw=String(r.a).replace(/\s/g,'');if(!nm||!raw){keep.push(r);continue}
+  const parts=raw.split('+').filter(Boolean),a=parts.reduce((s,x)=>s+n(x),0);
+  if(!a||parts.some(x=>isNaN(parseFloat(x)))){alert(`"${nm}" ki raqam sahi likhein.`);return}
+  todo.push([k==='ud'||k==='rc'?nkey(nm):nm,a,parts])}
+ if(!todo.length){alert('Kisi line mein naam aur raqam dono likhein.');return}
+ for(const [nm0,a,parts] of todo){const e={id:nid(),n:parts.length>1?`${nm0} (${parts.join('+')})`:nm0,a,del:false,u:now()};dd(date)[k].push(e);mark('en:'+date+'|'+k+'|'+e.id)}
+ DR[key]=keep.filter(r=>r.ph);OPEN[k]=true;const y=scrollY;render();scrollTo(0,y)}
 // Fix a name or amount later (entries read from the paper khata may need correcting).
 function edE(k,id){const e=dd(date)[k].find(x=>x.id===id);if(!e)return;
  const nm=prompt('Naam theek karein:',e.n);if(nm===null)return;const raw=prompt('Raqam theek karein (900+900 bhi likh sakte hain):',e.a);if(raw===null)return;
