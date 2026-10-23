@@ -381,7 +381,7 @@ function render(){const a=$('#app');
 // Stock
 const isDone=it=>has((day(date).st[it.id]||{}).cl);
 function line(it){const s=day(date).st[it.id]||{},mk=made(it,date),up=usedP(it,date),mi=milkIn(it,date),tin=opening(it,date)+n(s.pu)+mi.q+mk-up;
- const pl=(mi.q?`<span style="flex-basis:100%">Doodh hisaab se purchase: <b>+${fq(mi.q)} litre</b>${own()&&mi.a?` · Rs ${f(mi.a/mi.q)} fi litre`:''}</span>`:'')+(mk||up?`<span style="flex-basis:100%">Production: ${mk?'+'+fq(mk)+' bana':''}${mk&&up?', ':''}${up?'−'+fq(up)+' recipe mein laga':''}</span>`:'');
+ const pl=(mi.q?`<span style="flex-basis:100%">Doodh hisaab se purchase: <b>+${fq(mi.q)} litre</b>${own()&&mi.a?` · Rs ${f(mi.a/mi.q)} fi litre`:''}</span>`+(n(s.pu)?`<span class="neg" style="flex-basis:100%">Purchase mein hath se bhi ${fq(s.pu)} likha hai. Agar ye wahi Johar wala doodh hai to Purchase khali karein, warna do dafa ginega.</span>`:''):'')+(mk||up?`<span style="flex-basis:100%">Production: ${mk?'+'+fq(mk)+' bana':''}${mk&&up?', ':''}${up?'−'+fq(up)+' recipe mein laga':''}</span>`:'');
  if(!has(s.cl))return pl+`<span>Total ${fq(tin)}</span><span>Closing likhni hai</span>`;
  const sd=sold(it,date);if(sd<0)return pl+`<span class="neg">Closing total se zyada hai. Dobara check karein.</span>`;
  const dq=dday(date).q[it.id]||0,cs=q2(sd-dq);
