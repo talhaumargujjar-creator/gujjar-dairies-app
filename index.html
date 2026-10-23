@@ -151,7 +151,7 @@ input[type=tel],input[type=month]{width:100%;min-height:48px;padding:10px 12px;b
 .crow:last-child{border-bottom:0}
 .crow>b{white-space:nowrap;font-size:17px}
 #prt{display:none}
-@media print{body>*:not(#prt){display:none!important}#prt{display:block;color:#000;background:#fff;font:13px/1.4 Arial,sans-serif}#prt h1{font-size:20px;margin:0}#prt h2{font-size:16px;margin:10px 0 0}#prt p{margin:2px 0}#prt table{margin-top:10px;font-size:13px}#prt td,#prt th{padding:4px;border-bottom:1px solid #ccc;color:#000}#prt td:nth-child(2){text-align:left}}
+@media print{body>*:not(#prt){display:none!important}#prt{display:block;color:#000;background:#fff;font:13px/1.4 Arial,sans-serif}#prt h1{font-size:20px;margin:0}#prt h2{font-size:16px;margin:10px 0 0}#prt p{margin:2px 0}#prt table{margin-top:10px;font-size:13px}#prt td,#prt th{padding:4px;border-bottom:1px solid #ccc;color:#000}#prt .l{text-align:left}}
 </style>
 </head>
 <body>
@@ -772,7 +772,7 @@ function nextBill(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},x=custs().fin
 function printBill(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym);let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.appendChild(p)}
  const R=(l,v)=>`<tr><td colspan="2">${l}</td><td>${v}</td></tr>`;
  p.innerHTML=`<h1>Gujjar Dairies</h1><p>Bill: ${monName(ym)}</p><h2>${esc(c.name)}</h2>${c.addr?`<p>${esc(c.addr)}</p>`:''}
- <table><tr><th>Date</th><th>Item</th><th>Amount (Rs)</th></tr>${m.days.map(([d,pa,a])=>`<tr><td>${pk(d)}</td><td>${esc(pa.join(', '))}</td><td>${f(a)}</td></tr>`).join('')}
+ <table><tr><th>Date</th><th class="l">Item</th><th>Amount (Rs)</th></tr>${m.days.map(([d,pa,a])=>`<tr><td>${pk(d)}</td><td class="l">${pa.length?esc(pa.join(', ')):'Milk / items (as per register)'}</td><td>${f(a)}</td></tr>`).join('')}
  ${m.items.map(x=>R(`${esc(iname(x.i))}: ${fq(x.q)} × ${fq(x.r)}`,f(x.a))).join('')}${R('<b>Total for '+monName(ym)+'</b>','<b>'+f(m.amt)+'</b>')}${R('Previous balance',f(m.prev))}
  ${m.pays.map(x=>R('Payment received '+pk(x.day),'−'+f(x.a))).join('')}${R('<b>Total due</b>','<b>Rs '+f(m.due)+'</b>')}</table><p>Thank you!</p>`;
  window.print()}
