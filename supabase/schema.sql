@@ -212,6 +212,76 @@ begin
   end loop;
 end $$;
 revoke all on public.bank_accounts, public.bank_tx from anon;
+-- Home delivery (replaces the "Milk Delivery Bill" sheet).
+-- New role 'delivery': the delivery man sees only customers, item names and the delivery entries.
+alter table public.members drop constraint members_role_check;
+alter table public.members add constraint members_role_check check (role in ('owner','staff','delivery','pending'));
+drop policy members_update on public.members;
+create policy members_update on public.members for update to authenticated
+  using (public.is_owner() and user_id <> auth.uid())
+  with check (role in ('staff','delivery','pending') and user_id <> auth.uid());
+create or replace function public.is_team() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select role in ('owner','staff','delivery') from public.members where user_id = auth.uid()), false)
+$$;
+revoke execute on function public.is_team() from public, anon;
+grant execute on function public.is_team() to authenticated;
+create policy items_delivery_select on public.items for select to authenticated using (public.is_team());
+-- Delivery rate per item (milk is 270 delivered, 250 at the counter). Null means the counter rate.
+alter table public.prices add column drate numeric;
+create table public.customers (
+  id text primary key, name text not null, addr text, phone text,
+  op numeric not null default 0, ord int, off boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+-- One row per day, customer and item. item_id '_amt' is a plain amount (old sheet entries) with no item.
+create table public.deliveries (
+  day date not null, cust_id text not null, item_id text not null,
+  qty numeric, rate numeric, amount numeric, deleted boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid,
+  primary key (day, cust_id, item_id)
+);
+-- Money received from delivery customers. mode cash = into the galla, online = not through the galla.
+create table public.dpay (
+  id text primary key, day date not null, cust_id text not null, amount numeric not null default 0,
+  mode text not null default 'cash' check (mode in ('cash','online')), note text, deleted boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+-- The rate is fixed when the delivery is first saved, so later rate changes do not change old bills.
+-- The delivery man's phone does not know rates; an update without a rate keeps the saved one.
+create or replace function public.delivery_rate() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.rate is null and new.item_id <> '_amt' then
+    if tg_op = 'UPDATE' and old.rate is not null then
+      new.rate := old.rate;
+    else
+      select coalesce(p.drate, p.rate) into new.rate from public.prices p where p.item_id = new.item_id;
+    end if;
+  end if;
+  return new;
+end $$;
+revoke execute on function public.delivery_rate() from public, anon, authenticated;
+create trigger deliveries_rate before insert or update on public.deliveries for each row execute function public.delivery_rate();
+do $$
+declare t text;
+begin
+  foreach t in array array['customers','deliveries','dpay'] loop
+    execute format('create trigger %I_lww before insert or update on public.%I for each row execute function public.lww()', t, t);
+    execute format('create index %I_sa_idx on public.%I (sa)', t, t);
+    execute format('alter table public.%I enable row level security', t);
+  end loop;
+end $$;
+create policy customers_team_select on public.customers for select to authenticated using (public.is_team());
+create policy customers_owner_insert on public.customers for insert to authenticated with check (public.is_owner());
+create policy customers_owner_update on public.customers for update to authenticated using (public.is_owner()) with check (public.is_owner());
+create policy deliveries_team_select on public.deliveries for select to authenticated using (public.is_team());
+create policy deliveries_team_insert on public.deliveries for insert to authenticated with check (public.is_team());
+create policy deliveries_team_update on public.deliveries for update to authenticated using (public.is_team()) with check (public.is_team());
+create policy dpay_owner_select on public.dpay for select to authenticated using (public.is_owner());
+create policy dpay_owner_insert on public.dpay for insert to authenticated with check (public.is_owner());
+create policy dpay_owner_update on public.dpay for update to authenticated using (public.is_owner()) with check (public.is_owner());
+revoke all on public.customers, public.deliveries, public.dpay from anon;
 
 -- Doodh book step 2: per-party rates (owner only) and payments.
 -- A rate row applies from from_day until the next row. ladj/sadj = how much below the mandi rate milk taken from /
