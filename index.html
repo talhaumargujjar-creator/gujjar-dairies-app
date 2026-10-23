@@ -130,6 +130,13 @@ th{font-size:13px;color:var(--mut);font-weight:600}
 select{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font:inherit;font-size:17px;color:inherit}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
 button.tag{border:1px solid var(--line);background:var(--field);border-radius:99px;padding:5px 10px}
+.capbtn{width:100%;display:flex;align-items:center;gap:12px;text-align:left;font-weight:700;font-size:17px;border:2px dashed var(--bink)!important;color:var(--bink)}
+.capbtn span{font-size:28px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.thumbs div{position:relative}
+.thumbs img{width:96px;height:128px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.thumbs button{position:absolute;top:-8px;right:-8px;width:30px;height:30px;border-radius:50%;border:0;background:var(--red);color:#fff;font-weight:700}
+.qa{border-left:5px solid var(--butter)}
 details summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between}
 details summary::-webkit-details-marker{display:none}
 details summary::after{content:"›";transform:rotate(90deg);color:var(--mut)}
@@ -283,7 +290,7 @@ const ICON={stock:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"
  dlv:'<path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'};
 // [key, label, who can open (o owner, s staff, d delivery), shown in the bottom bar].
 // Items and Cost open from the Account page so the bar fits a phone.
-const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','osd',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0]];
+const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','osd',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0]];
 const tabs=()=>TABS.filter(t=>t[2].includes(role()[0]));
 const ROLE={owner:'Owner',staff:'Staff',delivery:'Delivery',pending:'Manzoori baqi'};
 function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button aria-current="${tab==k||((tab==='items'||tab==='cost')&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
@@ -300,7 +307,7 @@ function render(){const a=$('#app');
  if(!S.me||!S.me.email){a.innerHTML=loginV();return}
  if(S.me.role==='pending'){a.innerHTML=pendingV();return}
  if(!tabs().some(t=>t[0]===tab))tab=tabs()[0][0];
- a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank,cost,report,items,acct})[tab]()}</main>`+navV();status()}
+ a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank,cost,report,items,acct,kc})[tab]()}</main>`+navV();status()}
 
 // Stock
 const isDone=it=>has((day(date).st[it.id]||{}).cl);
@@ -324,8 +331,9 @@ function setRt(id){const it=itm(id),s0=day(date).st[id]||{},v=prompt(`${it.name}
 function listV(){const L=act().filter(i=>i.name.toLowerCase().includes(q.toLowerCase())&&(flt==='all'||(flt==='done')===isDone(i)));
  return L.map(card).join('')||`<p class="hint" style="text-align:center;padding:20px">${flt==='left'?'Sab items ho gaye ✓':'Koi item nahi mila.'}</p>`}
 function progV(){const A=act(),d=A.filter(isDone).length;return {d,t:A.length,p:A.length?d*100/A.length:0}}
+const capBtn=()=>`<button class="card capbtn" onclick="go('kc')"><span>📷</span>Khata ki tasveer se bharein</button>`;
 function stock(){const p=progV();
- return `<div class="card"><div class="sh"><h3>Stock ki ginti</h3><span class="muted" id="pc">${p.d} / ${p.t} items</span></div><div class="prog"><i id="pb" style="width:${p.p}%"></i></div>
+ return capBtn()+`<div class="card"><div class="sh"><h3>Stock ki ginti</h3><span class="muted" id="pc">${p.d} / ${p.t} items</span></div><div class="prog"><i id="pb" style="width:${p.p}%"></i></div>
  <p class="hint" style="margin-top:10px">Har item ki <b>Purchase</b> aur <b>Closing</b> likhein. <b>Istemal</b> sirf tab likhein jab maal bika nahi balke dukaan mein kaam aaya (jaise doodh se dahi).</p></div>
  <input type="search" placeholder="Item dhoondein" value="${esc(q)}" oninput="q=this.value;$('#list').innerHTML=listV()" aria-label="Item dhoondein">
  <div class="chips">${[['all','Sab'],['left','Baqi'],['done','Ho gaye']].map(([k,l])=>`<button class="chip" aria-pressed="${flt===k}" onclick="flt='${k}';render()">${l}</button>`).join('')}</div>
@@ -380,7 +388,7 @@ function galla(){const t=tot(date),ci=`<div class="fld" style="margin:12px 0 0">
  ${R('− Kharcha + salary (1)',t.ex+t.sl)}${R('− Ghar aur gari (2)',t.cr)}${R('− Udhaar diya (3)',t.ud)}${R('− Bill ki raqam (4)',t.bl)}${R('− Supplier (5)',t.sp)}${t.bout?R('− Bank mein jama',t.bout):''}
  ${R('Galle mein hona chahiye',t.exp,'tot')}${ci}${b}
  ${t.dsale?`<p class="hint" style="margin-top:10px">Home delivery ka maal (Rs ${f(t.dsale)}) counter sale mein nahi, customers ke bill mein hai. Use "Udhaar diya" mein dobara na likhein.</p>`:''}</div>`}
-function hisaab(){return `<datalist id="custs">${custNames().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`+KINDS.map(sec).join('')+(own()?udhaarV():'')+galla()}
+function hisaab(){return capBtn()+`<datalist id="custs">${custNames().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`+KINDS.map(sec).join('')+(own()?udhaarV():'')+galla()}
 function setC(v){const D=dd(date);D.cash=v===''?null:n(v);D.cu=now();mark('ca:'+date);render()}
 
 // Doodh
@@ -537,6 +545,71 @@ function costList(){return act().filter(i=>i.name.toLowerCase().includes(q.toLow
  <div class="res"><span>${c.from?(here?'Ye cost isi din se lagi hai':'Cost '+pk(c.from)+' se'):'Shuru wali cost'}</span>${here?`<button class="link" style="padding:0" onclick="setCost('${it.id}','')">Ye tabdeeli hatayen</button>`:''}</div></div>`}).join('')||'<p class="hint">Koi item nahi mila.</p>'}
 function setCost(id,v){const C=S.cs[id]=S.cs[id]||{};C[date]={c:v===''?'':n(v),u:now()};mark('cs:'+id+'|'+date);
  const y=scrollY;render();scrollTo(0,y)}
+
+// ---- Khata capture: photos of the paper khata are read by /api/read-khata (Gemini). Clear values are saved
+// straight away; anything unclear, or different from what is already saved, is asked here before saving.
+let KC={imgs:[],busy:false,msg:'',err:false,res:null,qs:[],saved:0,stage:''};
+const COLN={op:'Opening',pu:'Purchase',us:'Istemal',cl:'Closing'};
+function shrink(file){return new Promise((ok,no)=>{const img=new Image();img.onload=()=>{const m=1800,s=Math.min(1,m/Math.max(img.width,img.height)),c=document.createElement('canvas');
+ c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(img.src);ok(c.toDataURL('image/jpeg',0.85))};img.onerror=no;img.src=URL.createObjectURL(file)})}
+async function kcAdd(files){for(const f of [...files].slice(0,4-KC.imgs.length))KC.imgs.push(await shrink(f));KC.msg='';render()}
+function kcDel(i){KC.imgs.splice(i,1);render()}
+function kcReset(){KC={imgs:[],busy:false,msg:'',err:false,res:null,qs:[],saved:0,stage:''};render()}
+async function kcRead(){if(!KC.imgs.length){alert('Pehle khaate ki tasveer lein.');return}
+ sbInit();if(!sb||!navigator.onLine){KC.msg='Tasveer parhne ke liye internet chahiye.';KC.err=true;render();return}
+ const {data:{session}}=await sb.auth.getSession();if(!session){KC.msg='Dobara login karein.';KC.err=true;render();return}
+ KC.busy=true;KC.msg='Khata parha ja raha hai… is mein aadha minute lag sakta hai.';KC.err=false;render();
+ try{const r=await fetch('/api/read-khata',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},
+   body:JSON.stringify({images:KC.imgs.map(d=>d.split(',')[1]),items:act().map(it=>({id:it.id,name:it.name}))})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){KC.err=true;KC.msg=j.error==='no_key'?'Tasveer parhne wali Google key abhi nahi lagi. Owner Account page par diya gaya tareeqa dekhein.':j.error==='login'?'Dobara login karein.':j.status===429?'Aaj ki free had poori ho gayi. Thori der baad ya kal dobara koshish karein.':'Tasveer nahi parhi ja saki. Saaf aur seedhi tasveer lein, phir dobara koshish karein.';return}
+  KC.res=j;KC.msg='';if(j.date&&j.date!==date){KC.stage='date';return}kcApply()}
+ catch(e){KC.err=true;KC.msg='Internet ka masla. Dobara koshish karein.'}
+ finally{KC.busy=false;render()}}
+function kcDate(d){date=d;KC.stage='';kcApply();render()}
+const stSet=(id,k,v)=>{const D=dd(date),s=D.st[id]=D.st[id]||{pu:'',us:'',cl:'',u:0};s[k]=v==null||v===''?'':String(v);s.u=now();mark('st:'+date+'|'+id)};
+const entId=(k,i)=>'cp'+date.replace(/-/g,'')+k+i;
+function entSet(k,i,name,a){const L=dd(date)[k],id=entId(k,i),e=L.find(x=>x.id===id),o={id,n:name,a:n(a),del:false,u:now()};if(e)Object.assign(e,o);else L.push(o);mark('en:'+date+'|'+k+'|'+id)}
+function kcApply(){const R=KC.res,qs=[];let saved=0;
+ const pre='cp'+date.replace(/-/g,'');
+ if(KINDS.some(k=>day(date)[k].some(e=>!e.del&&e.id.startsWith(pre)))&&!confirm('Is din ka khata pehle bhi tasveer se parha gaya tha. Dobara parhne se tasveer wali entries nayi parhai se badal jayengi. Jari rakhein?')){KC.res=null;return}
+ for(const r of R.stock||[]){const it=itm(r.id);if(!it)continue;const s=day(date).st[it.id]||{};
+  if(r.op!=null&&Math.abs(n(r.op)-opening(it,date))>0.001)qs.push({t:'info',l:`${it.name}: khaate mein Opening ${fq(r.op)} hai, app mein ${fq(opening(it,date))}`,note:'App opening pichle din ki closing se nikalti hai. Pichle din ki closing check kar lein.'});
+  for(const k of ['pu','us','cl']){const v=r[k];if(v==null)continue;const old=s[k];
+   if(r.sure&&(!has(old)||Math.abs(n(old)-v)<0.001)){stSet(it.id,k,v);saved++}
+   else qs.push({t:'st',id:it.id,k,v,old,l:`${it.name} — ${COLN[k]}`,note:has(old)&&Math.abs(n(old)-v)>=0.001?`App mein pehle ${fq(old)} likha hai.`+(r.note?' '+r.note:''):(r.note||'Saaf nahi parha gaya.')})}}
+ (R.entries||[]).forEach((e,i)=>{if(!KINDS.includes(e.kind)||!n(e.amount))return;let nm=nkey(e.name||'?');if(e.parts&&String(e.parts).includes('+'))nm+=` (${e.parts})`;
+  if(e.sure){entSet(e.kind,i,nm,e.amount);saved++}else qs.push({t:'en',k:e.kind,i,v:e.amount,name:nm,l:`${SECS[e.kind][0]}: ${nm}`,note:e.note||'Saaf nahi parha gaya.'})});
+ for(const u of R.unknown_items||[])qs.push({t:'info',l:`"${u.name}" app ki item list mein nahi`,note:`Khaate mein: ${['op','pu','us','cl'].filter(k=>u[k]!=null).map(k=>COLN[k]+' '+fq(u[k])).join(', ')||'—'}. Items mein add karke Stock mein khud likh dein.`});
+ const D=day(date);
+ if(R.galla_open!=null&&Math.abs(n(R.galla_open)-tot(date).op)>0.5)qs.push({t:'info',l:`Galla opening: khaate mein ${f(R.galla_open)}, app mein ${f(tot(date).op)}`,note:'App opening pichle din ke galle se nikalti hai.'});
+ if(R.cash!=null){if(D.cash==null){const x=dd(date);x.cash=n(R.cash);x.cu=now();mark('ca:'+date);saved++}else if(Math.abs(n(D.cash)-R.cash)>0.5)qs.push({t:'ca',v:R.cash,l:'Galle mein asal cash',note:`App mein pehle ${f(D.cash)} likha hai.`})}
+ KC.qs=qs;KC.saved=saved;KC.imgs=[]}
+function kcOk(i){const q=KC.qs[i],el=$('#kq'+i),nm=$('#kn'+i);
+ if(q.t==='st'){const v=el.value.trim();stSet(q.id,q.k,v===''?'':n(v))}
+ else if(q.t==='en'){const raw=el.value.replace(/\s/g,''),parts=raw.split('+').filter(Boolean),a=parts.reduce((s,x)=>s+n(x),0);if(!a){alert('Raqam likhein.');return}
+  let name=nm.value.trim()||q.name;if(parts.length>1&&!/\(.*\)$/.test(name))name+=` (${parts.join('+')})`;entSet(q.k,q.i,nkey(name),a)}
+ else if(q.t==='ca'){const x=dd(date);x.cash=el.value===''?null:n(el.value);x.cu=now();mark('ca:'+date)}
+ KC.qs.splice(i,1);KC.saved++;render()}
+function kcSkip(i){KC.qs.splice(i,1);render()}
+function kc(){let h=`<button class="link" onclick="go('stock')">← Wapas</button>
+ <div class="card"><h3>Khata ki tasveer se bharein</h3><p class="hint" style="margin-top:6px">Tareekh: <b>${dayName(date)}, ${pk(date)}</b> (upar se badal sakte hain). Khaate ke page ki seedhi, roshni mein, poori tasveer lein. Ek din ke 3 page tak.</p>
+ <div class="thumbs">${KC.imgs.map((d,i)=>`<div><img src="${d}" alt="Page ${i+1}"><button onclick="kcDel(${i})" aria-label="Tasveer ${i+1} hatayen">✕</button></div>`).join('')}</div>
+ ${KC.imgs.length<4?`<label class="btn ghost full" style="display:flex;align-items:center;justify-content:center;gap:8px">📷 ${KC.imgs.length?'Aur page ki tasveer':'Tasveer lein'}<input type="file" accept="image/*" capture="environment" multiple hidden onchange="kcAdd(this.files)"></label>`:''}
+ <button class="btn full" style="margin-top:10px" onclick="kcRead()" ${KC.busy||!KC.imgs.length?'disabled':''}>${KC.busy?'Parh raha hai…':'Parh kar bharein'}</button>
+ ${KC.msg?`<div class="msg${KC.err?' err':''}">${esc(KC.msg)}</div>`:''}</div>`;
+ if(KC.stage==='date')h+=`<div class="card qa"><h3>Tareekh check karein</h3><p>Tasveer par tareekh <b>${pk(KC.res.date)}</b> likhi hai, aur aap ne <b>${pk(date)}</b> chuni hai. Kis din mein bharoon?</p>
+  <div class="btns"><button class="btn" onclick="kcDate('${KC.res.date}')">${pk(KC.res.date)}</button><button class="btn ghost" onclick="kcDate('${date}')">${pk(date)}</button></div></div>`;
+ else if(KC.res){h+=`<div class="card"><div class="sum"><span>Save ho gaya</span><b class="pos">${KC.saved}</b></div><div class="sum"><span>Check karna baqi</span><b class="${KC.qs.length?'neg':''}">${KC.qs.length}</b></div>
+  ${KC.qs.length?'<p class="hint" style="margin-top:6px">Neeche har cheez dekh kar sahi value likhein aur "Theek hai" dabayein. Har ek usi waqt save hoti hai.</p>':'<div class="badge ok">✓ Sab save ho gaya</div><div class="btns" style="margin-top:10px"><button class="btn ghost" onclick="go(\'stock\')">Stock dekhein</button><button class="btn ghost" onclick="go(\'hisaab\')">Hisaab dekhein</button><button class="btn ghost" onclick="kcReset()">Naya khata</button></div>'}</div>`;
+  h+=KC.qs.map((q,i)=>`<div class="card qa"><b>${esc(q.l)}</b><p class="hint" style="margin:4px 0 10px">${esc(q.note||'')}</p>
+   ${q.t==='info'?`<button class="btn ghost" onclick="kcSkip(${i})">Samajh gaya</button>`:
+   `${q.t==='en'?`<div class="fld"><label for="kn${i}">Naam</label><input type="text" id="kn${i}" value="${esc(q.name)}"></div>`:''}
+   <div class="fld"><label for="kq${i}">${q.t==='en'?'Raqam':'Sahi value'}</label><input type="${q.t==='en'?'text':'number'}" inputmode="decimal" id="kq${i}" value="${q.v??''}"></div>
+   <div class="btns"><button class="btn" onclick="kcOk(${i})">Theek hai, save karein</button><button class="btn ghost" onclick="kcSkip(${i})">Chhor dein</button></div>`}</div>`).join('')}
+ h+=`<div class="card"><h3>Khaali form</h3><p class="hint" style="margin:6px 0 12px">Ye form app ke liye parhna sab se aasan hai: har item ka number aur khana chhapa hua hai. Chhapwa kar roz isi mein likhein.</p>
+  <button class="btn ghost full" onclick="open('/khata-form.html','_blank')">🖨 Form kholein / chhapein</button></div>`;
+ return h}
 
 // Report
 // Delivery: what the delivery man took to each customer today (any role), and for the owner the monthly bills,
@@ -846,7 +919,12 @@ function acct(){const c=Object.keys(S.q).length,r=role();
  <p class="hint" style="margin:6px 0 12px">Internet na ho tab bhi likhte rahein. Internet aate hi sab khud online chala jayega.</p>
  <button class="btn ghost full" onclick="sync().then(render)">Abhi sync karein</button></div>`;
  if(own())h+=`<button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('items')"><span>Items, rate aur cost</span><span class="muted">›</span></button>
- <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('cost')"><span>Cost (tareekh ke hisaab se)</span><span class="muted">›</span></button>`;
+ <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('cost')"><span>Cost (tareekh ke hisaab se)</span><span class="muted">›</span></button>
+ <div class="card"><details><summary>Khata tasveer se parhne ki setup (ek baar)</summary><ol style="margin:10px 0 0;padding-left:20px;line-height:1.6">
+ <li>aistudio.google.com par apne Google account se login karein.</li><li>"Get API key" → "Create API key" dabayein aur key copy karein. Ye free hai.</li>
+ <li>vercel.com → gujjar-dairies-app → Settings → Environment Variables mein naya variable: naam <b>GEMINI_API_KEY</b>, value wahi key. Save karein.</li>
+ <li>Deployments mein sab se upar wale par "Redeploy" dabayein.</li></ol>
+ <p class="hint" style="margin-top:8px">Key kisi ko na bhejein, chat mein bhi nahi. Free plan mein Google tasveerein apni service behtar karne ke liye istemal kar sakta hai.</p></details></div>`;
  if(own()&&MEM){const o=MEM.filter(x=>x.role!=='owner');
   const rb=(x,r,l,c)=>x.role===r?'':`<button class="btn${c?' '+c:''}" ${sbtn} onclick="setRole('${x.user_id}','${r}')">${l}</button>`;
   h+=`<div class="card"><h3>Staff</h3>${o.map(x=>`<div class="row" style="flex-wrap:wrap"><span style="min-width:0;word-break:break-all">${esc(x.email||'')}<br><span class="hint">${ROLE[x.role]||x.role}</span></span><span class="btns">${rb(x,'staff','Staff (dukaan)')}${rb(x,'delivery','Delivery wala')}${x.role!=='pending'?rb(x,'pending','Rok dein','ghost'):''}</span></div>`).join('')||'<p class="hint" style="margin-top:8px">Abhi koi staff nahi. Staff apne phone par is app mein "Naya account" banaye, phir yahan nazar aayega.</p>'}
