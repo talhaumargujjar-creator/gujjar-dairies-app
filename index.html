@@ -232,10 +232,10 @@ function load(){let s=null,o=null;
  try{o=JSON.parse(localStorage.getItem(K1))}catch(e){}
  if(o&&o.items&&o.days)return migrate(o,1);
  return{v:2,items:SEED.map((r,i)=>({id:'i'+i,name:r[0],rate:r[1],cost:r[2],op:r[3],off:false,u:0,pru:0})),days:{},cash0:0,c0u:0,q:{},cur:{},me:null}}
-// Doodh book (replaces the MILK 2026 sheet). Quantities are kg; 1 mann = 40 kg.
-// mk = {ps:[{id,name,kind:'sup'|'buy',off,u}], mr:{day:{m,e,u}} mandi rate per mann, d:{day:{partyId:{bm,be,cm,ce,lm,le,sm,se,u}}}}
+// Doodh book (replaces the MILK 2026 sheet). Quantities are kg; 1 mun = 40 kg.
+// mk = {ps:[{id,name,kind:'sup'|'buy',off,u}], mr:{day:{m,e,u}} mandi rate per mun, d:{day:{partyId:{bm,be,cm,ce,lm,le,sm,se,u}}}}
 // b = bandhi, c = cow, l = taken from mandi, s = sold to mandi; m = morning, e = evening.
-// pr[partyId][fromDay] = {b,c,l,s}: bandhi and cow rate per mann, and how much below the mandi rate milk taken from (l)
+// pr[partyId][fromDay] = {b,c,l,s}: bandhi and cow rate per mun, and how much below the mandi rate milk taken from (l)
 //   or sold to (s) the mandi is counted (commission). A rate applies from its day until the next change.
 // ob[partyId] = {v,d}: baqaya at the end of day d; days up to d are not counted again.
 // pay[day] = [{id,p,a,n,del}]: money paid to a 'sup' party, or received from a 'buy' party.
@@ -440,9 +440,9 @@ function setC(v){const D=dd(date);D.cash=v===''?null:n(v);D.cu=now();mark('ca:'+
 const r2=v=>Math.round(v*100)/100;
 const mrow=(d,id)=>(S.mk.d[d]||{})[id]||{};
 const mannOf=kg=>Math.floor(kg/40+1e-9);
-// Always "mann - kg" like the sheet: "25 mann 10 kg", "0 mann 30 kg", "3 mann 0 kg" (never "24 mann 40 kg").
+// Always "mun - kg" like the sheet: "25 mun 10 kg", "0 mun 30 kg", "3 mun 0 kg" (never "24 mun 40 kg").
 function fmk(kg){kg=r2(kg);const a=Math.abs(kg),m=mannOf(a),k=r2(a-m*40);
- return (kg<0?'−':'')+m.toLocaleString('en-PK')+' mann '+k.toLocaleString('en-PK')+' kg'}
+ return (kg<0?'−':'')+m.toLocaleString('en-PK')+' mun '+k.toLocaleString('en-PK')+' kg'}
 // A party's milk for the day, like the sheet's TOTAL MILK: bandhi + cow + taken from mandi - sold to mandi.
 function mtot(d,id){const r=mrow(d,id);return n(r.bm)+n(r.be)+n(r.cm)+n(r.ce)+n(r.lm)+n(r.le)-n(r.sm)-n(r.se)-n(r.gm)-n(r.ge)}
 const mside=(d,k)=>S.mk.ps.filter(p=>p.kind===k).reduce((a,p)=>a+mtot(d,p.id),0);
@@ -484,9 +484,9 @@ let mp=null,pOpen=false;
 const mps=()=>S.mk.ps.filter(p=>!p.off);
 function mcard(p){const r=mrow(date,p.id);
  const cell=(k,l)=>{const v=r[k],m=has(v)?mannOf(n(v)):'',g=has(v)?r2(n(v)-m*40):'';
-  return `<div class="mk"><input type="number" inputmode="decimal" enterkeyhint="next" value="${m}" aria-label="${l} mann" onchange="setM('${p.id}','${k}',this)"><input type="number" inputmode="decimal" enterkeyhint="next" value="${g}" aria-label="${l} kg" onchange="setM('${p.id}','${k}',this)"></div>`};
+  return `<div class="mk"><input type="number" inputmode="decimal" enterkeyhint="next" value="${m}" aria-label="${l} mun" onchange="setM('${p.id}','${k}',this)"><input type="number" inputmode="decimal" enterkeyhint="next" value="${g}" aria-label="${l} kg" onchange="setM('${p.id}','${k}',this)"></div>`};
  return `<div class="card"><div class="ih"><b>${esc(p.name)}</b><span class="tag">${p.kind==='sup'?'Yahan se doodh aata hai':'Yahan doodh jata hai'}</span></div>
- <div class="mg" id="mg"><span></span><span class="h">Subah</span><span class="h">Shaam</span><span></span><span class="mk u"><i>mann</i><i>kg</i></span><span class="mk u"><i>mann</i><i>kg</i></span>
+ <div class="mg" id="mg"><span></span><span class="h">Subah</span><span class="h">Shaam</span><span></span><span class="mk u"><i>mun</i><i>kg</i></span><span class="mk u"><i>mun</i><i>kg</i></span>
  ${MROWS.map(([k,l])=>`<span class="rl">${l}</span>${cell(k+'m',l+' subah')}${cell(k+'e',l+' shaam')}`).join('')}</div>
  <div class="res"><span>Aaj ka kul doodh</span><b id="mpt">${fmk(mtot(date,p.id))}</b></div>${own()?mcommV(p,r):''}</div>`}
 const sgn=v=>(v>0?'+':v<0?'−':'')+f(Math.abs(v));
@@ -538,7 +538,7 @@ function mrateV(p){const R=prate(p.id,date),O=S.mk.ob[p.id]||{},v=k=>R&&has(R[k]
  const ri=(k,l)=>`<div class="fld"><label for="pr${k}">${l}</label><input type="number" inputmode="decimal" id="pr${k}" value="${v(k)}" onchange="setPR('${p.id}','${k}',this.value)"></div>`;
  return `<div class="card"><details ${rOpen||!R?'open':''} ontoggle="rOpen=this.open"><summary>Rate aur purana baqaya</summary>
  <p class="hint" id="prh" style="margin:10px 0 14px">${prHint(p)}</p>
- ${ri('b','Bandhi rate (1 mann)')}${ri('c','Cow rate (1 mann)')}${ri('l','Mandi se liya: mandi rate se kitna kam')}${ri('s','Bhains ka doodh mandi ko becha: mandi rate se kitna kam (commission)')}${ri('g','Gaye ka doodh mandi ko becha: mandi rate se kitna kam (commission)')}
+ ${ri('b','Bandhi rate (1 mun)')}${ri('c','Cow rate (1 mun)')}${ri('l','Mandi se liya: mandi rate se kitna kam')}${ri('s','Bhains ka doodh mandi ko becha: mandi rate se kitna kam (commission)')}${ri('g','Gaye ka doodh mandi ko becha: mandi rate se kitna kam (commission)')}
  <h3 style="margin:20px 0 6px">Purana baqaya</h3><p class="hint" style="margin-bottom:12px">Sheet ke aakhri din ka BAL aur wo tareekh likhein. Us tareekh tak ke din dobara nahi gine jayenge. ${sup?'Inhein advance diya ho':'In se advance aaya ho'} to minus (−) ke saath likhein.</p>
  <div class="fld"><label for="obv">Baqaya</label><input type="number" inputmode="decimal" id="obv" value="${has(O.v)?O.v:''}" onchange="setOB('${p.id}','v',this.value)"></div>
  <div class="fld"><label for="obd">Kis tareekh ke aakhir tak</label><input type="date" id="obd" value="${O.d||''}" onchange="setOB('${p.id}','d',this.value)"></div>
@@ -644,7 +644,7 @@ function doodh(){const P=mps(),R=S.mk.mr[date]||{};if(!P.some(p=>p.id===mp))mp=P
  if(own()&&mv==='p')return sw+pnlV();
  if(own()&&mv==='b')return sw+mbillV();
  const ri=(k,l)=>`<div class="f"><label for="mr${k}">${l}</label><input type="number" inputmode="decimal" id="mr${k}" value="${R[k]??''}" onchange="setMR('${k}',this.value)"></div>`;
- return `${sw}${mmissV()}<div class="card"><h3>Mandi rate (1 mann ka)</h3><div class="g3" style="grid-template-columns:1fr 1fr;margin-top:10px">${ri('m','Subah')}${ri('e','Shaam')}</div>${szV()}</div>
+ return `${sw}${mmissV()}<div class="card"><h3>Mandi rate (1 mun ka)</h3><div class="g3" style="grid-template-columns:1fr 1fr;margin-top:10px">${ri('m','Subah')}${ri('e','Shaam')}</div>${szV()}</div>
  <div class="chips" style="flex-wrap:wrap">${P.map(x=>`<button class="chip" aria-pressed="${x.id===mp}" onclick="mp='${x.id}';render()">${esc(x.name)}</button>`).join('')}</div>
  ${p?mcard(p)+(own()?`<div class="card" id="mraq">${mraqIn(p)}</div>`:'')+mpayV(p)+(own()?`<div class="card" id="mbal">${mbalIn(p)}</div>`+mrateV(p):''):'<p class="hint" style="text-align:center;padding:20px">Koi party nahi. Neeche Parties mein add karein.</p>'}
  <div class="card" id="msum">${msumIn()}</div>${own()?`<div class="card" id="mball">${mallIn()}</div>`+partiesV():''}`}
