@@ -826,9 +826,30 @@ function billHTML(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,
 async function printBill(id){let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.appendChild(p)}
  p.innerHTML=billHTML(id);await Promise.all([...p.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));window.print()}
 
+// Value of stock left at the end of a day: closing (or opening if no closing yet) × cost on that day.
+function stockVal(d){return act().reduce((a,it)=>{const s=day(d).st[it.id],q=s&&has(s.cl)?n(s.cl):opening(it,d);return a+Math.max(0,q)*costOf(it,d)},0)}
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function monthRows(m){return keys().filter(d=>d.startsWith(m)&&active(S.days[d])).map(d=>{const x=tot(d);return {d,sale:x.sale+x.dsale,ex:x.ex+x.sl,pl:x.pl,sp:x.sp,ud:x.ud,diff:x.diff}})}
+function monthV(){const m=date.slice(0,7),R=monthRows(m),S2=k=>R.reduce((a,r)=>a+(r[k]||0),0),[y,mo]=m.split('-');
+ return `<div class="card"><h3>${MONTHS[+mo-1]} ${y} ka hisaab</h3><div style="margin-top:6px"></div>
+ <div class="sum"><span>Din jin ka hisaab hai</span><b>${R.length}</b></div><div class="sum"><span>Kul sale</span><b>${f(S2('sale'))}</b></div>
+ <div class="sum"><span>Kharcha + salary</span><b>${f(S2('ex'))}</b></div><div class="sum"><span>Supplier payments</span><b>${f(S2('sp'))}</b></div>
+ <div class="sum"><span>Udhaar diya</span><b>${f(S2('ud'))}</b></div><div class="sum tot"><span>Asal munafa</span><b class="${S2('pl')<0?'neg':'pos'}">${f(S2('pl'))}</b></div>
+ <div class="btns" style="margin-top:12px"><button class="btn ghost" onclick="monthCsv()">Excel (CSV) download</button><button class="btn ghost" onclick="shareMonth()">WhatsApp par bhejein</button></div></div>`}
+function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
+// CSV opens in Excel; the BOM keeps Excel from mangling the text.
+function monthCsv(){const m=date.slice(0,7),R=monthRows(m),q=v=>`"${String(v).replace(/"/g,'""')}"`;
+ const lines=[['Tareekh','Sale','Kharcha + salary','Supplier','Udhaar diya','Munafa','Galla farq'].map(q).join(',')].concat(R.map(r=>[pk(r.d),Math.round(r.sale),Math.round(r.ex),Math.round(r.sp),Math.round(r.ud),Math.round(r.pl),r.diff==null?'':Math.round(r.diff)].join(',')));
+ dl(`hisaab-${m}.csv`,'﻿'+lines.join('\r\n'),'text/csv')}
+const wa=t=>open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
+function shareDay(){const t=tot(date);wa(`*Gujjar Dairies — ${dayName(date)} ${pk(date)}*\nSale: Rs ${f(t.sale+t.dsale)}\nKharcha + salary: Rs ${f(t.ex+t.sl)}\nSupplier: Rs ${f(t.sp)}\nUdhaar diya: Rs ${f(t.ud)}\nMunafa: Rs ${f(t.pl)}\nGalla farq: ${t.diff==null?'—':'Rs '+f(t.diff)}`)}
+function shareMonth(){const m=date.slice(0,7),R=monthRows(m),S2=k=>R.reduce((a,r)=>a+(r[k]||0),0),[y,mo]=m.split('-');
+ wa(`*Gujjar Dairies — ${MONTHS[+mo-1]} ${y}*\n${R.length} din\nKul sale: Rs ${f(S2('sale'))}\nKharcha + salary: Rs ${f(S2('ex'))}\nSupplier: Rs ${f(S2('sp'))}\nUdhaar diya: Rs ${f(S2('ud'))}\nMunafa: Rs ${f(S2('pl'))}`)}
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
- return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Kharcha + salary',f(t.ex+t.sl))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Udhaar diya',f(t.ud))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}</div>
+ return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Kharcha + salary',f(t.ex+t.sl))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Udhaar diya',f(t.ud))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
+ <div class="btns" style="margin:12px 0"><button class="btn" onclick="shareDay()">WhatsApp par bhejein</button></div>
+ ${monthV()}
  <h2>Pichle din</h2><div class="card">${days.length?`<table><tr><th>Tareekh</th><th>Sale</th><th>Kharcha</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr onclick="date='${d}';render();scrollTo(0,0)"><td>${pk(d).slice(0,5)}</td><td>${f(x.sale+x.dsale)}</td><td>${f(x.ex+x.sl)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table>`:'<p class="hint">Abhi koi din ka hisaab nahi.</p>'}</div>
  <p class="hint">Munafa = bike maal ka (rate − cost) minus kharcha aur salary. Ghar aur gari kharcha, udhaar, owner ko di raqam aur supplier payment munafa mein nahi ginte.</p>`}
 
