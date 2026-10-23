@@ -452,8 +452,11 @@ const mpays=(d,id)=>(S.mk.pay[d]||[]).filter(e=>!e.del&&e.p===id);
 // Hisaab (cashbook) entries whose name the owner linked to a party count as that party's payment,
 // e.g. Johar (the shop) paying the owner for milk out of the galla. The "(375+375)" part of a name is ignored.
 const hkBase=s=>nkey(s).replace(/\s*\([\d+.\s]*\)$/,'');
-function hkPays(d,id){const p=S.mk.ps.find(x=>x.id===id),H=(p&&p.hk||[]).map(hkBase);if(!H.length||!S.days[d])return [];const D=day(d);
- return KINDS.flatMap(k=>live(D,k).filter(e=>H.includes(hkBase(e.n))).map(e=>({...e,k})))}
+// A link like "@bl" takes a whole Hisaab section (e.g. every "Bill ki raqam / owner ko" entry); other links match one name.
+function hkPays(d,id){const p=S.mk.ps.find(x=>x.id===id),hk=p&&p.hk||[];if(!hk.length||!S.days[d])return [];const D=day(d);
+ const sec=hk.filter(x=>x[0]==='@').map(x=>x.slice(1)),H=hk.filter(x=>x[0]!=='@').map(hkBase);
+ return KINDS.flatMap(k=>live(D,k).filter(e=>sec.includes(k)||H.includes(hkBase(e.n))).map(e=>({...e,k})))}
+const hkLabel=x=>x[0]==='@'?`"${SECS[x.slice(1)][0]}" ki har entry`:x;
 // A party's amount for the day, like the sheet: bandhi + cow + taken from mandi - sold to mandi,
 // mandi milk at that slot's mandi rate less the party's commission.
 // A day's own commission `k` (like the sheet's COMM, added to the mandi rate) replaces the party's rate commission
@@ -513,7 +516,7 @@ function mpayV(p){const L=mpays(date,p.id),H=hkPays(date,p.id),sup=p.kind==='sup
  return `<div class="card"><div class="sh"><h3>${sup?'Inhein payment di':'In se payment aayi'}</h3><b>${f(tt)}</b></div>
  ${L.length?`<div style="margin-top:8px">${L.map(e=>`<div class="row"><span>${esc(e.n||'Payment')}</span><span>${f(n(e.a))}<button class="x" aria-label="Payment hatayen" onclick="delPay('${e.id}')">✕</button></span></div>`).join('')}</div>`:''}
  ${H.length?`<div style="margin-top:8px">${H.map(e=>`<div class="row"><span>${esc(e.n)}<br><span class="hint">Hisaab se khud (${esc(SECS[e.k][0])})</span></span><span>${f(n(e.a))}</span></div>`).join('')}</div>`:''}
- ${p.hk&&p.hk.length?`<p class="hint" style="margin-top:6px">Hisaab ki ${p.hk.map(esc).join(', ')} wali entries yahan khud payment ban jati hain. Inhein yahan dobara na likhein.</p>`:''}
+ ${p.hk&&p.hk.length?`<p class="hint" style="margin-top:6px">Hisaab se khud payment: ${p.hk.map(x=>esc(hkLabel(x))).join(', ')}. Inhein yahan dobara na likhein.</p>`:''}
  <div class="addr"><input type="text" id="mpn" placeholder="Note (marzi se)" aria-label="Payment ka note"><input type="number" inputmode="decimal" id="mpa" placeholder="Raqam" aria-label="Payment ki raqam"><button class="btn" onclick="addPay('${p.id}')">+ Payment add karein</button></div></div>`}
 function addPay(id){const a=n($('#mpa').value);if(!a){alert('Raqam likhein.');return}
  const e={id:nid(),p:id,a,n:$('#mpn').value.trim(),del:false,u:now()};(S.mk.pay[date]=S.mk.pay[date]||[]).push(e);mark('mpy:'+date+'|'+e.id);render()}
@@ -529,10 +532,14 @@ function mrateV(p){const R=prate(p.id,date),O=S.mk.ob[p.id]||{},v=k=>R&&has(R[k]
  <div class="fld"><label for="obv">Baqaya</label><input type="number" inputmode="decimal" id="obv" value="${has(O.v)?O.v:''}" onchange="setOB('${p.id}','v',this.value)"></div>
  <div class="fld"><label for="obd">Kis tareekh ke aakhir tak</label><input type="date" id="obd" value="${O.d||''}" onchange="setOB('${p.id}','d',this.value)"></div>
  <h3 style="margin:20px 0 6px">Hisaab se payment</h3><p class="hint" style="margin-bottom:8px">Dukaan ke Hisaab mein jis naam se is party ki payment likhte hain (jaise ROZ RAQAM), wo naam yahan chunein. Phir wo entry khud is party ki payment ban jayegi aur bill mein se minus hogi.</p>
- <div class="qc">${hkChoices(p).map(x=>`<button aria-pressed="${(p.hk||[]).includes(x)}" onclick="tgHk('${p.id}',this.textContent)">${esc(x)}</button>`).join('')}</div>
+ <p style="font-weight:600;margin:8px 0 4px">Poora hissa</p><div class="qc" style="margin-top:0">${['bl','cr','sp','rc'].map(k=>`<button aria-pressed="${(p.hk||[]).includes('@'+k)}" onclick="tgHkSec('${p.id}','${k}')">${esc(SECS[k][0])}</button>`).join('')}</div>
+ <p style="font-weight:600;margin:12px 0 4px">Sirf ye naam</p>
+ <div class="qc" style="margin-top:0">${hkChoices(p).map(x=>`<button aria-pressed="${(p.hk||[]).includes(x)}" onclick="tgHk('${p.id}',this.textContent)">${esc(x)}</button>`).join('')}</div>
  <div class="addr" style="grid-template-columns:1fr auto"><input type="text" id="hkn" placeholder="Doosra naam" aria-label="Hisaab entry ka naam"><button class="btn" onclick="tgHk('${p.id}',$('#hkn').value)">+ Jodein</button></div></details></div>`}
 // Names offered for linking: the party's own links, the owner/bill section's quick names, and names already used in Hisaab.
-function hkChoices(p){const seen=new Set(p.hk||[]);SECS.bl[1].forEach(x=>seen.add(x));for(const D of Object.values(S.days))KINDS.forEach(k=>(D[k]||[]).forEach(e=>{if(!e.del&&(k==='bl'||k==='rc'||k==='cr'))seen.add(hkBase(e.n))}));return [...seen].filter(Boolean).sort()}
+function tgHkSec(id,k){const p=S.mk.ps.find(x=>x.id===id),H=p.hk=p.hk||[],v='@'+k,i=H.indexOf(v);
+ if(i<0){if(!confirm(`Hisaab ke "${SECS[k][0]}" ki har entry ko ${p.name} ki payment ginein?`))return;H.push(v)}else H.splice(i,1);p.u=now();mark('mp:'+id);rOpen=true;render()}
+function hkChoices(p){const seen=new Set((p.hk||[]).filter(x=>x[0]!=='@'));SECS.bl[1].forEach(x=>seen.add(x));for(const D of Object.values(S.days))KINDS.forEach(k=>(D[k]||[]).forEach(e=>{if(!e.del&&(k==='bl'||k==='rc'||k==='cr'))seen.add(hkBase(e.n))}));return [...seen].filter(Boolean).sort()}
 function tgHk(id,v){v=hkBase(v||'');if(!v)return;const p=S.mk.ps.find(x=>x.id===id),H=p.hk=p.hk||[],i=H.indexOf(v);
  if(i<0){if(!confirm(`Hisaab ki "${v}" wali har entry ko ${p.name} ki payment ginein?`))return;H.push(v)}else H.splice(i,1);p.u=now();mark('mp:'+id);rOpen=true;render()}
 // Filling an empty rate fills the rate already in force (the very first one applies to all days);
