@@ -53,7 +53,7 @@ Static PWA, koi build step nahi. Files: `index.html` (HTML+CSS+JS sab ek file me
 
 ## Usool
 - Free stack hi. Naya dependency ya service lagane se pehle owner se poocho.
-- Offline kaam karna band nahi hona chahiye. Service worker ka cache version (abhi `hisaab-v18`) badlo jab files badlein.
+- Offline kaam karna band nahi hona chahiye. Service worker ka cache version (abhi `hisaab-v19`) badlo jab files badlein.
 - Maujooda `localStorage` data ko migrate karo, mita na do. Naye version se pehle Backup export ka tareeqa batao.
 - Chhote chhote commits, aur har kaam ke baad `git push` taake Vercel deploy kare. Deploy hone par owner ko link batao.
 - UI aasan rakho: bara text, ek haath se phone par chalne wali, Roman Urdu labels. Raqam `en-PK` format mein.

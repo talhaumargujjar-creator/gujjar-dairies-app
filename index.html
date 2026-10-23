@@ -143,7 +143,9 @@ details summary::-webkit-details-marker{display:none}
 details summary::after{content:"›";transform:rotate(90deg);color:var(--mut)}
 details[open] summary::after{transform:rotate(-90deg)}
 input[type=tel],input[type=month]{width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font-size:17px;color-scheme:light dark}
-.tabs button{min-width:0;font-size:11.5px}
+.tabs button{min-width:0;font-size:11.5px;overflow:hidden}
+.tabs button:first-child:nth-last-child(n+8),.tabs button:first-child:nth-last-child(n+8)~button{font-size:9.5px;letter-spacing:-.3px}
+.tabs button[data-k=prd]{flex-grow:1.35}
 .tabs i{width:44px;max-width:100%}
 .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;width:100%;border:0;background:none;padding:0;text-align:left;line-height:1.3}
 .dh b{font-size:16px}
@@ -326,13 +328,14 @@ const ICON={stock:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"
  bank:'<path d="M3 10l9-6 9 6"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>',
  cost:'<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
  acct:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
- dlv:'<path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'};
+ dlv:'<path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+ prd:'<path d="M5 9h14l-1.5 11a1 1 0 0 1-1 .9h-9a1 1 0 0 1-1-.9z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/><path d="M9 14h6"/>'};
 // [key, label, who can open (o owner, s staff, d delivery), shown in the bottom bar].
 // Items and Cost open from the Account page so the bar fits a phone.
-const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','osd',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0],['prd','Production','os',0]];
+const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','osd',1],['prd','Production','os',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0]];
 const tabs=()=>TABS.filter(t=>t[2].includes(role()[0]));
 const ROLE={owner:'Owner',staff:'Staff',delivery:'Delivery',pending:'Manzoori baqi'};
-function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button aria-current="${tab==k||((tab==='items'||tab==='cost')&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
+function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button data-k="${k}" aria-current="${tab==k||((tab==='items'||tab==='cost')&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
 function go(t){tab=t;render();scrollTo(0,0);if(t==='acct')loadMembers()}
 function statsV(){if(tab==='doodh')return mstatsV();if(tab==='bank')return bstatsV();if(tab==='dlv')return dstatsV();const t=tot(date);return `<div class="stat"><span>Sale</span><b>${f(t.sale+t.dsale)}</b></div><div class="stat"><span>Munafa</span><b class="y">${f(t.pl)}</b></div><div class="stat"><span>Galla farq</span><b>${t.diff==null?'—':f(t.diff)}</b></div>`}
 function hdr(){return `<header class="hdr"><div class="top"><div class="brand"><img src="/img/logo.png" alt="Gujjar Dairies"><small><b>${ROLE[role()]}</b><br>Hisaab</small></div><button class="pill" id="sy" onclick="go('acct')"></button></div>
@@ -372,9 +375,8 @@ function listV(){const L=act().filter(i=>i.name.toLowerCase().includes(q.toLower
  return L.map(card).join('')||`<p class="hint" style="text-align:center;padding:20px">${flt==='left'?'Sab items ho gaye ✓':'Koi item nahi mila.'}</p>`}
 function progV(){const A=act(),d=A.filter(isDone).length;return {d,t:A.length,p:A.length?d*100/A.length:0}}
 const capBtn=()=>`<button class="card capbtn" onclick="go('kc')"><span>📷</span>Khata ki tasveer se bharein</button>`;
-const prdBtn=()=>`<button class="card capbtn" onclick="go('prd')"><span>🥛</span>Production (dahi, lassi, bottle) likhein</button>`;
 function stock(){const p=progV();
- return prdBtn()+capBtn()+`<div class="card"><div class="sh"><h3>Stock ki ginti</h3><span class="muted" id="pc">${p.d} / ${p.t} items</span></div><div class="prog"><i id="pb" style="width:${p.p}%"></i></div>
+ return capBtn()+`<div class="card"><div class="sh"><h3>Stock ki ginti</h3><span class="muted" id="pc">${p.d} / ${p.t} items</span></div><div class="prog"><i id="pb" style="width:${p.p}%"></i></div>
  <p class="hint" style="margin-top:10px">Har item ki <b>Purchase</b> aur <b>Closing</b> likhein. <b>Istemal</b> sirf tab likhein jab maal bika nahi balke dukaan mein kaam aaya (jaise doodh se dahi).</p></div>
  <input type="search" placeholder="Item dhoondein" value="${esc(q)}" oninput="q=this.value;$('#list').innerHTML=listV()" aria-label="Item dhoondein">
  <div class="chips">${[['all','Sab'],['left','Baqi'],['done','Ho gaye']].map(([k,l])=>`<button class="chip" aria-pressed="${flt===k}" onclick="flt='${k}';render()">${l}</button>`).join('')}</div>
@@ -724,8 +726,7 @@ function rcEditV(r){const opt=sel=>act().map(it=>`<option value="${it.id}"${it.i
  <div class="btns"><button class="btn ghost" onclick="rcAddIn('${r.id}','it')">+ Dukaan ka item</button><button class="btn ghost" onclick="rcAddIn('${r.id}','raw')">+ Doosra saman</button></div>
  <div class="btns" style="margin-top:8px"><button class="btn" onclick="PRE=null;render()">Ho gaya</button><button class="btn danger" onclick="rcOff('${r.id}')">Recipe band karein</button></div>`}
 function prd(){const L=rcList(),P=S.pr.d[date]||{},raw={};
- let h=`<button class="link" onclick="go('stock')">← Stock</button>
- <div class="card"><h3>Production — ${dayName(date)}, ${pk(date)}</h3><p class="hint" style="margin-top:6px">Aaj jo bana us ki miqdaar likhein. Recipe se jo doodh/dahi laga wo stock se khud kam ho jayega, aur bani hui cheez stock mein jud jayegi. Stock mein "Istemal" sirf baqi kaam ke liye likhein, production ke liye dobara nahi.</p></div>`;
+ let h=`<div class="card"><h3>Production — ${dayName(date)}, ${pk(date)}</h3><p class="hint" style="margin-top:6px">Aaj jo bana us ki miqdaar likhein. Recipe se jo doodh/dahi laga wo stock se khud kam ho jayega, aur bani hui cheez stock mein jud jayegi. Stock mein "Istemal" sirf baqi kaam ke liye likhein, production ke liye dobara nahi.</p></div>`;
  h+=L.map(r=>{const it=itm(r.out),m=n((P[r.id]||{}).q),set=r.ins.some(x=>n(x.q));
   r.ins.forEach(x=>{if(x.t==='raw'&&m){const k=x.name+'|'+x.unit;raw[k]=(raw[k]||0)+n(x.q)*m}});
   return `<div class="card item"><div class="ih"><b>${esc(it.name)}</b>${own()?`<button class="tag" onclick="PRE=PRE==='${r.id}'?null:'${r.id}';render()">Recipe ✎</button>`:''}</div>
