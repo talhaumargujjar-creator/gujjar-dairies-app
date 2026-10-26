@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Roz ka Khata Form</title>
+<title>Dukaan ka Register</title>
 <style>
-/* Printable 3-page daily form, laid out so a photo of it is easy to read by the app:
-   printed item numbers and names, one box per number, page code in big letters, corner marks. */
+/* Printable 3-page daily shop register, in the same order as the app's Stock and Hisaab tabs, so the person
+   entering it in the app can copy line by line. Printed numbers, one box per number, page code, corner marks. */
 :root{--ink:#111;--line:#333;--soft:#eef1f7;--blue:#2e4791;--red:#c71c2b}
 *{box-sizing:border-box}
 html,body{margin:0;background:#e9ecf2;color:var(--ink);font:12px/1.25 Arial,Helvetica,sans-serif}
@@ -27,10 +27,11 @@ th{font-size:10.5px;background:#ddd;border:1.5px solid var(--line);padding:3px 2
 td{border:1.5px solid var(--line);height:8.2mm;padding:0 3px;font-size:11.5px}
 td.no{width:9mm;text-align:center;font-weight:900;font-size:13px}
 td.nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td.auto{font-size:8.5px;color:#666;text-align:center;line-height:1.1}
 .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm}
 .sec h2{margin:4px 0 0;font-size:11px;background:#000;color:#fff;padding:3px 5px;display:flex;justify-content:space-between}
 .sec th{font-size:9px;padding:2px}
-.sec td{height:6.4mm;font-size:9.5px}
+.sec td{height:6.2mm;font-size:9px}
 .sec td.am{width:22mm}
 .box{border:2px solid #000;padding:5px 7px;margin-top:6px}
 .box .r{display:flex;justify-content:space-between;align-items:center;height:10mm;border-bottom:1px solid #999;font-weight:700;font-size:13px}
@@ -41,36 +42,50 @@ td.nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body>
-<div class="bar"><button onclick="print()">🖨 Chhapein / PDF save karein</button><p>Ye form roz ke 3 page hain. Inhein chhapwa kar register bana lein. Likhne ke baad app ke "Khata se bharein" mein in 3 pages ki tasveer lein.</p></div>
+<div class="bar"><button onclick="print()">🖨 Chhapein / PDF save karein</button><p>Ye dukaan ke register ke roz ke 3 page hain. Inhein chhapwa kar register bana lein. Dukaan wala bhai roz isi mein likhe, phir app mein isi tarteeb se entry karein.</p></div>
 <div id="out"></div>
 <script>
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Data comes from the app on this phone; a copy made for printing can pass window.FORM_DATA instead.
 let S=null;try{S=JSON.parse(localStorage.getItem('gd_hisaab_v2'))}catch(e){}
-const items=S&&S.items?S.items.map((it,i)=>[it,i]).filter(x=>!x[0].off).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]):[];
-// Sections in the same order as the app's Hisaab tab; codes K1..K7 are printed so the reader knows the section.
-const SECS=[['K1','KHARCHA (1)',['TALHA BHAI BC','SHOPPER WALA','BARF','SURF','LABOUR KHARCHI','SAFAI','LASSI COMMISSION','BADAM','LASSI GLASS','ROTI','CHEENI','RUBBER','PAKOLA BOTTLE','TALHA BHAI KHARCHA','BIKE PETROL','QARI SAHAB DOODH','KHARAB / LEAK DOODH','LABOUR DOODH'],7],
- ['K2','SALARY (1)',['ASHFAQ','SHOAIB','FAIZAN'],2],['K3','GHAR AUR GARI (2)',['SUZUKI KAAM','DRIVER SALARY','TALHA BHAI GHAR KHARCHA','TALHA BHAI PARCEL'],2],
- ['K4','UDHAAR DIYA (3)',['HAJI HOTEL','DELIVERY','MUNAWWAR ALI'],5],['K5','BILL KI RAQAM / OWNER (4)',['SUZUKI PETROL','TALHA CASH SHOP','ROZ RAQAM','TALHA ACCOUNT'],2],
- ['K6','SUPPLIER (5)',["BRADY'S BILL",'DAWN BILL','EGG BILL','BAKERY BILL','PLAIN CAKE','BISCUIT WALA','SUNSHINE'],3],['K7','CASH WASOOL',['HAJI HOTEL','DELIVERY'],4]];
-// Three columns on page 3 so everything fits one A4 sheet.
+const FD=window.FORM_DATA||null;
+const items=(FD?FD.items:S&&S.items?S.items:[]).map((it,i)=>[it,i]).filter(x=>!x[0].off).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
+// Items whose purchase the app adds by itself (a Doodh party linked to the item, e.g. Johar → FULL FAT MILK).
+const autoIn=new Set(FD?FD.autoIn||[]:S&&S.mk&&S.mk.ps?S.mk.ps.filter(p=>p.si&&!p.off).map(p=>p.si):[]);
+const nkey=s=>String(s||'').replace(/\s*\(.*\)\s*$/,'').trim().toUpperCase();
+// Names written in the last 30 days, most used first, so the register has the names the shop really uses.
+function recent(kind){if(FD)return (FD.names||{})[kind]||[];if(!S||!S.days)return [];const C={},ks=Object.keys(S.days).sort().slice(-30);
+ for(const d of ks)for(const e of (S.days[d][kind]||[]))if(!e.del&&e.n){const k=nkey(e.n);if(k)C[k]=(C[k]||0)+1}
+ return Object.keys(C).sort((a,b)=>C[b]-C[a])}
+const emps=FD?FD.emp||[]:S&&S.em?S.em.filter(e=>!e.off).map(e=>nkey(e.name)):[];
+const uniq=a=>[...new Set(a.filter(Boolean))];
+// Sections in the same order as the app's Hisaab tab; codes K1..K7 are printed so it is clear which part it is.
+// Home delivery is not written here: it is in the Delivery register and the app takes it from the stock by itself.
+const DEF={ex:['TALHA BHAI BC','SHOPPER WALA','BARF','SURF','LABOUR KHARCHI','SAFAI','LASSI COMMISSION','LASSI GLASS','ROTI','CHEENI','RUBBER','TALHA BHAI KHARCHA','BIKE PETROL','QARI SAHAB DOODH','KHARAB / LEAK DOODH','LABOUR DOODH'],
+ sl:[],cr:['SUZUKI KAAM','DRIVER SALARY','TALHA BHAI GHAR KHARCHA'],ud:['HAJI HOTEL','MUNAWWAR ALI'],bl:['SUZUKI PETROL','TALHA CASH SHOP','ROZ RAQAM','TALHA ACCOUNT'],
+ sp:["BRADY'S BILL",'DAWN BILL','EGG BILL','BAKERY BILL','PLAIN CAKE','BISCUIT WALA','SUNSHINE'],rc:['HAJI HOTEL']};
+const pick=(k,max)=>{const r=recent(k).filter(x=>x!=='DELIVERY');return uniq(r.length?r:DEF[k]).slice(0,max)};
+const SECS=[['K1','KHARCHA (1)',pick('ex',30),4],['K2','SALARY (1)',uniq(pick('sl',8).concat(emps)).slice(0,9),2],['K3','GHAR AUR GARI (2)',pick('cr',5),2],
+ ['K4','UDHAAR DIYA (3)',pick('ud',8),3],['K5','BILL KI RAQAM / OWNER (4)',pick('bl',6),2],['K6','SUPPLIER (5)',pick('sp',11),3],['K7','CASH WASOOL',pick('rc',5),3]];
+// Three columns on page 3 so everything fits one A4 sheet; a long kharcha list gets a column of its own.
 const COLS=[['K1'],['K2','K3','K4'],['K5','K6','K7']];
 const marks='<div class="mk tl"></div><div class="mk tr"></div><div class="mk bl"></div><div class="mk br"></div>';
 const dateBoxes='<div class="dt">TAREEKH: <i>D</i><i>D</i> - <i>M</i><i>M</i> - <i>2</i><i>0</i><i>Y</i><i>Y</i></div>';
-const head=(code,title)=>`${marks}<div class="hd"><div><h1>GUJJAR DAIRIES — ROZ KA KHATA</h1><div style="font-size:12px;font-weight:700">${title}</div>${dateBoxes}</div><div class="code">${code}</div></div>`;
-const RULE='<div class="rule"><b>Qaide:</b> Sirf angrezi hindse 0-9 likhein, bare aur saaf. Khaali khana = kuch nahi hua. Sab bik gaya ho to <b>0</b> likhein. Ghalti ho to number <b>kaat kar</b> usi khane mein saaf dobara likhein, upar na likhein. Aadha kilo: 0.5</div>';
+const head=(code,title)=>`${marks}<div class="hd"><div><h1>GUJJAR DAIRIES — DUKAAN KA REGISTER</h1><div style="font-size:12px;font-weight:700">${title}</div>${dateBoxes}</div><div class="code">${code}</div></div>`;
+const RULE='<div class="rule"><b>Qaide:</b> Sirf angrezi hindse 0-9 likhein, bare aur saaf. Khaali khana = kuch nahi hua. Sab bik gaya ho to <b>0</b> likhein. Ghalti ho to number <b>kaat kar</b> usi khane mein saaf dobara likhein, upar na likhein. Aadha kilo: 0.5. <b>Istemal</b> = jo bika nahi, dukaan mein kaam aaya (jaise doodh se dahi).</div>';
 function stockPage(code,title,list,start,extra){
  return `<div class="page">${head(code,title)}${RULE}<table><tr><th style="width:9mm">#</th><th style="width:62mm">ITEM</th><th>OPENING</th><th>PURCHASE</th><th>ISTEMAL</th><th>CLOSING</th></tr>
- ${list.map((it,i)=>`<tr><td class="no">${start+i}</td><td class="nm">${esc(it.name)}</td><td></td><td></td><td></td><td></td></tr>`).join('')}</table>${extra||''}
- <div class="ft"><span>${code} · Gujjar Dairies</span><span>Opening = kal ki closing (app khud bhi check karega)</span></div></div>`}
+ ${list.map((it,i)=>`<tr><td class="no">${start+i}</td><td class="nm">${esc(it.name)}</td><td></td>${autoIn.has(it.id)?'<td class="auto">Doodh party ka<br>app khud jorti hai</td>':'<td></td>'}<td></td><td></td></tr>`).join('')}</table>${extra||''}
+ <div class="ft"><span>${code} · Gujjar Dairies</span><span>Opening = kal ki closing (app khud bhi check karegi)</span></div></div>`}
 function secTable([code,title,names,blank]){
- return `<div class="sec"><h2><span>${title}</span><span>${code}</span></h2><table><tr><th>NAAM (Urdu bhi chalega)</th><th class="am" style="width:28mm">RAQAM</th></tr>
+ return `<div class="sec"><h2><span>${title}</span><span>${code}</span></h2><table><tr><th>NAAM (Urdu bhi chalega)</th><th class="am" style="width:24mm">RAQAM</th></tr>
  ${names.map(x=>`<tr><td class="nm">${esc(x)}</td><td class="am"></td></tr>`).join('')}${'<tr><td></td><td class="am"></td></tr>'.repeat(blank)}</table></div>`}
 function build(){
  if(!items.length){document.getElementById('out').innerHTML='<div class="page"><h2>Pehle app mein login karein</h2><p>Form aap ki items list se banta hai. Isi phone par app khol kar login karein, phir ye page dobara kholein.</p></div>';return}
  const per=27,p1=items.slice(0,per),p2=items.slice(per,per*2);
- const galla=`<div class="box"><div class="r"><span>GALLA OPENING (subah galle mein)</span><span></span></div><div class="r"><span>GALLE MEIN ASAL CASH (shaam ko gin kar)</span><span></span></div></div>`;
+ const galla=`<div class="box"><div class="r"><span>GALLA OPENING (subah galle mein)</span><span></span></div><div class="r"><span>GALLE MEIN ASAL CASH (shaam ko gin kar)</span><span></span></div><div class="r"><span>LIKHNE WALE KA NAAM</span><span></span></div></div>`;
  document.getElementById('out').innerHTML=stockPage('P1','PAGE 1 / 3 — STOCK',p1,1)+stockPage('P2','PAGE 2 / 3 — STOCK',p2,per+1,galla)+
-  `<div class="page">${head('P3','PAGE 3 / 3 — KHARCHA AUR PAYMENTS')}<div class="rule"><b>Qaide:</b> Har raqam ka apna khana. Do raqam hon to 900+900 likh sakte hain. Naam Urdu mein likh sakte hain. Khaali khana chhor dein.</div>
+  `<div class="page">${head('P3','PAGE 3 / 3 — KHARCHA AUR PAYMENTS')}<div class="rule"><b>Qaide:</b> Har raqam ka apna khana. Do raqam hon to 900+900 likh sakte hain. Naya naam khaali line mein likhein. <b>Delivery ka hisaab yahan nahi</b>, Delivery register mein.</div>
   <div class="cols">${COLS.map(c=>`<div>${SECS.filter(s=>c.includes(s[0])).map(secTable).join('')}</div>`).join('')}</div><div class="ft"><span>P3 · Gujjar Dairies</span><span>K1-K7 = app ke Hisaab ke hisse</span></div></div>`}
 build();
 </script>

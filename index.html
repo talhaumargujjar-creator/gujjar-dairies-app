@@ -1431,6 +1431,9 @@ function acct(){const c=Object.keys(S.q).length,r=role();
  <p class="hint" style="margin:6px 0 12px">Internet na ho tab bhi likhte rahein. Internet aate hi sab khud online chala jayega.</p>
  <button class="btn ghost full" onclick="sync().then(render)">Abhi sync karein</button>
  <button class="btn ghost full" onclick="fullResync()">Sab data server se dobara layein</button></div>`;
+ // Paper registers for hand entry, built from this phone's items, names and customers.
+ h+=`<div class="card"><h3>Register chhapein</h3><p class="hint" style="margin:4px 0 10px">Hath se likhne ke liye roz ke page. App ki items aur customers list se bante hain; list badle to dobara chhapein.</p>
+ <div class="btns"><button class="btn ghost" onclick="open('/khata-form.html','_blank')">🖨 Dukaan ka register</button><button class="btn ghost" onclick="open('/delivery-form.html','_blank')">🖨 Delivery ka register</button></div></div>`;
  if(own())h+=`<button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('items')"><span>Items, rate aur cost</span><span class="muted">›</span></button>
  <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('cost')"><span>Cost (tareekh ke hisaab se)</span><span class="muted">›</span></button>
  <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('emp')"><span>Employees, salary aur fixed kharche</span><span class="muted">›</span></button>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ur-Latn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Delivery ka Register</title>
+<style>
+/* Printable daily home-delivery register: one line per customer in the same order as the app's Delivery
+   "Line se entry", so the person entering it in the app goes down the page customer by customer. */
+:root{--ink:#111;--line:#333;--soft:#eef1f7;--blue:#2e4791}
+*{box-sizing:border-box}
+html,body{margin:0;background:#e9ecf2;color:var(--ink);font:12px/1.25 Arial,Helvetica,sans-serif}
+.bar{position:sticky;top:0;background:var(--blue);color:#fff;padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar button{font:inherit;font-size:16px;font-weight:700;border:0;border-radius:10px;padding:10px 18px;background:#fff;color:var(--blue);cursor:pointer}
+.bar p{margin:0;font-size:14px;flex:1;min-width:200px}
+.page{width:210mm;height:297mm;margin:12px auto;background:#fff;padding:11mm 10mm 10mm;position:relative;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.mk{position:absolute;width:7mm;height:7mm;background:#000}
+.mk.tl{top:3.5mm;left:3.5mm}.mk.tr{top:3.5mm;right:3.5mm}.mk.bl{bottom:3.5mm;left:3.5mm}.mk.br{bottom:3.5mm;right:3.5mm}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;border-bottom:2px solid #000;padding-bottom:4px;margin-bottom:4px}
+.hd h1{margin:0;font-size:16px;letter-spacing:.5px}
+.hd .code{font-size:20px;font-weight:900;border:3px solid #000;padding:2px 8px;white-space:nowrap}
+.dt{display:flex;align-items:center;gap:3px;font-weight:700;font-size:12px;margin-top:3px}
+.dt i{display:inline-block;width:6.5mm;height:7.5mm;border:1.5px solid #000;font-style:normal;text-align:center;line-height:7.5mm;font-size:10px;color:#bbb}
+.dt b{margin-left:10px}.dt u{display:inline-block;width:45mm;border-bottom:1.5px solid #000;height:6mm}
+.rule{font-size:10px;background:var(--soft);border:1px solid #bbb;padding:3px 6px;margin:3px 0 5px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{font-size:9.5px;background:#ddd;border:1.5px solid var(--line);padding:3px 2px;line-height:1.1}
+td{border:1.5px solid var(--line);height:7.3mm;padding:0 3px;font-size:11px}
+td.no{text-align:center;font-weight:900;font-size:11.5px}
+td.nm{line-height:1.05;overflow:hidden}
+td.nm b{display:block;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td.nm small{display:block;font-size:7.5px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td.co{text-align:center;font-size:8.5px;color:#777}
+.box{border:2px solid #000;padding:4px 7px;margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:0 8mm}
+.box .r{display:flex;justify-content:space-between;align-items:center;height:10mm;border-bottom:1px solid #999;font-weight:700;font-size:12px}
+.box .r span:last-child{width:32mm;height:8mm;border:1.5px solid #000}
+.ft{position:absolute;bottom:5mm;left:13mm;right:13mm;font-size:9px;color:#555;display:flex;justify-content:space-between}
+@media print{html,body{background:#fff}.bar{display:none}.page{margin:0;box-shadow:none;page-break-after:always}@page{size:A4;margin:0}}
+</style>
+</head>
+<body>
+<div class="bar"><button onclick="print()">🖨 Chhapein / PDF save karein</button><p>Ye roz ki home delivery ka register hai. Delivery wala bhai har customer ki line mein likhe, phir app ke Delivery → "Line se entry" mein isi tarteeb se entry karein.</p></div>
+<div id="out"></div>
+<script>
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Data comes from the app on this phone; a copy made for printing can pass window.FORM_DATA instead.
+let S=null;try{S=JSON.parse(localStorage.getItem('gd_hisaab_v2'))}catch(e){}
+const FD=window.FORM_DATA||null;
+const custs=(FD?FD.cs:S&&S.dl&&S.dl.cs?S.dl.cs:[]).map((c,i)=>[c,i]).filter(x=>!x[0].off).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
+const marks='<div class="mk tl"></div><div class="mk tr"></div><div class="mk bl"></div><div class="mk br"></div>';
+const dateBoxes='<div class="dt">TAREEKH: <i>D</i><i>D</i> - <i>M</i><i>M</i> - <i>2</i><i>0</i><i>Y</i><i>Y</i><b>DELIVERY WALA:</b><u></u></div>';
+const RULE='<div class="rule"><b>Qaide:</b> Doodh <b>litre</b> mein (1.5 = dairh litre). Aur saman: naam aur ginti, jaise <b>Bread 1, Dahi 1 kg</b>. Customer ne paise diye to <b>Wasooli</b> mein raqam aur <b>C</b> (cash) ya <b>O</b> (online) par gol daira. Delivery nahi hui to line khaali chhor dein. Naya customer neeche khaali line mein.</div>';
+const HEAD='<tr><th style="width:9mm">#</th><th style="width:52mm">CUSTOMER</th><th style="width:20mm">DOODH<br>(litre)</th><th>AUR SAMAN<br>(kya + kitna)</th><th style="width:22mm">WASOOLI<br>(Rs)</th><th style="width:11mm">C / O</th><th style="width:30mm">REMARKS</th></tr>';
+const row=(no,c)=>`<tr><td class="no">${no}</td><td class="nm">${c?`<b>${esc(c.name)}</b><small>${esc(c.addr||'')}</small>`:''}</td><td></td><td></td><td></td><td class="co">C &nbsp; O</td><td></td></tr>`;
+function build(){
+ if(!custs.length){document.getElementById('out').innerHTML='<div class="page"><h2>Pehle app mein login karein</h2><p>Form aap ki customers list se banta hai. Isi phone par app khol kar login karein, phir ye page dobara kholein.</p></div>';return}
+ // 31 lines a page; the last page also gets blank lines for new customers and the day's totals.
+ const per=31,blank=6,L=custs.map(c=>c).concat(Array(blank).fill(null)),pages=[];
+ for(let i=0;i<L.length;i+=per)pages.push(L.slice(i,i+per));
+ const last=pages[pages.length-1];if(last.length>per-6)pages.push([]);
+ const N=pages.length;
+ document.getElementById('out').innerHTML=pages.map((P,pi)=>{const start=pi*per;
+  const tots=pi===N-1?`<div class="box"><div class="r"><span>KUL DOODH (litre)</span><span></span></div><div class="r"><span>KUL WASOOLI CASH (Rs)</span><span></span></div><div class="r"><span>DUKAAN SE LIYA DOODH (litre)</span><span></span></div><div class="r"><span>KUL WASOOLI ONLINE (Rs)</span><span></span></div><div class="r"><span>WAPAS AAYA DOODH (litre)</span><span></span></div><div class="r"><span>CASH DUKAAN PAR DIYA (Rs)</span><span></span></div></div>`:'';
+  return `<div class="page">${marks}<div class="hd"><div><h1>GUJJAR DAIRIES — DELIVERY KA REGISTER</h1><div style="font-size:11px;font-weight:700">PAGE ${pi+1} / ${N}</div>${dateBoxes}</div><div class="code">D${pi+1}</div></div>
+   ${pi===0?RULE:''}${P.length?`<table>${HEAD}${P.map((c,i)=>row(start+i+1,c)).join('')}</table>`:''}${tots}
+   <div class="ft"><span>D${pi+1} · Gujjar Dairies</span><span>Tarteeb wahi jo app ki Delivery list mein hai</span></div></div>`}).join('')}
+build();
+</script>
+</body>
+</html>
