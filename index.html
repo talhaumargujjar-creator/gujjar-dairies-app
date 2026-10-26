@@ -315,12 +315,14 @@ function gOpen(d){for(const x of before(d)){const D=S.days[x];if(!active(D))cont
 // minus total paid (1) to (5) and cash put in the bank = what should be in the galla.
 // Delivery rate: the item's own delivery rate, else its counter rate. A saved delivery keeps the rate it was saved with.
 const drOf=it=>it&&has(it.drate)?n(it.drate):n(it&&it.rate);
-const damt=(iid,e)=>iid==='_amt'?n(e.a):n(e.q)*(has(e.r)?n(e.r):drOf(itm(iid)));
+// A customer can have its own rate for an item (cs.rates, e.g. milk 250 instead of 270).
+const rateFor=(c,iid)=>{const cu=S.dl.cs.find(x=>x.id===c),r=cu&&cu.rates&&cu.rates[iid];return has(r)?n(r):drOf(itm(iid))};
+const damt=(iid,e,c)=>iid==='_amt'?n(e.a):n(e.q)*(has(e.r)?n(e.r):rateFor(c,iid));
 // One day's home delivery: quantity per item (it left the shop's stock), sale at delivery rates and its munafa.
 // Old sheet amounts ('_amt') only count in customer bills, not in the shop's daily hisaab.
 function dday(d){if(MEMO['d'+d])return MEMO['d'+d];const q={};let sale=0,prof=0;
- for(const L of Object.values(S.dl.d[d]||{}))for(const [iid,e] of Object.entries(L)){if(e.del||iid[0]==='_')continue;
-  const a=damt(iid,e),it=itm(iid);q[iid]=(q[iid]||0)+n(e.q);sale+=a;prof+=a-n(e.q)*(it?costOf(it,d):0)}
+ for(const [c,L] of Object.entries(S.dl.d[d]||{}))for(const [iid,e] of Object.entries(L)){if(e.del||iid[0]==='_')continue;
+  const a=damt(iid,e,c),it=itm(iid);q[iid]=(q[iid]||0)+n(e.q);sale+=a;prof+=a-n(e.q)*(it?costOf(it,d):0)}
  const cash=S.dl.py.filter(p=>!p.del&&p.day===d&&p.m==='cash').reduce((s,p)=>s+n(p.a),0);
  return MEMO['d'+d]={q,sale,prof,cash}}
 // Counter sale = everything that left the stock minus what went out on delivery.
@@ -986,7 +988,7 @@ function dcard(c){const L=dlines(date,c.id),open=dOpen===c.id,nt=dnote(date,c.id
  if(!open)return h+'</div>';
  h+=L.map(([i,e])=>{const qid=`q${c.id}_${i}`;
   if(i==='_amt')return `<div class="row"><span>Sheet wali raqam</span><span>${own()?`<input type="number" inputmode="decimal" class="qi" id="${qid}" value="${e.a}" onchange="setD('${c.id}','_amt',this.value)" aria-label="Raqam">`:f(n(e.a))}</span></div>`;
-  return `<div class="row"><label for="${qid}" style="min-width:0">${esc(iname(i))}</label><span><input type="number" inputmode="decimal" class="qi" id="${qid}" value="${e.q}" onchange="setD('${c.id}','${i}',this.value)">${own()?`<span class="hint" style="min-width:62px;text-align:right">Rs ${f(damt(i,e))}</span>`:''}<button class="x" onclick="setD('${c.id}','${i}','')" aria-label="${esc(iname(i))} hatayen">✕</button></span></div>`}).join('');
+  return `<div class="row"><label for="${qid}" style="min-width:0">${esc(iname(i))}</label><span><input type="number" inputmode="decimal" class="qi" id="${qid}" value="${e.q}" onchange="setD('${c.id}','${i}',this.value)">${own()?`<span class="hint" style="min-width:62px;text-align:right">Rs ${f(damt(i,e,c.id))}</span>`:''}<button class="x" onclick="setD('${c.id}','${i}','')" aria-label="${esc(iname(i))} hatayen">✕</button></span></div>`}).join('');
  const F=favs(c.id).filter(i=>!L.some(([j])=>j===i)),lp=!L.length&&lastDay(c.id,date);
  if(lp)h+=`<button class="btn full" style="margin-top:10px" onclick="copyD('${c.id}','${lp}')">Pichli dafa jaisa (${pk(lp).slice(0,5)}): ${esc(dsumTxt(dlines(lp,c.id).filter(([i])=>i!=='_amt')))}</button>`;
  return h+`<div class="qc">${F.map(i=>`<button onclick="addD('${c.id}','${i}')">+ ${esc(iname(i))}</button>`).join('')}</div>
@@ -997,7 +999,7 @@ function dlistV(){const s=dq.toLowerCase(),C=custs().filter(c=>(c.name+' '+(c.ad
  return C.map(dcard).join('')||`<p class="hint" style="text-align:center;padding:20px">${dflt==='left'?'Sab customers ho gaye ✓':'Koi customer nahi mila.'}</p>`}
 // Rate is fixed on the owner's phone when first written; on other phones the server fills it in.
 function putD(c,i,v){const C=(S.dl.d[date]=S.dl.d[date]||{}),L=(C[c]=C[c]||{}),e=L[i]||(L[i]={q:'',r:'',a:'',del:false,u:0});v=String(v).trim();
- if(i==='_amt')e.a=v===''?'':n(v);else{e.q=v===''?'':n(v);if(own()&&!has(e.r))e.r=drOf(itm(i))}
+ if(i==='_amt')e.a=v===''?'':n(v);else{e.q=v===''?'':n(v);if(own()&&!has(e.r))e.r=rateFor(c,i)}
  e.del=v===''||!n(v);e.u=now();mark('dv:'+date+'|'+c+'|'+i)}
 function setNote(c,v){const C=(S.dl.d[date]=S.dl.d[date]||{}),L=(C[c]=C[c]||{}),e=L._note||(L._note={n:'',del:false,u:0});v=v.trim();
  e.n=v;e.del=!v;e.u=now();mark('dv:'+date+'|'+c+'|_note');render()}
@@ -1011,7 +1013,7 @@ const milkId=()=>(act().find(it=>isMilk(it.id))||{}).id;
 const milkOf=c=>favs(c).find(isMilk)||milkId();
 // Hint shown in the empty box: milk on the last day, or for old sheet days the amount turned into litres.
 function lastMilk(c,mi){for(const x of Object.keys(S.dl.d).filter(x=>x<date).sort().reverse()){const L=S.dl.d[x][c];if(!L)continue;
-  const e=L[mi];if(e&&!e.del&&n(e.q))return fq(n(e.q));const a=L._amt;if(a&&!a.del&&n(a.a)){const r=drOf(itm(mi));return r?fq(Math.round(n(a.a)/r*4)/4):''}}return ''}
+  const e=L[mi];if(e&&!e.del&&n(e.q))return fq(n(e.q));const a=L._amt;if(a&&!a.del&&n(a.a)){const r=rateFor(c,mi);return r?fq(Math.round(n(a.a)/r*4)/4):''}}return ''}
 function fextra(c,mi){const L=dlines(date,c.id).filter(([i])=>i!==mi),nt=dnote(date,c.id);
  return L.map(([i,e])=>`<span class="fchip">${i==='_amt'?(own()?'Rs '+f(n(e.a)):'Purani entry'):esc(iname(i))+' '+fq(n(e.q))}${i==='_amt'?'':`<button onclick="fdel('${c.id}','${i}')" aria-label="${esc(iname(i))} hatayen">✕</button>`}</span>`).join('')+(nt?`<span class="fchip">Note: ${esc(nt)}</span>`:'')}
 function frow(c){const mi=milkOf(c.id),e=((S.dl.d[date]||{})[c.id]||{})[mi],v=e&&!e.del?e.q:'',op=fOpen===c.id,done=dlines(date,c.id).length>0;
@@ -1048,13 +1050,13 @@ function dlv(){const top=own()?`<div class="chips">${[['day','Roz ki entry'],['b
  <div id="dl"${line?' class="card" style="padding:4px 12px"':''}>${L()}</div>`}
 // Customer's baqaya before day d: old baqaya + everything delivered - everything received.
 function cbal(c,d){const cu=cst(c);let b=n(cu&&cu.op);
- for(const [x,C] of Object.entries(S.dl.d)){if(x>=d||!C[c])continue;for(const [i,e] of Object.entries(C[c]))if(!e.del)b+=damt(i,e)}
+ for(const [x,C] of Object.entries(S.dl.d)){if(x>=d||!C[c])continue;for(const [i,e] of Object.entries(C[c]))if(!e.del)b+=damt(i,e,c)}
  S.dl.py.forEach(p=>{if(!p.del&&p.c===c&&p.day<d)b-=n(p.a)});return b}
 // One customer's month: items grouped by rate, old sheet amounts, day-wise list, wasooli and what is still due.
 function cmon(c,ym){const it={},days=[];let amt=0,old=0;
  for(const x of Object.keys(S.dl.d).filter(x=>x.startsWith(ym)).sort()){const L=S.dl.d[x][c];if(!L)continue;let ds=0;const parts=[];
-  for(const [i,e] of Object.entries(L)){if(e.del||i==='_note')continue;const a=damt(i,e);ds+=a;
-   if(i==='_amt'){old+=a;continue}const r=has(e.r)?n(e.r):drOf(itm(i)),k=i+'@'+r,o=it[k]||(it[k]={i,r,q:0,a:0});o.q+=n(e.q);o.a+=a;parts.push(iname(i)+' '+fq(n(e.q)))}
+  for(const [i,e] of Object.entries(L)){if(e.del||i==='_note')continue;const a=damt(i,e,c);ds+=a;
+   if(i==='_amt'){old+=a;continue}const r=has(e.r)?n(e.r):rateFor(c,i),k=i+'@'+r,o=it[k]||(it[k]={i,r,q:0,a:0});o.q+=n(e.q);o.a+=a;parts.push(iname(i)+' '+fq(n(e.q)))}
   const nt=dnote(x,c);if(ds||nt)days.push([x,parts,ds,nt]);amt+=ds}
  const pays=S.dl.py.filter(p=>!p.del&&p.c===c&&p.day.startsWith(ym)).sort((a,b)=>a.day<b.day?-1:1),paid=pays.reduce((s,p)=>s+n(p.a),0),prev=cbal(c,ym+'-01');
  return {items:Object.values(it),old,days,amt,pays,paid,prev,due:prev+amt-paid}}
@@ -1070,6 +1072,7 @@ function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCas
  <div class="fld"><label for="cn">Naam</label><input type="text" id="cn"></div><div class="fld"><label for="ca">Pata</label><input type="text" id="ca"></div>
  <div class="fld"><label for="cp">WhatsApp number</label><input type="tel" id="cp" placeholder="03xx xxxxxxx"></div>
  <div class="fld"><label for="co">Purana baqaya (agar ho)</label><input type="number" inputmode="decimal" id="co"></div>
+ <div class="fld"><label for="cmr">Doodh ka rate (khali = aam delivery rate)</label><input type="number" inputmode="decimal" id="cmr"></div>
  <button class="btn full" onclick="addC()">+ Customer add karein</button></div></details></div>
  ${off.length?`<div class="card"><details><summary>Hataye gaye customers (${off.length})</summary>${off.map(c=>`<div class="row"><span>${esc(c.name)}</span><button class="btn ghost" ${sbtn} onclick="offC('${c.id}',false)">Wapas layein</button></div>`).join('')}</details></div>`:''}
  ${bpV()}`}
@@ -1109,15 +1112,27 @@ function billV(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),R=(l,v,k)=>`<
  <div class="fld"><label for="pm">Kahan aaye</label><select id="pm"><option value="cash">Galle mein (cash)</option><option value="online">Online / seedha owner ko</option></select></div></div>
  <div class="fld"><label for="pn">Note (agar ho)</label><input type="text" id="pn"></div><button class="btn full" onclick="addPay('${id}')">+ Wasooli save karein</button>
  <p class="hint" style="margin-top:8px">Galle wali wasooli us din ke galle ke hisaab mein bhi judti hai.</p></div>
+${rateV(id)}
  <div class="card"><details><summary>Roz ka hisaab (${m.days.length} din)</summary>${m.days.map(([d,p,a,nt])=>`<div class="row"><span>${pk(d).slice(0,5)}${p.length?' · '+esc(p.join(', ')):''}${nt?`<br><span class="hint">Note: ${esc(nt)}</span>`:''}</span><b>${f(a)}</b></div>`).join('')||'<p class="hint">Is mahine kuch nahi gaya.</p>'}</details></div>
  <div class="card"><details><summary>Customer ki maloomat</summary><div style="margin-top:12px">
  <div class="fld"><label for="en">Naam</label><input type="text" id="en" value="${esc(c.name)}" onchange="upC('${id}','name',this.value)"></div>
  <div class="fld"><label for="ea">Pata</label><input type="text" id="ea" value="${esc(c.addr||'')}" onchange="upC('${id}','addr',this.value)"></div>
  <div class="fld"><label for="eo">Purana baqaya (app se pehle ka)</label><input type="number" inputmode="decimal" id="eo" value="${n(c.op)}" onchange="upC('${id}','op',this.value)"></div>
  <button class="btn danger full" onclick="offC('${id}',true)">Customer list se hatayen</button></div></details></div>`}
+// The customer's own rates: milk first, then whatever this customer usually takes. Empty = the item's normal delivery rate.
+function rateV(id){const c=cst(id),R=c.rates||{},L=[...new Set([milkId(),...favs(id)])].filter(i=>i&&itm(i));
+ return `<div class="card"><h3>Is customer ka rate</h3><p class="hint" style="margin:4px 0 10px">Khali chhorein to aam delivery rate lagega (halka likha hua). Naya rate aaj se aage ki entries par lagta hai.</p>
+ ${L.map(i=>`<div class="row"><label for="cr_${i}" style="min-width:0">${esc(iname(i))}</label><input type="number" inputmode="decimal" class="qi" id="cr_${i}" value="${R[i]??''}" placeholder="${fq(drOf(itm(i)))}" onchange="setRate('${id}','${i}',this.value)"></div>`).join('')}</div>`}
+function setRate(id,i,v){const c=cst(id),R=c.rates=Object.assign({},c.rates);v=String(v).trim();if(v!==''&&n(v)<=0){alert('Sahi rate likhein.');render();return}
+ if(v==='')delete R[i];else R[i]=n(v);c.u=now();mark('dc:'+id);const r=rateFor(id,i),ym=bm||ymOf(date);
+ // Entries already written this month keep their old rate unless the owner wants the new one on them too.
+ const old=Object.keys(S.dl.d).filter(x=>x.startsWith(ym)).map(x=>[x,(S.dl.d[x][id]||{})[i]]).filter(([,e])=>e&&!e.del&&n(e.r)!==r);
+ if(old.length&&confirm(`${monName(ym)} mein ${old.length} din pehle se likhe hain. Un par bhi naya rate ${fq(r)} lagayein?`))
+  old.forEach(([x,e])=>{e.r=r;e.u=now();mark('dv:'+x+'|'+id+'|'+i)});
+ render()}
 function addC(){const nm=$('#cn').value.trim();if(!nm){alert('Customer ka naam likhein.');return}
  const id='c'+Date.now().toString(36),ord=S.dl.cs.reduce((m,x)=>Math.max(m,x.ord??0),0)+1;
- S.dl.cs.push({id,name:nm,addr:$('#ca').value.trim(),phone:$('#cp').value.trim(),op:n($('#co').value),ord,off:false,u:now()});mark('dc:'+id);render()}
+ const mr=$('#cmr').value.trim(),mi=milkId();S.dl.cs.push({id,name:nm,addr:$('#ca').value.trim(),phone:$('#cp').value.trim(),op:n($('#co').value),ord,off:false,rates:mr&&mi?{[mi]:n(mr)}:{},u:now()});mark('dc:'+id);render()}
 function upC(id,k,v){const c=cst(id);v=k==='op'?n(v):v.trim();if(k==='name'&&!v){render();return}c[k]=v;c.u=now();mark('dc:'+id);render()}
 // Customers are never deleted, only hidden, so their bills and baqaya stay.
 function offC(id,v){if(v&&!confirm('Ye customer list se hata dein? Us ka hisaab waisa hi rahega aur wapas laa sakte hain.'))return;const c=cst(id);c.off=v;c.u=now();mark('dc:'+id);bc=null;render()}
@@ -1271,7 +1286,7 @@ function status(){const e=$('#sy');if(!e)return;const c=Object.keys(S.q).length,
 function toRow(t,r){
  if(t==='it'||t==='pr'){const it=itm(r);if(!it)return null;
   return t==='it'?['items',{id:it.id,name:it.name,op:n(it.op),off:!!it.off,ord:it.ord??null,u:it.u}]:['prices',{item_id:it.id,rate:n(it.rate),cost:n(it.cost),drate:num(it.drate),u:it.pru}]}
- if(t==='dc'){const c=S.dl.cs.find(x=>x.id===r);return c?['customers',{id:c.id,name:c.name,addr:c.addr||null,phone:c.phone||null,op:n(c.op),ord:c.ord??null,off:!!c.off,u:c.u}]:null}
+ if(t==='dc'){const c=S.dl.cs.find(x=>x.id===r);return c?['customers',{id:c.id,name:c.name,addr:c.addr||null,phone:c.phone||null,op:n(c.op),ord:c.ord??null,off:!!c.off,rates:c.rates||{},u:c.u}]:null}
  if(t==='dp'){const p=S.dl.py.find(x=>x.id===r);return p?['dpay',{id:p.id,day:p.day,cust_id:p.c,amount:n(p.a),mode:p.m,note:p.note||null,deleted:!!p.del,u:p.u}]:null}
  if(t==='dv'){const [d,c,i]=r.split('|'),e=((S.dl.d[d]||{})[c]||{})[i];if(!e)return null;
   return['deliveries',{day:d,cust_id:c,item_id:i,qty:num(e.q),rate:num(e.r),amount:num(e.a),note:e.n||null,deleted:!!e.del,u:e.u}]}
@@ -1314,7 +1329,7 @@ function merge(tb,r){
  if(tb==='bank_tx'){const i=S.bk.tx.findIndex(x=>x.id===r.id),o={id:r.id,day:r.day,ac:r.account_id,type:r.type,party:r.party||'',a:n(r.amount),no:r.chq_no||'',cd:r.chq_date||'',st:r.status,note:r.note||'',del:r.deleted,u:r.u};
   if(i<0){S.bk.tx.push(o);return true}if(r.u>S.bk.tx[i].u){S.bk.tx[i]=o;return true}return false}
  if(tb==='prices'){const it=itm(r.item_id);if(it&&r.u>it.pru){Object.assign(it,{rate:n(r.rate),cost:n(r.cost),drate:r.drate??null,pru:r.u});return true}return false}
- if(tb==='customers'){const c=S.dl.cs.find(x=>x.id===r.id),o={name:r.name,addr:r.addr||'',phone:r.phone||'',op:n(r.op),ord:r.ord??undefined,off:r.off,u:r.u};
+ if(tb==='customers'){const c=S.dl.cs.find(x=>x.id===r.id),o={name:r.name,addr:r.addr||'',phone:r.phone||'',op:n(r.op),ord:r.ord??undefined,off:r.off,rates:r.rates||{},u:r.u};
   if(!c){S.dl.cs.push(Object.assign({id:r.id},o));return true}if(r.u>c.u){Object.assign(c,o);return true}return false}
  if(tb==='dpay'){const i=S.dl.py.findIndex(x=>x.id===r.id),o={id:r.id,day:r.day,c:r.cust_id,a:n(r.amount),m:r.mode,note:r.note||'',del:r.deleted,u:r.u};
   if(i<0){S.dl.py.push(o);return true}if(r.u>S.dl.py[i].u){S.dl.py[i]=o;return true}return false}
@@ -1343,7 +1358,7 @@ function merge(tb,r){
 // Bump DATA_VER whenever a synced column is added. A phone or browser that read a row with an older app version
 // kept that row without the new field, and the row's edit time did not change, so it would never be read again.
 // On a new DATA_VER every row is read once more and the server copy wins even at the same edit time.
-const DATA_VER=1;
+const DATA_VER=2;
 async function pull(){let ch=false;const full=S.dv!==DATA_VER;if(full)S.cur={};
  for(const tb of Object.keys(PK)){if(!canPull(tb))continue;
   // Re-read the last minute too, so rows committed slightly out of order are not missed. Merging is idempotent.

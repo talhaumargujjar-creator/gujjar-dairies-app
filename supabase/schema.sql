@@ -414,3 +414,21 @@ create policy fixed_costs_owner_update on public.fixed_costs for update to authe
 revoke all on public.fixed_costs from anon;
 -- Shop stock item a Doodh party's milk goes into (e.g. Johar -> FULL FAT MILK): counted as that item's purchase in litres.
 alter table public.milk_parties add column si text;
+
+-- A customer's own delivery rate per item ({itemId: rate}), e.g. milk 250 instead of 270.
+alter table public.customers add column rates jsonb not null default '{}'::jsonb;
+create or replace function public.delivery_rate() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.rate is null and new.item_id not like '\_%' then
+    if tg_op = 'UPDATE' and old.rate is not null then
+      new.rate := old.rate;
+    else
+      select coalesce((c.rates->>new.item_id)::numeric, p.drate, p.rate) into new.rate
+        from public.prices p left join public.customers c on c.id = new.cust_id
+        where p.item_id = new.item_id;
+    end if;
+  end if;
+  return new;
+end $$;
+revoke execute on function public.delivery_rate() from public, anon, authenticated;
