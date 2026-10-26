@@ -1214,12 +1214,14 @@ function itemStats(days){const M={};const g=id=>M[id]||(M[id]={q:0,sale:0,prof:0
   for(const [c,L] of Object.entries(S.dl.d[d]||{}))for(const [iid,e] of Object.entries(L)){if(e.del||iid[0]==='_')continue;const it=itm(iid);if(!it)continue;
    const a=damt(iid,e,c),x=g(iid);x.q+=n(e.q);x.sale+=a;x.prof+=a-n(e.q)*costOf(it,d)}}
  return Object.entries(M).map(([id,x])=>({it:itm(id),...x})).filter(x=>x.it&&(x.q||x.sale)).sort((a,b)=>b.prof-a.prof)}
-let ipM=1;
+let ipM=1,ipAll=false;
+// Only the top items show until "Sab items dekhein" is pressed, so the card stays short.
 function ipV(){const m=date.slice(0,7),days=ipM?keys().filter(d=>d.startsWith(m)&&d<=date):[date],L=itemStats(days),tp=L.reduce((a,x)=>a+x.prof,0);
  const chip=(v,l)=>`<button class="chip" aria-pressed="${ipM===v}" onclick="ipM=${v};render()">${l}</button>`;
  return `<h2>Har item ka munafa</h2><div class="card"><div class="chips" style="flex-wrap:wrap;margin-bottom:10px">${chip(0,'Is din')}${chip(1,'Is mahine ('+pk(m+'-01').slice(0,5)+' se '+pk(date).slice(0,5)+' tak)')}</div>
- ${L.length?`<table><tr><th>#</th><th style="text-align:left">Item</th><th>Bika</th><th>Sale</th><th>Munafa</th></tr>${L.map((x,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${esc(x.it.name)}</td><td>${fq(q2(x.q))}</td><td>${f(x.sale)}</td><td class="${x.prof<0?'neg':'pos'}">${f(x.prof)}${tp>0&&x.prof>0?`<br><small>${Math.round(x.prof/tp*100)}%</small>`:''}</td></tr>`).join('')}
+ ${L.length?`<table><tr><th>#</th><th style="text-align:left">Item</th><th>Bika</th><th>Sale</th><th>Munafa</th></tr>${(ipAll?L:L.slice(0,5)).map((x,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${esc(x.it.name)}</td><td>${fq(q2(x.q))}</td><td>${f(x.sale)}</td><td class="${x.prof<0?'neg':'pos'}">${f(x.prof)}${tp>0&&x.prof>0?`<br><small>${Math.round(x.prof/tp*100)}%</small>`:''}</td></tr>`).join('')}
  <tr><td></td><td><b>Kul</b></td><td></td><td><b>${f(L.reduce((a,x)=>a+x.sale,0))}</b></td><td><b>${f(tp)}</b></td></tr></table>
+${L.length>5?`<button class="btn ghost full" style="margin-top:10px" onclick="ipAll=!ipAll;render()">${ipAll?"Kam dikhayein (sirf top 5)":"Sab items dekhein ("+(L.length-5)+" aur)"}</button>`:""}
  <p class="hint">Sab se zyada munafa wala item upar. Counter aur delivery dono jud kar. % = kul items ke munafa mein us ka hissa.</p>`:'<p class="hint">Is waqt ka koi bika hua maal nahi.</p>'}</div>`}
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
