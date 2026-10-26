@@ -59,7 +59,7 @@ Static PWA, koi build step nahi. Files: `index.html` (HTML+CSS+JS sab ek file me
 
 ## Usool
 - Free stack hi. Naya dependency ya service lagane se pehle owner se poocho.
-- Offline kaam karna band nahi hona chahiye. Service worker ka cache version (abhi `hisaab-v45`) badlo jab files badlein.
+- Offline kaam karna band nahi hona chahiye. Service worker ka cache version (abhi `hisaab-v46`) badlo jab files badlein.
 - Jab bhi kisi synced table mein naya column/field app mein parhna shuru ho, `index.html` ka `DATA_VER` ek barhao. Is se har device ek dafa saara data server se dobara parhta hai (warna purane version wala phone/computer wo field kabhi nahi le ga). Account mein "Sab data server se dobara layein" button bhi yahi karta hai.
 - Maujooda `localStorage` data ko migrate karo, mita na do. Naye version se pehle Backup export ka tareeqa batao.
 - Chhote chhote commits, aur har kaam ke baad `git push` taake Vercel deploy kare. Deploy hone par owner ko link batao.

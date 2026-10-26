@@ -31,7 +31,7 @@ td.auto{font-size:8.5px;color:#666;text-align:center;line-height:1.1}
 .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm}
 .sec h2{margin:4px 0 0;font-size:11px;background:#000;color:#fff;padding:3px 5px;display:flex;justify-content:space-between}
 .sec th{font-size:9px;padding:2px}
-.sec td{height:6.2mm;font-size:9px}
+.sec td{height:5.6mm;font-size:9px}
 .sec td.am{width:22mm}
 .box{border:2px solid #000;padding:5px 7px;margin-top:6px}
 .box .r{display:flex;justify-content:space-between;align-items:center;height:10mm;border-bottom:1px solid #999;font-weight:700;font-size:13px}
@@ -55,15 +55,15 @@ const autoIn=new Set(FD?FD.autoIn||[]:S&&S.mk&&S.mk.ps?S.mk.ps.filter(p=>p.si&&!
 // Fixed lines exactly as on the paper khata (the 21-10 cashbook page), in its order, so the register reads like the
 // khata every day; one-off names of a single day are written on the blank lines. Same lists as the app's SECS.
 // Home delivery is not written here: it is in the Delivery register and the app takes it from the stock by itself.
-const KH={ex:['TALHA BHAI BC','SHOPPER WALA','BARF','SURF','LABOUR KHARCHI','SAFAI','LASSI COMMISSION','BADAM','LASSI GLASS','STRAW','ROTI','CHEENI','RUBBER','GAS CYLINDER','DOODH BOTTLE','RIKSHA KIRAYA','PAKOLA BOTTLE','TALHA BHAI KHARCHA','BIKE PETROL','QARI SAHAB DOODH','KHARAB / LEAK DOODH','LABOUR DOODH','SADA SHOPPER WALA'],
+const KH={ex:['TALHA BHAI BC','SHOPPER WALA','BARF','SURF','LABOUR KHARCHI','LABOUR CHAI','SAFAI','LASSI COMMISSION','BADAM','LASSI GLASS','STRAW','ROTI','CHEENI','RUBBER','GAS CYLINDER','DOODH BOTTLE','RIKSHA KIRAYA','PAKOLA BOTTLE','TALHA BHAI KHARCHA','BIKE PETROL','AHMED PETROL','FAIZAN PETROL','QARI SAHAB DOODH','KHARAB / LEAK DOODH','LABOUR DOODH','SADA SHOPPER WALA','ASF'],
  sl:['ASHFAQ','SHOAIB','FAIZAN','FARHAN','YOUSUF','HAROON','FAIZAN RIDER','AHMED'],cr:['SUZUKI KAAM','DRIVER SALARY','TALHA BHAI GHAR KHARCHA','TALHA BHAI PARCEL'],
  ud:['MUNAWWAR ALI','JHANZAIB COW','DILPASAND','RAHEEL','IMRAN','MOMIN','SAAD UMER','HAJI HOTEL'],
  bl:['SUZUKI PETROL','WU GHAR KHARCHA','WU GHAR DOODH NASHTA','TALHA CASH SHOP','ROZ RAQAM','TALHA ACCOUNT'],
  sp:["BRADY'S BILL",'DAWN BILL','EGG BILL','NEW EGG BILL','CUP CAKE','BAKERY BILL','PLAIN CAKE','BISCUIT WALA','CH. TAHIR BUTTER','RAZZAQ PAPAY','GOAT MILK','JAZIB GHEE','SUNSHINE'],
  rc:['HAJI HOTEL']};
 // Codes K1..K7 are printed so it is clear which part of the app's Hisaab tab it is; the number is blank lines.
-const SECS=[['K1','KHARCHA (1)',KH.ex,4],['K2','SALARY (1)',KH.sl,2],['K3','GHAR AUR GARI (2)',KH.cr,2],
- ['K4','UDHAAR DIYA (3)',KH.ud,3],['K5','BILL KI RAQAM / OWNER (4)',KH.bl,2],['K6','SUPPLIER (5)',KH.sp,2],['K7','CASH WASOOL',KH.rc,4]];
+const SECS=[['K1','KHARCHA (1)',KH.ex,12],['K2','SALARY (1)',KH.sl,3],['K3','GHAR AUR GARI (2)',KH.cr,3],
+ ['K4','UDHAAR DIYA (3)',KH.ud,5],['K5','BILL KI RAQAM / OWNER (4)',KH.bl,3],['K6','SUPPLIER (5)',KH.sp,4],['K7','CASH WASOOL',KH.rc,6]];
 // Three columns on page 3 so everything fits one A4 sheet; a long kharcha list gets a column of its own.
 const COLS=[['K1'],['K2','K3','K4'],['K5','K6','K7']];
 const marks='<div class="mk tl"></div><div class="mk tr"></div><div class="mk bl"></div><div class="mk br"></div>';
