@@ -1208,11 +1208,25 @@ const wa=t=>open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
 function shareDay(){const t=tot(date);wa(`*Gujjar Dairies — ${dayName(date)} ${pk(date)}*\nSale: Rs ${f(t.sale+t.dsale)}\nKharcha: Rs ${f(t.exV+t.slV)}\nFixed kharcha + salary (aaj ka hissa): Rs ${f(t.fxd)}\nSupplier: Rs ${f(t.sp)}\nUdhaar diya: Rs ${f(t.ud)}\nMunafa: Rs ${f(t.pl)}\nGalla farq: ${t.diff==null?'—':'Rs '+f(t.diff)}`)}
 function shareMonth(){const m=date.slice(0,7),{R,S2,last,fx,pl}=monthSum(m),[y,mo]=m.split('-');
  wa(`*Gujjar Dairies — ${MONTHS[+mo-1]} ${y}*\n${R.length} din\nKul sale: Rs ${f(S2('sale'))}\nKharcha: Rs ${f(S2('ex'))}\nFixed kharcha + salary (${last} din): Rs ${f(fx)}\nSupplier: Rs ${f(S2('sp'))}\nUdhaar diya: Rs ${f(S2('ud'))}\nMunafa: Rs ${f(pl)}`)}
+// Munafa per item over some days, counter and home delivery together, the same way tot() counts them.
+function itemStats(days){const M={};const g=id=>M[id]||(M[id]={q:0,sale:0,prof:0});
+ for(const d of days){S.items.forEach(it=>{const s=csold(it,d);if(!s)return;const r=rateOf(it,d),x=g(it.id);x.q+=s;x.sale+=s*r;x.prof+=s*(r-costOf(it,d))});
+  for(const [c,L] of Object.entries(S.dl.d[d]||{}))for(const [iid,e] of Object.entries(L)){if(e.del||iid[0]==='_')continue;const it=itm(iid);if(!it)continue;
+   const a=damt(iid,e,c),x=g(iid);x.q+=n(e.q);x.sale+=a;x.prof+=a-n(e.q)*costOf(it,d)}}
+ return Object.entries(M).map(([id,x])=>({it:itm(id),...x})).filter(x=>x.it&&(x.q||x.sale)).sort((a,b)=>b.prof-a.prof)}
+let ipM=1;
+function ipV(){const m=date.slice(0,7),days=ipM?keys().filter(d=>d.startsWith(m)&&d<=date):[date],L=itemStats(days),tp=L.reduce((a,x)=>a+x.prof,0);
+ const chip=(v,l)=>`<button class="chip" aria-pressed="${ipM===v}" onclick="ipM=${v};render()">${l}</button>`;
+ return `<h2>Har item ka munafa</h2><div class="card"><div class="chips" style="flex-wrap:wrap;margin-bottom:10px">${chip(0,'Is din')}${chip(1,'Is mahine ('+pk(m+'-01').slice(0,5)+' se '+pk(date).slice(0,5)+' tak)')}</div>
+ ${L.length?`<table><tr><th>#</th><th style="text-align:left">Item</th><th>Bika</th><th>Sale</th><th>Munafa</th></tr>${L.map((x,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${esc(x.it.name)}</td><td>${fq(q2(x.q))}</td><td>${f(x.sale)}</td><td class="${x.prof<0?'neg':'pos'}">${f(x.prof)}${tp>0&&x.prof>0?`<br><small>${Math.round(x.prof/tp*100)}%</small>`:''}</td></tr>`).join('')}
+ <tr><td></td><td><b>Kul</b></td><td></td><td><b>${f(L.reduce((a,x)=>a+x.sale,0))}</b></td><td><b>${f(tp)}</b></td></tr></table>
+ <p class="hint">Sab se zyada munafa wala item upar. Counter aur delivery dono jud kar. % = kul items ke munafa mein us ka hissa.</p>`:'<p class="hint">Is waqt ka koi bika hua maal nahi.</p>'}</div>`}
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
  return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Delivery ka munafa',f(t.dprof),t.dprof<0?'neg':'pos')}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Kharcha (roz wala)',f(t.exV+t.slV))}${T('Fixed + salary (aaj ka hissa)',f(t.fxd))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Udhaar diya',f(t.ud))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
  <div class="btns" style="margin:12px 0"><button class="btn" onclick="shareDay()">WhatsApp par bhejein</button></div>
  ${monthV()}
+ ${ipV()}
  <h2>Pichle din</h2><div class="card">${days.length?`<table><tr><th>Tareekh</th><th>Sale</th><th>Kharcha</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr onclick="date='${d}';render();scrollTo(0,0)"><td>${pk(d).slice(0,5)}</td><td>${f(x.sale+x.dsale)}</td><td>${f(x.ex+x.sl)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table>`:'<p class="hint">Abhi koi din ka hisaab nahi.</p>'}</div>
  <p class="hint">Munafa = bike maal ka (rate − cost) minus kharcha aur salary. Ghar aur gari kharcha, udhaar, owner ko di raqam aur supplier payment munafa mein nahi ginte.</p>`}
 
