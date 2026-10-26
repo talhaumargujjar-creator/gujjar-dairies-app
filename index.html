@@ -320,11 +320,19 @@ const rateFor=(c,iid)=>{const cu=S.dl.cs.find(x=>x.id===c),r=cu&&cu.rates&&cu.ra
 const damt=(iid,e,c)=>iid==='_amt'?n(e.a):n(e.q)*(has(e.r)?n(e.r):rateFor(c,iid));
 // One day's home delivery: quantity per item (it left the shop's stock), sale at delivery rates and its munafa.
 // Old sheet amounts ('_amt') only count in customer bills, not in the shop's daily hisaab.
-function dday(d){if(MEMO['d'+d])return MEMO['d'+d];const q={};let sale=0,prof=0;
+// cost = laagat of what went out; extra = what delivery earned above the counter rate (e.g. 270 vs 250).
+function dday(d){if(MEMO['d'+d])return MEMO['d'+d];const q={};let sale=0,prof=0,cost=0,extra=0;
  for(const [c,L] of Object.entries(S.dl.d[d]||{}))for(const [iid,e] of Object.entries(L)){if(e.del||iid[0]==='_')continue;
-  const a=damt(iid,e,c),it=itm(iid);q[iid]=(q[iid]||0)+n(e.q);sale+=a;prof+=a-n(e.q)*(it?costOf(it,d):0)}
+  const a=damt(iid,e,c),it=itm(iid),k=n(e.q)*(it?costOf(it,d):0);q[iid]=(q[iid]||0)+n(e.q);sale+=a;cost+=k;prof+=a-k;if(it)extra+=a-n(e.q)*rateOf(it,d)}
  const cash=S.dl.py.filter(p=>!p.del&&p.day===d&&p.m==='cash').reduce((s,p)=>s+n(p.a),0);
- return MEMO['d'+d]={q,sale,prof,cash}}
+ return MEMO['d'+d]={q,sale,prof,cost,extra,cash}}
+// Delivery totals from the 1st of d's month up to d.
+function dmonth(d){const T={sale:0,cost:0,prof:0,extra:0};for(let x=d.slice(0,8)+'01';x<=d;x=addDay(x,1)){const V=dday(x);for(const k in T)T[k]+=V[k]}return T}
+function dprofV(){const A=dday(date),M=dmonth(date),R=(l,a,m,c)=>`<tr><td>${l}</td><td class="${c||''}">${f(a)}</td><td class="${c||''}">${f(m)}</td></tr>`;
+ return `<div class="card"><details ${OPEN.dp?'open':''} ontoggle="OPEN.dp=this.open"><summary>Delivery ka munafa</summary>
+ <table style="margin-top:8px"><tr><th></th><th>Aaj</th><th>${MON[+date.slice(5,7)-1]} (1–${+date.slice(8)})</th></tr>
+ ${R('Delivery sale',A.sale,M.sale)}${R('− Laagat (cost)',A.cost,M.cost)}${R('<b>Munafa</b>',A.prof,M.prof,A.prof<0||M.prof<0?'neg':'pos')}${R('Is mein counter rate se upar',A.extra,M.extra)}</table>
+ <p class="hint" style="margin-top:8px">Laagat har item ki us din ki cost se (Cost tab). Sheet se aaye purane din (sirf raqam wale) is mein nahi ginte.</p></details></div>`}
 // Counter sale = everything that left the stock minus what went out on delivery.
 function csold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q2(sold(it,d)-(dday(d).q[it.id]||0))}
 function tot(d){if(MEMO['t'+d])return MEMO['t'+d];const D=day(d),V=dday(d);let sale=0,prof=0;
@@ -337,7 +345,7 @@ function tot(d){if(MEMO['t'+d])return MEMO['t'+d];const D=day(d),V=dday(d);let s
  // those come in as the day's share of their monthly amount instead.
  const fxN=fixNames(),emN=new Set(S.em.map(e=>nkey(e.name))),exV=live(D,'ex').filter(e=>!fxN.has(nkey(baseN(e.n)))).reduce((a,e)=>a+n(e.a),0),
   slV=live(D,'sl').filter(e=>!emN.has(nkey(baseN(e.n)))).reduce((a,e)=>a+n(e.a),0),fxd=fixedDay(d);
- return MEMO['t'+d]=Object.assign(T,{sale,dsale:V.sale,dcash:V.cash,prof,op,cin,paid,bin,bout,exp,exV,slV,fxd,pl:prof-exV-slV-fxd,diff:D.cash!=null?n(D.cash)-exp:null,cash:D.cash})}
+ return MEMO['t'+d]=Object.assign(T,{sale,dsale:V.sale,dprof:V.prof,dcash:V.cash,prof,op,cin,paid,bin,bout,exp,exV,slV,fxd,pl:prof-exV-slV-fxd,diff:D.cash!=null?n(D.cash)-exp:null,cash:D.cash})}
 const atM=(o,m)=>{const k=Object.keys(o||{}).filter(x=>x<=m).sort().pop();return k?n(o[k]):0};
 const dim=m=>new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),0)).getUTCDate();
 const fixNames=()=>MEMO.fxn||(MEMO.fxn=new Set(S.fx.map(x=>nkey(x.name))));
@@ -1052,7 +1060,7 @@ function dlv(){const top=own()?`<div class="chips">${[['day','Roz ki entry'],['b
  if(own()&&dv==='bill')return top+(bc&&cst(bc)?billV(bc):billsV());
  if(!custs().length)return top+`<div class="card"><h3>Abhi koi customer nahi</h3><p class="hint" style="margin-top:6px">${own()?'"Bill aur wasooli" mein neeche "Naya customer" se customer add karein.':'Owner customers add karega, phir yahan nazar aayenge.'}</p></div>`;
  const line=dmode==='line',L=line?flistV:dlistV;
- return top+`<div class="chips">${[['line','Line se entry'],['card','Card se entry']].map(([k,l])=>`<button class="chip" aria-pressed="${dmode===k}" onclick="dmode='${k}';render()">${l}</button>`).join('')}</div>
+ return top+(own()?dprofV():'')+`<div class="chips">${[['line','Line se entry'],['card','Card se entry']].map(([k,l])=>`<button class="chip" aria-pressed="${dmode===k}" onclick="dmode='${k}';render()">${l}</button>`).join('')}</div>
  ${line?`<p class="hint" style="margin:-4px 4px 10px">Har line mein doodh <b>litre</b> mein likhein aur <b>Enter</b> dabayein, agla customer khud aa jayega. Bread, dahi ya koi aur cheez ho to <b>+</b> dabayein. Halki likhi ginti pichli dafa ki hai.</p>`:''}
  <input type="search" placeholder="Customer ka naam ya pata" value="${esc(dq)}" oninput="dq=this.value;$('#dl').innerHTML=${line?'flistV':'dlistV'}()" aria-label="Customer dhoondein">
  <div class="chips">${[['all','Sab'],['left','Baqi'],['done','Ho gaye']].map(([k,l])=>`<button class="chip" aria-pressed="${dflt===k}" onclick="dflt='${k}';render()">${l}</button>`).join('')}</div>
@@ -1202,7 +1210,7 @@ function shareMonth(){const m=date.slice(0,7),{R,S2,last,fx,pl}=monthSum(m),[y,m
  wa(`*Gujjar Dairies — ${MONTHS[+mo-1]} ${y}*\n${R.length} din\nKul sale: Rs ${f(S2('sale'))}\nKharcha: Rs ${f(S2('ex'))}\nFixed kharcha + salary (${last} din): Rs ${f(fx)}\nSupplier: Rs ${f(S2('sp'))}\nUdhaar diya: Rs ${f(S2('ud'))}\nMunafa: Rs ${f(pl)}`)}
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
- return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Kharcha (roz wala)',f(t.exV+t.slV))}${T('Fixed + salary (aaj ka hissa)',f(t.fxd))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Udhaar diya',f(t.ud))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
+ return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Delivery ka munafa',f(t.dprof),t.dprof<0?'neg':'pos')}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Kharcha (roz wala)',f(t.exV+t.slV))}${T('Fixed + salary (aaj ka hissa)',f(t.fxd))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Udhaar diya',f(t.ud))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
  <div class="btns" style="margin:12px 0"><button class="btn" onclick="shareDay()">WhatsApp par bhejein</button></div>
  ${monthV()}
  <h2>Pichle din</h2><div class="card">${days.length?`<table><tr><th>Tareekh</th><th>Sale</th><th>Kharcha</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr onclick="date='${d}';render();scrollTo(0,0)"><td>${pk(d).slice(0,5)}</td><td>${f(x.sale+x.dsale)}</td><td>${f(x.ex+x.sl)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table>`:'<p class="hint">Abhi koi din ka hisaab nahi.</p>'}</div>
