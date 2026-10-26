@@ -892,7 +892,7 @@ function kc(){let h=`<button class="link" onclick="go('stock')">← Wapas</butto
    <div class="fld"><label for="kq${i}">${q.t==='en'?'Raqam':'Sahi value'}</label><input type="${q.t==='en'?'text':'number'}" inputmode="decimal" id="kq${i}" value="${q.v??''}"></div>
    <div class="btns"><button class="btn" onclick="kcOk(${i})">Theek hai, save karein</button><button class="btn ghost" onclick="kcSkip(${i})">Chhor dein</button></div>`}</div>`).join('')}
  h+=`<div class="card"><h3>Khaali form</h3><p class="hint" style="margin:6px 0 12px">Ye form app ke liye parhna sab se aasan hai: har item ka number aur khana chhapa hua hai. Chhapwa kar roz isi mein likhein.</p>
-  <button class="btn ghost full" onclick="open('/khata-form.html','_blank')">🖨 Form kholein / chhapein</button></div>`;
+  <button class="btn ghost full" onclick="window.open('/khata-form.html','_blank')">🖨 Form kholein / chhapein</button></div>`;
  return h}
 
 // ---- Production (recipes): what is made in the shop (dahi, lassi, milk bottle) and what it takes.
@@ -1467,7 +1467,7 @@ function acct(){const c=Object.keys(S.q).length,r=role();
  <button class="btn ghost full" onclick="fullResync()">Sab data server se dobara layein</button></div>`;
  // Paper registers for hand entry, built from this phone's items, names and customers.
  h+=`<div class="card"><h3>Register chhapein</h3><p class="hint" style="margin:4px 0 10px">Hath se likhne ke liye roz ke page. App ki items aur customers list se bante hain; list badle to dobara chhapein.</p>
- <div class="btns"><button class="btn ghost" onclick="open('/khata-form.html','_blank')">🖨 Dukaan ka register</button>${role()==='staff'?'':`<button class="btn ghost" onclick="open('/delivery-form.html','_blank')">🖨 Delivery ka register</button>`}</div></div>`;
+ <div class="btns"><button class="btn ghost" onclick="window.open('/khata-form.html','_blank')">🖨 Dukaan ka register</button>${role()==='staff'?'':`<button class="btn ghost" onclick="window.open('/delivery-form.html','_blank')">🖨 Delivery ka register</button>`}</div></div>`;
  if(own())h+=`<button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('items')"><span>Items, rate aur cost</span><span class="muted">›</span></button>
  <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('cost')"><span>Cost (tareekh ke hisaab se)</span><span class="muted">›</span></button>
  <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('emp')"><span>Employees, salary aur fixed kharche</span><span class="muted">›</span></button>
