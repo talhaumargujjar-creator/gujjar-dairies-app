@@ -694,16 +694,15 @@ function szPays(d){const L=S.mk.szk.v||[];if(!L.length||!S.days[d])return [];con
 const szDay=d=>n(mx(d).sz)+szPays(d).reduce((a,e)=>a+n(e.a),0);
 let szOpen=false;
 function szV(){const X=mx(date),L=lastSz(date),P=szPays(date),pt=P.reduce((a,e)=>a+n(e.a),0),K=S.mk.szk.v||[];
- const seen=new Set(K.filter(x=>x[0]!=='@'));for(const D of Object.values(S.days))['cr','bl','ex'].forEach(k=>(D[k]||[]).forEach(e=>{if(!e.del&&e.n)seen.add(hkBase(e.n))}));
- SECS.cr[1].forEach(x=>seen.add(x));
+ // Only Suzuki names are offered (owner's wish): every Hisaab name with SUZUKI in it, plus whatever is already chosen.
+ const isSz=x=>/SUZUKI/.test(x),seen=new Set(K);for(const D of Object.values(S.days))KINDS.forEach(k=>(D[k]||[]).forEach(e=>{const b=!e.del&&e.n&&hkBase(e.n);if(b&&isSz(b))seen.add(b)}));
+ KINDS.forEach(k=>SECS[k][1].filter(isSz).forEach(x=>seen.add(x)));
  return `<div class="fld" style="margin:14px 0 0"><label for="msz">Suzuki kharcha (aaj)${P.length?' — hath se, jo Hisaab mein nahi':''}</label><input type="number" inputmode="decimal" id="msz" value="${has(X.sz)?X.sz:''}" onchange="setX('sz',this.value);render()"></div>
  ${L!=null&&!has(X.sz)&&!P.length?`<button class="link" onclick="setX('sz','${L}');render()">Pichle din jitna likhein (${f(L)})</button>`:''}
  ${P.length?`<div style="margin-top:8px">${P.map(e=>`<div class="sum"><span>Hisaab se: ${esc(e.n)}</span><b>${f(e.a)}</b></div>`).join('')}<div class="sum tot"><span>Aaj ka kul Suzuki kharcha</span><b>${f(szDay(date))}</b></div></div>`:''}
  ${own()?`<details style="margin-top:10px" ${szOpen?'open':''} ontoggle="szOpen=this.open"><summary>Hisaab se Suzuki kharcha${K.length?` (${K.length})`:''}</summary>
- <p class="hint" style="margin:8px 0">Hisaab mein gari ka jo kharcha likhte hain (jaise SUZUKI KAAM, SUZUKI PETROL), wo naam yahan chunein. Phir wo entry khud yahan Suzuki kharcha mein aa jayegi.</p>
- <p style="font-weight:600;margin:8px 0 4px">Poora hissa</p><div class="qc" style="margin-top:0">${['cr','bl','ex'].map(k=>`<button aria-pressed="${K.includes('@'+k)}" onclick="tgSz('@${k}')">${esc(SECS[k][0])}</button>`).join('')}</div>
- <p style="font-weight:600;margin:12px 0 4px">Sirf ye naam</p><div class="qc" style="margin-top:0">${[...seen].filter(Boolean).sort().map(x=>`<button aria-pressed="${K.includes(x)}" onclick="tgSz(this.textContent)">${esc(x)}</button>`).join('')}</div>
- <div class="addr" style="grid-template-columns:1fr auto"><input type="text" id="szn" placeholder="Doosra naam" aria-label="Hisaab entry ka naam"><button class="btn" onclick="tgSz($('#szn').value)">+ Jodein</button></div></details>`:''}`}
+ <p class="hint" style="margin:8px 0">Jis Suzuki kharche ki Hisaab wali entry yahan khud aaye, us par dabayein. Na chunein to kuch nahi judega.</p>
+ <div class="qc" style="margin-top:0">${[...seen].sort().map(x=>`<button aria-pressed="${K.includes(x)}" data-v="${esc(x)}" onclick="tgSz(this.dataset.v)">${esc(x[0]==='@'?hkLabel(x):x)}</button>`).join('')}</div></details>`:''}`}
 function tgSz(v){v=v&&v[0]==='@'?v:hkBase(v||'');if(!v)return;const K=S.mk.szk.v=S.mk.szk.v||[],i=K.indexOf(v),lab=v[0]==='@'?`"${SECS[v.slice(1)][0]}" ki har entry`:`"${v}" wali har entry`;
  if(i<0){if(!confirm(`Hisaab ki ${lab} ko Suzuki kharcha ginein?`))return;K.push(v)}else K.splice(i,1);S.mk.szk.u=now();mark('szk:all');szOpen=true;render()}
 const mhas=d=>Object.values(S.mk.d[d]||{}).some(r=>MF.some(k=>has(r[k])));
