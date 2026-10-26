@@ -610,13 +610,13 @@ function mallIn(){return `<h3>Sab parties ka baqaya</h3><p class="hint" style="m
  return `<div class="sum"><span>${esc(p.name)}<br><span class="hint">${balTxt(p,v)}</span></span><b class="${v<0?'neg':''}">${f(v)}</b></div>`}).join('')}
 function mpayV(p){const L=mpays(date,p.id),H=hkPays(date,p.id),sup=p.kind==='sup',tt=L.concat(H).reduce((a,e)=>a+n(e.a),0);
  return `<div class="card"><div class="sh"><h3>${sup?'Inhein payment di':'In se payment aayi'}</h3><b>${f(tt)}</b></div>
- ${L.length?`<div style="margin-top:8px">${L.map(e=>`<div class="row"><span>${esc(e.n||'Payment')}</span><span>${f(n(e.a))}<button class="x" aria-label="Payment hatayen" onclick="delPay('${e.id}')">✕</button></span></div>`).join('')}</div>`:''}
+ ${L.length?`<div style="margin-top:8px">${L.map(e=>`<div class="row"><span>${esc(e.n||'Payment')}</span><span>${f(n(e.a))}<button class="x" aria-label="Payment hatayen" onclick="mDelPay('${e.id}')">✕</button></span></div>`).join('')}</div>`:''}
  ${H.length?`<div style="margin-top:8px">${H.map(e=>`<div class="row"><span>${esc(e.n)}<br><span class="hint">Hisaab se khud (${esc(SECS[e.k][0])})</span></span><span>${f(n(e.a))}</span></div>`).join('')}</div>`:''}
  ${p.hk&&p.hk.length?`<p class="hint" style="margin-top:6px">Hisaab se khud payment: ${p.hk.map(x=>esc(hkLabel(x))).join(', ')}. Inhein yahan dobara na likhein.</p>`:''}
- <div class="addr"><input type="text" id="mpn" placeholder="Note (marzi se)" aria-label="Payment ka note"><input type="number" inputmode="decimal" id="mpa" placeholder="Raqam" aria-label="Payment ki raqam"><button class="btn" onclick="addPay('${p.id}')">+ Payment add karein</button></div></div>`}
-function addPay(id){const a=n($('#mpa').value);if(!a){alert('Raqam likhein.');return}
+ <div class="addr"><input type="text" id="mpn" placeholder="Note (marzi se)" aria-label="Payment ka note"><input type="number" inputmode="decimal" id="mpa" placeholder="Raqam" aria-label="Payment ki raqam"><button class="btn" onclick="mAddPay('${p.id}')">+ Payment add karein</button></div></div>`}
+function mAddPay(id){const a=n($('#mpa').value);if(!a){alert('Raqam likhein.');return}
  const e={id:nid(),p:id,a,n:$('#mpn').value.trim(),del:false,u:now()};(S.mk.pay[date]=S.mk.pay[date]||[]).push(e);mark('mpy:'+date+'|'+e.id);render()}
-function delPay(id){if(!confirm('Ye payment hatani hai?'))return;const e=(S.mk.pay[date]||[]).find(x=>x.id===id);if(!e)return;e.del=true;e.u=now();mark('mpy:'+date+'|'+id);render()}
+function mDelPay(id){if(!confirm('Ye payment hatani hai?'))return;const e=(S.mk.pay[date]||[]).find(x=>x.id===id);if(!e)return;e.del=true;e.u=now();mark('mpy:'+date+'|'+id);render()}
 let rOpen=false;
 function prHint(p){const R=prate(p.id,date);return R?(R.from===RATE0?'Ye rate shuru se lag rahe hain.':`Ye rate ${pk(R.from)} se lag rahe hain.`)+` Yahan badlein to ${pk(date)} se aage naya rate lagega. Pichle din waise hi rahenge.`:'Abhi rate nahi likha. Pehli dafa likha rate pichle sab dinon par bhi lagega.'}
 function mrateV(p){const R=prate(p.id,date),O=S.mk.ob[p.id]||{},v=k=>R&&has(R[k])?R[k]:'',sup=p.kind==='sup';
@@ -797,9 +797,9 @@ function setCost(id,v){const C=S.cs[id]=S.cs[id]||{};C[date]={c:v===''?'':n(v),u
 // straight away; anything unclear, or different from what is already saved, is asked here before saving.
 let KC={imgs:[],busy:false,msg:'',err:false,res:null,qs:[],saved:0,stage:''};
 const COLN={op:'Opening',pu:'Purchase',us:'Istemal',cl:'Closing'};
-function shrink(file){return new Promise((ok,no)=>{const img=new Image();img.onload=()=>{const m=1800,s=Math.min(1,m/Math.max(img.width,img.height)),c=document.createElement('canvas');
+function kcShrink(file){return new Promise((ok,no)=>{const img=new Image();img.onload=()=>{const m=1800,s=Math.min(1,m/Math.max(img.width,img.height)),c=document.createElement('canvas');
  c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(img.src);ok(c.toDataURL('image/jpeg',0.85))};img.onerror=no;img.src=URL.createObjectURL(file)})}
-async function kcAdd(files){for(const f of [...files].slice(0,4-KC.imgs.length))KC.imgs.push(await shrink(f));KC.msg='';render()}
+async function kcAdd(files){for(const f of [...files].slice(0,4-KC.imgs.length))KC.imgs.push(await kcShrink(f));KC.msg='';render()}
 function kcDel(i){KC.imgs.splice(i,1);render()}
 function kcReset(){KC={imgs:[],busy:false,msg:'',err:false,res:null,qs:[],saved:0,stage:''};render()}
 async function kcRead(){if(!KC.imgs.length){alert('Pehle khaate ki tasveer lein.');return}
