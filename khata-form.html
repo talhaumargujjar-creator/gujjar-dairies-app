@@ -52,21 +52,18 @@ const FD=window.FORM_DATA||null;
 const items=(FD?FD.items:S&&S.items?S.items:[]).map((it,i)=>[it,i]).filter(x=>!x[0].off).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
 // Items whose purchase the app adds by itself (a Doodh party linked to the item, e.g. Johar → FULL FAT MILK).
 const autoIn=new Set(FD?FD.autoIn||[]:S&&S.mk&&S.mk.ps?S.mk.ps.filter(p=>p.si&&!p.off).map(p=>p.si):[]);
-const nkey=s=>String(s||'').replace(/\s*\(.*\)\s*$/,'').trim().toUpperCase();
-// Names written in the last 30 days, most used first, so the register has the names the shop really uses.
-function recent(kind){if(FD)return (FD.names||{})[kind]||[];if(!S||!S.days)return [];const C={},ks=Object.keys(S.days).sort().slice(-30);
- for(const d of ks)for(const e of (S.days[d][kind]||[]))if(!e.del&&e.n){const k=nkey(e.n);if(k)C[k]=(C[k]||0)+1}
- return Object.keys(C).sort((a,b)=>C[b]-C[a])}
-const emps=FD?FD.emp||[]:S&&S.em?S.em.filter(e=>!e.off).map(e=>nkey(e.name)):[];
-const uniq=a=>[...new Set(a.filter(Boolean))];
-// Sections in the same order as the app's Hisaab tab; codes K1..K7 are printed so it is clear which part it is.
+// Fixed lines exactly as on the paper khata (the 21-10 cashbook page), in its order, so the register reads like the
+// khata every day; one-off names of a single day are written on the blank lines. Same lists as the app's SECS.
 // Home delivery is not written here: it is in the Delivery register and the app takes it from the stock by itself.
-const DEF={ex:['TALHA BHAI BC','SHOPPER WALA','BARF','SURF','LABOUR KHARCHI','SAFAI','LASSI COMMISSION','LASSI GLASS','ROTI','CHEENI','RUBBER','TALHA BHAI KHARCHA','BIKE PETROL','QARI SAHAB DOODH','KHARAB / LEAK DOODH','LABOUR DOODH'],
- sl:[],cr:['SUZUKI KAAM','DRIVER SALARY','TALHA BHAI GHAR KHARCHA'],ud:['HAJI HOTEL','MUNAWWAR ALI'],bl:['SUZUKI PETROL','TALHA CASH SHOP','ROZ RAQAM','TALHA ACCOUNT'],
- sp:["BRADY'S BILL",'DAWN BILL','EGG BILL','BAKERY BILL','PLAIN CAKE','BISCUIT WALA','SUNSHINE'],rc:['HAJI HOTEL']};
-const pick=(k,max)=>{const r=recent(k).filter(x=>x!=='DELIVERY');return uniq(r.length?r:DEF[k]).slice(0,max)};
-const SECS=[['K1','KHARCHA (1)',pick('ex',30),4],['K2','SALARY (1)',uniq(pick('sl',8).concat(emps)).slice(0,9),2],['K3','GHAR AUR GARI (2)',pick('cr',5),2],
- ['K4','UDHAAR DIYA (3)',pick('ud',8),3],['K5','BILL KI RAQAM / OWNER (4)',pick('bl',6),2],['K6','SUPPLIER (5)',pick('sp',11),3],['K7','CASH WASOOL',pick('rc',5),3]];
+const KH={ex:['TALHA BHAI BC','SHOPPER WALA','BARF','SURF','LABOUR KHARCHI','SAFAI','LASSI COMMISSION','BADAM','LASSI GLASS','STRAW','ROTI','CHEENI','RUBBER','GAS CYLINDER','DOODH BOTTLE','RIKSHA KIRAYA','PAKOLA BOTTLE','TALHA BHAI KHARCHA','BIKE PETROL','QARI SAHAB DOODH','KHARAB / LEAK DOODH','LABOUR DOODH','SADA SHOPPER WALA'],
+ sl:['ASHFAQ','SHOAIB','FAIZAN'],cr:['SUZUKI KAAM','DRIVER SALARY','TALHA BHAI GHAR KHARCHA','TALHA BHAI PARCEL'],
+ ud:['MUNAWWAR ALI','JHANZAIB COW','DILPASAND','RAHEEL','IMRAN','MOMIN','SAAD UMER','HAJI HOTEL'],
+ bl:['SUZUKI PETROL','WU GHAR KHARCHA','WU GHAR DOODH NASHTA','TALHA CASH SHOP','ROZ RAQAM','TALHA ACCOUNT'],
+ sp:["BRADY'S BILL",'DAWN BILL','EGG BILL','NEW EGG BILL','CUP CAKE','BAKERY BILL','PLAIN CAKE','BISCUIT WALA','CH. TAHIR BUTTER','RAZZAQ PAPAY','GOAT MILK','JAZIB GHEE','SUNSHINE'],
+ rc:['HAJI HOTEL']};
+// Codes K1..K7 are printed so it is clear which part of the app's Hisaab tab it is; the number is blank lines.
+const SECS=[['K1','KHARCHA (1)',KH.ex,4],['K2','SALARY (1)',KH.sl,3],['K3','GHAR AUR GARI (2)',KH.cr,2],
+ ['K4','UDHAAR DIYA (3)',KH.ud,3],['K5','BILL KI RAQAM / OWNER (4)',KH.bl,2],['K6','SUPPLIER (5)',KH.sp,2],['K7','CASH WASOOL',KH.rc,4]];
 // Three columns on page 3 so everything fits one A4 sheet; a long kharcha list gets a column of its own.
 const COLS=[['K1'],['K2','K3','K4'],['K5','K6','K7']];
 const marks='<div class="mk tl"></div><div class="mk tr"></div><div class="mk bl"></div><div class="mk br"></div>';
