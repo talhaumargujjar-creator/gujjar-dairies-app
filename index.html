@@ -503,12 +503,19 @@ const masal=r=>['xm','xe','ym','ye'].some(k=>has(r[k]));
 // With a bandhi (party rate qb/qc, mun per day, half each morning and evening) the owner writes only the milk that
 // really came: x bhains, y gaye per slot. The bandhi is always counted at its fixed rate; buffalo or cow milk short of
 // it is sold to the mandi (with its commission) and milk above it is taken from the mandi, like the sheet's MILK MANDI.
+// The bandhi is met over the whole day (owner's rule): morning 15 + evening 12 mun on a 27 bandhi is exactly the
+// bandhi, nothing to the mandi. Only the day's net extra or short goes to the mandi, in the slot(s) that had it,
+// e.g. 15 + 13 = 28 → 1 mun taken from the mandi in the morning.
 function mrow(d,id){const r=mraw(d,id);if(!masal(r))return r;
- const R=prate(id,d)||{},qb=n(R.qb)*20,qc=n(R.qc)*20,o={...r};
- for(const t of ['m','e']){let l=0;o['b'+t]=o['c'+t]=o['s'+t]=o['g'+t]='';
-  if(has(r['x'+t])){const a=n(r['x'+t]);o['b'+t]=qb;if(a<qb)o['s'+t]=r2(qb-a);else l+=a-qb}
-  if(has(r['y'+t])){const a=n(r['y'+t]);o['c'+t]=qc;if(a<qc)o['g'+t]=r2(qc-a);else l+=a-qc}
-  o['l'+t]=l?r2(l):''}
+ const R=prate(id,d)||{},o={...r},l={m:0,e:0};
+ for(const t of ['m','e'])o['b'+t]=o['c'+t]=o['s'+t]=o['g'+t]='';
+ for(const [x,q,bk,sk] of [['x',n(R.qb)*20,'b','s'],['y',n(R.qc)*20,'c','g']]){
+  const T=['m','e'].filter(t=>has(r[x+t])),df={};let net=0;
+  T.forEach(t=>{o[bk+t]=q;df[t]=n(r[x+t])-q;net+=df[t]});
+  // Share the net out over the slots on the same side as the net, in proportion to their own extra/short.
+  const side=T.filter(t=>net>0?df[t]>0:df[t]<0),w=side.reduce((a,t)=>a+Math.abs(df[t]),0);
+  if(net&&w)side.forEach(t=>{const v=Math.abs(net)*Math.abs(df[t])/w;if(net>0)l[t]+=v;else o[sk+t]=r2(v)})}
+ for(const t of ['m','e'])o['l'+t]=l[t]?r2(l[t]):'';
  return o}
 const mannOf=kg=>Math.floor(kg/40+1e-9);
 // Always "mun - kg" like the sheet: "25 mun 10 kg", "0 mun 30 kg", "3 mun 0 kg" (never "24 mun 40 kg").
