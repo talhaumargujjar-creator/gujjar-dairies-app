@@ -432,3 +432,19 @@ begin
   return new;
 end $$;
 revoke execute on function public.delivery_rate() from public, anon, authenticated;
+
+-- Shop staff must not see home delivery at all: only the owner and the delivery role.
+create or replace function public.is_dlv() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select coalesce((select role in ('owner','delivery') from public.members where user_id = auth.uid()), false)
+$$;
+revoke execute on function public.is_dlv() from public, anon;
+grant execute on function public.is_dlv() to authenticated;
+drop policy customers_team_select on public.customers;
+create policy customers_dlv_select on public.customers for select to authenticated using (public.is_dlv());
+drop policy deliveries_team_select on public.deliveries;
+drop policy deliveries_team_insert on public.deliveries;
+drop policy deliveries_team_update on public.deliveries;
+create policy deliveries_dlv_select on public.deliveries for select to authenticated using (public.is_dlv());
+create policy deliveries_dlv_insert on public.deliveries for insert to authenticated with check (public.is_dlv());
+create policy deliveries_dlv_update on public.deliveries for update to authenticated using (public.is_dlv()) with check (public.is_dlv());

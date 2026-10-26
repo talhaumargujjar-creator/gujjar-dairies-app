@@ -369,7 +369,7 @@ const ICON={stock:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"
  prd:'<path d="M5 9h14l-1.5 11a1 1 0 0 1-1 .9h-9a1 1 0 0 1-1-.9z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/><path d="M9 14h6"/>'};
 // [key, label, who can open (o owner, s staff, d delivery), shown in the bottom bar].
 // Items and Cost open from the Account page so the bar fits a phone.
-const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','osd',1],['prd','Production','os',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0],['emp','Employees','o',0]];
+const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','od',1],['prd','Production','os',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0],['emp','Employees','o',0]];
 const tabs=()=>TABS.filter(t=>t[2].includes(role()[0]));
 const ROLE={owner:'Owner',staff:'Staff',delivery:'Delivery',pending:'Manzoori baqi'};
 function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button data-k="${k}" aria-current="${tab==k||((tab==='items'||tab==='cost'||tab==='emp')&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
@@ -1304,8 +1304,8 @@ Object.assign(PK,{recipes:'id',production:'day,recipe_id'});OWNER_ONLY.rp=1;
 Object.assign(PK,{employees:'id'});OWNER_ONLY.em=1;OWNER_TABLES.employees=1;
 Object.assign(PK,{fixed_costs:'id'});OWNER_ONLY.fx=1;OWNER_TABLES.fixed_costs=1;
 const DLV_TABLES={items:1,customers:1,deliveries:1};
-const canPush=t=>role()==='delivery'?t==='dv':own()||!OWNER_ONLY[t];
-const canPull=tb=>role()==='delivery'?!!DLV_TABLES[tb]:own()||!OWNER_TABLES[tb];
+const canPush=t=>role()==='delivery'?t==='dv':role()==='staff'&&/^(dv|dc|dp|bp)$/.test(t)?false:own()||!OWNER_ONLY[t];
+const canPull=tb=>role()==='delivery'?!!DLV_TABLES[tb]:role()==='staff'&&(tb==='customers'||tb==='deliveries')?false:own()||!OWNER_TABLES[tb];
 function sbInit(){if(sb||!window.supabase)return;
  sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
  sb.auth.onAuthStateChange((ev,s)=>{who=s&&s.user?s.user.email:null;setTimeout(()=>{
@@ -1410,6 +1410,9 @@ async function doSync(){sbInit();if(!sb||!navigator.onLine){status();return}
  busy=true;status();let redraw=false;
  try{const {data:m,error}=await sb.from('members').select('role').eq('user_id',session.user.id).maybeSingle();if(error)throw error;
   const r=m?m.role:'pending';if(!S.me||S.me.role!==r||S.me.email!==who)redraw=true;S.me={email:who,role:r};save();
+  // Shop staff do not see home delivery: drop any copy this phone kept from before.
+  if(r==='staff'&&(S.dl.cs.length||Object.keys(S.dl.d).length||S.dl.py.length)){S.dl.cs=[];S.dl.d={};S.dl.py=[];delete S.cur.customers;delete S.cur.deliveries;
+   for(const k in S.q)if(/^(dv|dc|dp|bp):/.test(k))delete S.q[k];redraw=true;save()}
   if(r==='owner'&&!S.seeded){const {count,error:ce}=await sb.from('items').select('id',{count:'exact',head:true});if(ce)throw ce;
    if(!count)S.items.forEach(it=>{S.q['it:'+it.id]=S.q['it:'+it.id]||1;S.q['pr:'+it.id]=S.q['pr:'+it.id]||1});S.seeded=true;save()}
   if(r!=='pending'){await push();if(await pull())redraw=true}
@@ -1433,7 +1436,7 @@ function acct(){const c=Object.keys(S.q).length,r=role();
  <button class="btn ghost full" onclick="fullResync()">Sab data server se dobara layein</button></div>`;
  // Paper registers for hand entry, built from this phone's items, names and customers.
  h+=`<div class="card"><h3>Register chhapein</h3><p class="hint" style="margin:4px 0 10px">Hath se likhne ke liye roz ke page. App ki items aur customers list se bante hain; list badle to dobara chhapein.</p>
- <div class="btns"><button class="btn ghost" onclick="open('/khata-form.html','_blank')">🖨 Dukaan ka register</button><button class="btn ghost" onclick="open('/delivery-form.html','_blank')">🖨 Delivery ka register</button></div></div>`;
+ <div class="btns"><button class="btn ghost" onclick="open('/khata-form.html','_blank')">🖨 Dukaan ka register</button>${role()==='staff'?'':`<button class="btn ghost" onclick="open('/delivery-form.html','_blank')">🖨 Delivery ka register</button>`}</div></div>`;
  if(own())h+=`<button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('items')"><span>Items, rate aur cost</span><span class="muted">›</span></button>
  <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('cost')"><span>Cost (tareekh ke hisaab se)</span><span class="muted">›</span></button>
  <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('emp')"><span>Employees, salary aur fixed kharche</span><span class="muted">›</span></button>
