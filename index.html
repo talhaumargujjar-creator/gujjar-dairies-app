@@ -1296,7 +1296,7 @@ function toRow(t,r){
  if(t==='en'){const e=(D[a]||[]).find(x=>x.id===b);return e?['entries',{id:e.id,day:d,kind:a,name:e.n,amount:n(e.a),deleted:!!e.del,u:e.u}]:null}
  if(t==='ca')return['cash',{day:d,amount:D.cash,u:D.cu||0}];return null}
 async function push(){const snap={...S.q},R=Object.fromEntries(Object.keys(PK).map(t=>[t,[]]));
- for(const k in snap){const i=k.indexOf(':'),t=k.slice(0,i);if(!canPush(t))continue;const row=toRow(t,k.slice(i+1));if(row)R[row[0]].push(row[1])}
+ for(const k in snap){const i=k.indexOf(':'),t=k.slice(0,i);if(!canPush(t))continue;const row=toRow(t,k.slice(i+1));if(row){if(row[1].u!=null)row[1].u=Math.ceil(row[1].u);R[row[0]].push(row[1])}}
  for(const [tb,rows] of Object.entries(R))for(let i=0;i<rows.length;i+=500){const {error}=await sb.from(tb).upsert(rows.slice(i,i+500),{onConflict:PK[tb]});if(error)throw error}
  for(const k in snap)if(S.q[k]===snap[k])delete S.q[k];save()}
 function merge(tb,r){
@@ -1340,14 +1340,21 @@ function merge(tb,r){
  if(tb==='entries'){const L=D[r.kind]||(D[r.kind]=[]),i=L.findIndex(x=>x.id===r.id),e={id:r.id,n:r.name,a:n(r.amount),del:r.deleted,u:r.u};
   if(i<0){L.push(e);return true}if(r.u>L[i].u){L[i]=e;return true}return false}
  if(tb==='cash'){if(r.u>(D.cu||0)){D.cash=r.amount==null?null:n(r.amount);D.cu=r.u;return true}return false}return false}
-async function pull(){let ch=false;
+// Bump DATA_VER whenever a synced column is added. A phone or browser that read a row with an older app version
+// kept that row without the new field, and the row's edit time did not change, so it would never be read again.
+// On a new DATA_VER every row is read once more and the server copy wins even at the same edit time.
+const DATA_VER=1;
+async function pull(){let ch=false;const full=S.dv!==DATA_VER;if(full)S.cur={};
  for(const tb of Object.keys(PK)){if(!canPull(tb))continue;
   // Re-read the last minute too, so rows committed slightly out of order are not missed. Merging is idempotent.
   const since=new Date(new Date(S.cur[tb]||0).getTime()-60000).toISOString();let max=S.cur[tb]||null;
   for(let off=0;;off+=1000){const {data,error}=await sb.from(tb).select('*').gt('sa',since).order('sa').range(off,off+999);if(error)throw error;
-   data.forEach(r=>{if(merge(tb,r))ch=true;if(!max||r.sa>max)max=r.sa});if(data.length<1000)break}
+   // On a full re-read a half step on u lets the server row replace a same-time local copy; push rounds u back up.
+   data.forEach(r=>{if(merge(tb,full?{...r,u:n(r.u)+0.5}:r))ch=true;if(!max||r.sa>max)max=r.sa});if(data.length<1000)break}
   if(max)S.cur[tb]=max}
- save();return ch}
+ if(full)S.dv=DATA_VER;save();return ch||full}
+// Manual "read everything again" from the Account page.
+function fullResync(){if(!confirm('Sara data server se dobara layein? Is phone par jo abhi online nahi gaya wo pehle bheja jayega.'))return;S.dv=0;save();sync().then(render)}
 function sync(){return syncP||(syncP=doSync().finally(()=>{syncP=null}))}
 async function doSync(){sbInit();if(!sb||!navigator.onLine){status();return}
  const {data:{session},error:se}=await sb.auth.getSession();who=session?session.user.email:null;
@@ -1374,7 +1381,8 @@ function acct(){const c=Object.keys(S.q).length,r=role();
  <div class="sum"><span>Aakhri sync</span><b>${lastSync?lastSync.toLocaleTimeString('en-PK',{hour:'numeric',minute:'2-digit'}):'—'}</b></div>
  ${syncErr?`<p class="msg err">${esc(trErr(syncErr))}</p>`:''}
  <p class="hint" style="margin:6px 0 12px">Internet na ho tab bhi likhte rahein. Internet aate hi sab khud online chala jayega.</p>
- <button class="btn ghost full" onclick="sync().then(render)">Abhi sync karein</button></div>`;
+ <button class="btn ghost full" onclick="sync().then(render)">Abhi sync karein</button>
+ <button class="btn ghost full" onclick="fullResync()">Sab data server se dobara layein</button></div>`;
  if(own())h+=`<button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('items')"><span>Items, rate aur cost</span><span class="muted">›</span></button>
  <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('cost')"><span>Cost (tareekh ke hisaab se)</span><span class="muted">›</span></button>
  <button class="card" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:600" onclick="go('emp')"><span>Employees, salary aur fixed kharche</span><span class="muted">›</span></button>
