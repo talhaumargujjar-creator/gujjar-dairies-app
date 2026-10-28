@@ -61,6 +61,8 @@ const KH={ex:['TALHA BHAI BC','SHOPPER WALA','BARF','SURF','LABOUR KHARCHI','LAB
  bl:['SUZUKI PETROL','WU GHAR KHARCHA','WU GHAR DOODH NASHTA','TALHA CASH SHOP','ROZ RAQAM','TALHA ACCOUNT'],
  sp:["BRADY'S BILL",'DAWN BILL','EGG BILL','NEW EGG BILL','CUP CAKE','BAKERY BILL','PLAIN CAKE','BISCUIT WALA','CH. TAHIR BUTTER','RAZZAQ PAPAY','GOAT MILK','JAZIB GHEE','SUNSHINE'],
  rc:['HAJI HOTEL']};
+// The kharcha lines follow the owner's list in the app (Hisaab → Kharcha → "Kharche ki list badlein") once there is one.
+const XL=(S&&S.xn||[]).filter(x=>!x.off&&x.ln!==false).sort((a,b)=>(a.ord??1e6)-(b.ord??1e6)).map(x=>x.name);if(!FD&&XL.length)KH.ex=XL;
 // Codes K1..K7 are printed so it is clear which part of the app's Hisaab tab it is; the number is blank lines.
 const SECS=[['K1','KHARCHA (1)',KH.ex,12],['K2','SALARY (1)',KH.sl,3],['K3','GHAR AUR GARI (2)',KH.cr,3],
  ['K4','UDHAAR DIYA (3)',KH.ud,5],['K5','BILL KI RAQAM / OWNER (4)',KH.bl,3],['K6','SUPPLIER (5)',KH.sp,4],['K7','CASH WASOOL',KH.rc,6]];

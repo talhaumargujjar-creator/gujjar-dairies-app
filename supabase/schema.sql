@@ -473,3 +473,25 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.emp_names() from public, anon;
 grant execute on function public.emp_names() to authenticated;
+
+-- Kharcha names the owner allows, in the paper register's order. ln = shown as a fixed line every day
+-- (false = only pickable under "Aur kharcha", e.g. monthly rent). Everyone reads, only the owner writes.
+create table if not exists public.exp_names (
+  id text primary key, name text not null, ord int, ln boolean not null default true, off boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+drop trigger if exists exp_names_lww on public.exp_names;
+create trigger exp_names_lww before insert or update on public.exp_names for each row execute function public.lww();
+create index if not exists exp_names_sa_idx on public.exp_names (sa);
+alter table public.exp_names enable row level security;
+drop policy if exists exp_names_member_select on public.exp_names;
+drop policy if exists exp_names_owner_insert on public.exp_names;
+drop policy if exists exp_names_owner_update on public.exp_names;
+create policy exp_names_member_select on public.exp_names for select to authenticated using (public.is_member());
+create policy exp_names_owner_insert on public.exp_names for insert to authenticated with check (public.is_owner());
+create policy exp_names_owner_update on public.exp_names for update to authenticated using (public.is_owner()) with check (public.is_owner());
+revoke all on public.exp_names from anon;
+
+-- A detail written next to an entry's amount (e.g. which bike the petrol was for).
+alter table public.entries add column if not exists note text;
+-- Seeded with the 27 register lines (x01..x27) and the fixed costs (xf_<id>, ln=false).

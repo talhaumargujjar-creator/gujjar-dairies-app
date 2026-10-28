@@ -274,7 +274,7 @@ const PR_SEED=[['r_dahi','i2',[{t:'it',id:'i0',q:0}]],['r_lassi','i10',[{t:'it',
 function prInit(s){if(s.pr)return;s.pr={rc:{},d:{}};PR_SEED.forEach(([id,out,ins])=>{s.pr.rc[id]={id,out,ins,off:false,u:1};s.q['rp:'+id]=s.q['rp:'+id]||1})}
 // Employees: em = [{id,name,phone,start:'YYYY-MM',sal:{'YYYY-MM':salary from that month},off,u}].
 // Salary paid = Hisaab "Salary" entries written with the employee's name.
-function emInit(s){if(!s.em)s.em=[];if(!s.fx)s.fx=[]}
+function emInit(s){if(!s.em)s.em=[];if(!s.fx)s.fx=[];if(!s.xn)s.xn=[]}
 // Fixed costs: fx = [{id,name,amt:{'YYYY-MM':monthly amount from that month},off,u}] (rent, bijli). Their monthly amount,
 // and every employee's salary, is shared over the days of the month in the daily munafa; paying them only moves the galla.
 let S=load(),MEMO={};mkInit(S);bkInit(S);dlInit(S);prInit(S);emInit(S);
@@ -478,8 +478,60 @@ function drafts(k){const key=date+'|'+k;
 const drFilled=k=>(DR[date+'|'+k]||[]).filter(r=>r.n.trim()&&String(r.a).trim()).length;
 function drRow(k,r,i){const nmIn=k==='sl'&&slOnly()?`<select class="dn" id="dn${k}${i}" data-k="${k}" data-i="${i}" aria-label="Employee" onchange="drSet('${k}',${i},'n',this.value)" style="min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font-size:17px;color:inherit"><option value="">Employee chunein</option>${emNames().map(x=>`<option${nkey(x)===nkey(r.n)?' selected':''}>${esc(x)}</option>`).join('')}</select>`:null;
  return `<div class="addr" style="grid-template-columns:1fr 110px;margin-top:6px">${nmIn||`<input type="text" class="dn" id="dn${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.n)}" placeholder="Naam" list="dl${k}" autocomplete="off" enterkeyhint="next" aria-label="Naam" oninput="drSet('${k}',${i},'n',this.value)">`}<input type="text" inputmode="decimal" class="da" id="da${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.a)}" placeholder="${r.ph?'Kal '+f(r.ph):'Raqam'}" enterkeyhint="next" aria-label="Raqam" oninput="drSet('${k}',${i},'a',this.value)"></div>`}
+// Kharcha like the paper register (owner's wish): each name on the owner's list is a fixed line every day, in order;
+// only the amount and an optional detail are written. Other list names are picked under "Aur kharcha"; a name not on
+// the list cannot be written, the owner adds it first. No faint "Kal" amounts here.
+const xnAct=()=>S.xn.filter(x=>!x.off).sort((a,b)=>(a.ord??1e6)-(b.ord??1e6));
+const xOnly=()=>xnAct().length>0,xnOf=nm=>xnAct().find(x=>nkey(x.name)===nkey(baseN(nm)));
+const DRX={},drx=()=>DRX[date]||(DRX[date]={L:{},X:[{n:'',a:'',d:''}]});
+function xSet(el,f){const R=drx(),i=el.dataset.i;if(i!=null)R.X[+i][f]=el.value;else(R.L[el.dataset.n]=R.L[el.dataset.n]||{})[f]=el.value}
+const xFill=()=>{const R=drx();return Object.values(R.L).filter(v=>String(v.a||'').trim()).length+R.X.filter(v=>v.n&&String(v.a).trim()).length};
+function xSaved(e){return `<div class="row"><span>${esc(e.n)}${e.nt?`<br><span class="hint" style="font-size:13px">${esc(e.nt)}</span>`:''}${fxTag('ex',e.n)}</span><span>${f(n(e.a))}<button class="x" style="color:var(--bink)" aria-label="${esc(e.n)} badlein" onclick="edE('ex','${e.id}')">✎</button><button class="x" aria-label="${esc(e.n)} hatayen" onclick="del('ex','${e.id}')">✕</button></span></div>`}
+const XI='min-height:44px;padding:8px 10px;font-size:16px';
+function exSec(){const k='ex',D=day(date),[title,,,hint]=SECS.ex,L=live(D,k),tt=L.reduce((a,b)=>a+n(b.a),0),R=drx(),fl=xFill(),A=xnAct(),fixed=A.filter(x=>x.ln!==false);
+ const by={};L.forEach(e=>{const x=xnOf(e.n),key=x&&x.ln!==false?nkey(x.name):'';(by[key]=by[key]||[]).push(e)});
+ const line=x=>{const S0=by[nkey(x.name)];if(S0)return S0.map(xSaved).join('');const v=R.L[x.name]||{};
+  return `<div style="display:grid;grid-template-columns:minmax(0,1.2fr) 84px minmax(0,1fr);gap:6px;margin-top:6px;align-items:center"><span style="font-weight:600;font-size:15px;overflow-wrap:anywhere">${esc(x.name)}</span>
+  <input type="text" inputmode="decimal" class="xin" data-n="${esc(x.name)}" value="${esc(v.a||'')}" placeholder="Raqam" aria-label="${esc(x.name)} raqam" enterkeyhint="next" oninput="xSet(this,'a')" style="${XI}">
+  <input type="text" class="xin" data-n="${esc(x.name)}" value="${esc(v.d||'')}" placeholder="Detail" aria-label="${esc(x.name)} detail" enterkeyhint="next" oninput="xSet(this,'d')" style="${XI}"></div>`};
+ const xrow=(r,i)=>`<div style="display:grid;grid-template-columns:minmax(0,1.2fr) 84px minmax(0,1fr);gap:6px;margin-top:6px"><select class="xin" data-i="${i}" onchange="xSet(this,'n')" aria-label="Kharcha" style="${XI};border:1.5px solid var(--line);border-radius:12px;background:var(--field);color:inherit;min-width:0"><option value="">Chunein</option>${A.map(x=>`<option${x.name===r.n?' selected':''}>${esc(x.name)}</option>`).join('')}</select>
+  <input type="text" inputmode="decimal" class="xin" data-i="${i}" value="${esc(r.a)}" placeholder="Raqam" aria-label="Raqam" enterkeyhint="next" oninput="xSet(this,'a')" style="${XI}"><input type="text" class="xin" data-i="${i}" value="${esc(r.d)}" placeholder="Detail" aria-label="Detail" enterkeyhint="next" oninput="xSet(this,'d')" style="${XI}"></div>`;
+ return `<div class="card" id="exsec"><details ${OPEN[k]?'open':''} ontoggle="OPEN['${k}']=this.open"><summary><span>${title}${L.length?` <span class="muted" style="font-weight:400">(${L.length})</span>`:''}${fl?` <span class="neg" style="font-weight:400">· ${fl} save baqi</span>`:''}</span><b style="margin-left:auto;padding-right:8px">${f(tt)}</b></summary>
+ <p class="hint" style="margin-top:4px">${hint} Register jaisi lines: sirf raqam likhein, detail marzi se.</p>
+ ${fixed.map(line).join('')}
+ <h4 style="margin:14px 0 0">Aur kharcha</h4>${(by['']||[]).map(xSaved).join('')}${R.X.map(xrow).join('')}
+ <button class="link" style="padding:6px 0" onclick="drx().X.push({n:'',a:'',d:''});OPEN.ex=true;render()">+ Aur line</button>
+ <button class="btn full" style="margin-top:8px" onclick="xSave()">Save karein${fl?` (${fl})`:''}</button>
+ <p class="hint" style="margin-top:6px;font-size:13px">Do raqam hon to: 900+900. ${own()?'':'Koi naya kharcha ho jo list mein nahi, to owner ko batayein; wo list mein jodega.'}</p>
+ ${own()?xnMgr():''}</details></div>`}
+function xSave(){const R=drx(),todo=[];
+ const take=(nm,a0,d)=>{const raw=String(a0||'').replace(/\s/g,'');if(!raw)return true;const x=xnOf(nm);if(!x){alert(`"${nm}" kharche ki list mein nahi.`);return false}
+  const parts=raw.split('+').filter(Boolean),a=parts.reduce((s,y)=>s+n(y),0);if(!a||parts.some(y=>isNaN(parseFloat(y)))){alert(`"${x.name}" ki raqam sahi likhein.`);return false}
+  todo.push({n:parts.length>1?`${x.name} (${parts.join('+')})`:x.name,a,nt:String(d||'').trim()});return true};
+ for(const [nm,v] of Object.entries(R.L))if(!take(nm,v.a,v.d))return;
+ for(const r of R.X){if(!r.n&&String(r.a).trim()){alert('"Aur kharcha" mein kharcha chunein.');return}if(r.n&&!take(r.n,r.a,r.d))return}
+ if(!todo.length){alert('Kisi line mein raqam likhein.');return}
+ todo.forEach(t=>{const e={id:nid(),...t,del:false,u:now()};dd(date).ex.push(e);mark('en:'+date+'|ex|'+e.id)});
+ delete DRX[date];OPEN.ex=true;const y=scrollY;render();scrollTo(0,y)}
+// Enter moves to the next box of the kharcha lines.
+document.addEventListener('keydown',e=>{if(e.key!=='Enter'||!e.target.classList||!e.target.classList.contains('xin'))return;e.preventDefault();
+ const L=[...document.querySelectorAll('#exsec .xin')],i=L.indexOf(e.target);if(L[i+1])L[i+1].focus()});
+// The owner keeps the list: order, whether a name is a daily line, add, hide (hidden names stay in old days).
+function xnMgr(){const L=[...S.xn].sort((a,b)=>(a.off-b.off)||((a.ord??1e6)-(b.ord??1e6)));
+ return `<details style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px" ${OPEN.xn?'open':''} ontoggle="OPEN.xn=this.open"><summary>Kharche ki list badlein</summary>
+ <p class="hint" style="margin:6px 0">"Roz ki line" = har din line mein aata hai; "Sirf neeche" = "Aur kharcha" mein chuna jata hai (jaise rent).</p>
+ ${L.map(x=>`<div class="row" style="gap:4px"><span style="flex:1;min-width:0;${x.off?'opacity:.5;text-decoration:line-through':''}">${esc(x.name)}</span>${x.off?'':`<button class="x" data-id="${x.id}" onclick="xnMove(this.dataset.id,-1)" aria-label="Upar">↑</button><button class="x" data-id="${x.id}" onclick="xnMove(this.dataset.id,1)" aria-label="Neeche">↓</button>
+ <button class="chip" style="padding:4px 10px;font-size:13px" data-id="${x.id}" onclick="xnUp(this.dataset.id,'ln')">${x.ln!==false?'Roz ki line':'Sirf neeche'}</button>`}<button class="x" data-id="${x.id}" onclick="xnUp(this.dataset.id,'off')" aria-label="${x.off?'Wapas layein':'Hatayen'}">${x.off?'↺':'✕'}</button></div>`).join('')}
+ <div class="addr" style="grid-template-columns:1fr auto;margin-top:8px"><input type="text" id="xnn" placeholder="Naya kharcha" aria-label="Naya kharcha"><button class="btn" onclick="xnAdd()">+ Jodein</button></div></details>`}
+function xnMark(x){x.u=now();mark('xn:'+x.id)}
+function xnAdd(){const nm=nkey($('#xnn').value);if(!nm)return;const o=S.xn.find(x=>nkey(x.name)===nm);if(o){if(o.off){o.off=false;xnMark(o)}OPEN.xn=OPEN.ex=true;render();return}
+ const x={id:'x'+Date.now().toString(36),name:nm,ord:S.xn.reduce((m,y)=>Math.max(m,y.ord??0),0)+1,ln:true,off:false};S.xn.push(x);xnMark(x);OPEN.xn=OPEN.ex=true;render()}
+function xnUp(id,k){const x=S.xn.find(y=>y.id===id);if(!x)return;if(k==='off'&&!x.off&&!confirm(`"${x.name}" list se hatayein? Purani entries waisi rahengi.`))return;
+ x[k]=k==='ln'?x.ln===false:!x[k];xnMark(x);OPEN.xn=OPEN.ex=true;render()}
+function xnMove(id,dir){const L=xnAct(),i=L.findIndex(x=>x.id===id),j=i+dir;if(i<0||j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];
+ L.forEach((x,p)=>{if(x.ord!==p+1){x.ord=p+1;xnMark(x)}});OPEN.xn=OPEN.ex=true;const y=scrollY;render();scrollTo(0,y)}
 // Every section starts closed (owner's wish); the summary shows the count and total, a tap opens it.
-function sec(k){const D=day(date),[title,names0,,hint]=SECS[k],L=live(D,k),tt=L.reduce((a,b)=>a+n(b.a),0),R=drafts(k),sug=R.some(r=>r.ph),fl=drFilled(k);
+function sec(k){if(k==='ex'&&xOnly())return exSec();const D=day(date),[title,names0,,hint]=SECS[k],L=live(D,k),tt=L.reduce((a,b)=>a+n(b.a),0),R=drafts(k),sug=R.some(r=>r.ph),fl=drFilled(k);
  const names=k==='sl'&&emNames().length?emNames():names0;
  return `<div class="card"><details ${OPEN[k]?'open':''} ontoggle="OPEN['${k}']=this.open"><summary><span>${title}${L.length?` <span class="muted" style="font-weight:400">(${L.length})</span>`:''}${fl?` <span class="neg" style="font-weight:400">· ${fl} save baqi</span>`:''}</span><b style="margin-left:auto;padding-right:8px">${f(tt)}</b></summary>
  <p class="hint" style="margin-top:4px">${hint}</p>${k==='sl'&&own()?`<button class="link" style="padding:4px 0" onclick="go('emp')">Employees ki salary aur baqaya dekhein ›</button>`:''}
@@ -515,6 +567,8 @@ function edE(k,id){const e=dd(date)[k].find(x=>x.id===id);if(!e)return;
  const parts=String(raw).replace(/\s/g,'').split('+').filter(Boolean),a=parts.reduce((s,x)=>s+n(x),0);
  if(!nm.trim()||!a||parts.some(x=>isNaN(parseFloat(x)))){alert('Naam aur raqam dono sahi likhein.');return}
  if(k==='sl'&&slOnly()&&!isEmp(nm)){alert(`Salary sirf in employees ki: ${emNames().join(', ')}`);return}
+ if(k==='ex'&&xOnly()){const x=xnOf(nm);if(!x){alert('Ye naam kharche ki list mein nahi. Owner list mein jode, phir likhein.');return}
+  const dt=prompt('Detail (marzi se):',e.nt||'');if(dt!==null){e.nt=dt.trim()}e.n=parts.length>1?`${x.name} (${parts.join('+')})`:x.name;e.a=a;e.u=now();mark('en:'+date+'|'+k+'|'+id);render();return}
  e.n=k==='ud'||k==='rc'?nkey(nm):nm.trim();e.a=a;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
 function del(k,id){if(!confirm('Ye entry hatani hai?'))return;const e=dd(date)[k].find(x=>x.id===id);if(!e)return;e.del=true;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
 // Udhaar khata: per customer, everything given on credit minus everything received back, up to this day.
@@ -1394,6 +1448,8 @@ Object.assign(PK,{customers:'id',deliveries:'day,cust_id,item_id',dpay:'id'});Ob
 // Production: recipes are written by the owner only; owner and staff write what was made.
 Object.assign(PK,{recipes:'id',production:'day,recipe_id'});OWNER_ONLY.rp=1;
 Object.assign(PK,{employees:'id'});OWNER_ONLY.em=1;OWNER_TABLES.employees=1;
+// The kharcha names everyone may write (owner keeps the list); staff read it.
+Object.assign(PK,{exp_names:'id'});OWNER_ONLY.xn=1;
 Object.assign(PK,{fixed_costs:'id'});OWNER_ONLY.fx=1;OWNER_TABLES.fixed_costs=1;
 const DLV_TABLES={items:1,customers:1,deliveries:1};
 const canPush=t=>role()==='delivery'?t==='dv':role()==='staff'&&/^(dv|dc|dp|bp)$/.test(t)?false:own()||!OWNER_ONLY[t];
@@ -1419,6 +1475,7 @@ function toRow(t,r){
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
  if(t==='fx'){const x=S.fx.find(y=>y.id===r);return x?['fixed_costs',{id:x.id,name:x.name,amt:x.amt||{},off:!!x.off,u:x.u}]:null}
+ if(t==='xn'){const x=S.xn.find(y=>y.id===r);return x?['exp_names',{id:x.id,name:x.name,ord:x.ord??null,ln:x.ln!==false,off:!!x.off,u:x.u}]:null}
  if(t==='em'){const e=S.em.find(x=>x.id===r);return e?['employees',{id:e.id,name:e.name,phone:e.phone||null,start:e.start||null,sal:e.sal||{},off:!!e.off,u:e.u}]:null}
  if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,y:x.y??null,off:!!x.off,u:x.u}]:null}
  if(t==='pd'){const [d,rid]=r.split('|'),x=(S.pr.d[d]||{})[rid];return x?['production',{day:d,recipe_id:rid,qty:num(x.q),u:x.u}]:null}
@@ -1434,7 +1491,7 @@ function toRow(t,r){
  if(t==='mpy'){const [d,id]=r.split('|'),e=(S.mk.pay[d]||[]).find(x=>x.id===id);return e?['milk_pay',{id:e.id,day:d,party_id:e.p,amount:n(e.a),note:e.n||'',deleted:!!e.del,u:e.u}]:null}
  const [d,a,b]=r.split('|'),D=S.days[d];if(!D)return null;
  if(t==='st'){const s=D.st[a];return s?['day_stock',{day:d,item_id:a,pu:num(s.pu),us:num(s.us),cl:num(s.cl),rt:num(s.rt),u:s.u||0}]:null}
- if(t==='en'){const e=(D[a]||[]).find(x=>x.id===b);return e?['entries',{id:e.id,day:d,kind:a,name:e.n,amount:n(e.a),deleted:!!e.del,u:e.u}]:null}
+ if(t==='en'){const e=(D[a]||[]).find(x=>x.id===b);return e?['entries',{id:e.id,day:d,kind:a,name:e.n,amount:n(e.a),note:e.nt||null,deleted:!!e.del,u:e.u}]:null}
  if(t==='ca')return['cash',{day:d,amount:D.cash,u:D.cu||0}];return null}
 async function push(){const snap={...S.q},R=Object.fromEntries(Object.keys(PK).map(t=>[t,[]]));
  for(const k in snap){const i=k.indexOf(':'),t=k.slice(0,i);if(!canPush(t))continue;const row=toRow(t,k.slice(i+1));if(row){if(row[1].u!=null)row[1].u=Math.ceil(row[1].u);R[row[0]].push(row[1])}}
@@ -1445,6 +1502,7 @@ function merge(tb,r){
   if(r.u>it.u){Object.assign(it,o);return true}return false}
  if(tb==='fixed_costs'){const i=S.fx.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,amt:r.amt||{},off:r.off,u:r.u};
   if(i<0){S.fx.push(o);return true}if(r.u>S.fx[i].u){S.fx[i]=o;return true}return false}
+ if(tb==='exp_names'){const x=S.xn.find(y=>y.id===r.id),o={id:r.id,name:r.name,ord:r.ord,ln:r.ln!==false,off:!!r.off,u:r.u};if(!x){S.xn.push(o);return true}if(r.u>(x.u||0)){Object.assign(x,o);return true}return false}
  if(tb==='employees'){const i=S.em.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,phone:r.phone||'',start:r.start||'',sal:r.sal||{},off:r.off,u:r.u};
   if(i<0){S.em.push(o);return true}if(r.u>S.em[i].u){S.em[i]=o;return true}return false}
  if(tb==='recipes'){const x=S.pr.rc[r.id];if(x&&r.u<=(x.u||0))return false;S.pr.rc[r.id]={id:r.id,out:r.item_id,ins:r.ins||[],y:r.y??undefined,off:r.off,u:r.u};return true}
@@ -1479,13 +1537,13 @@ function merge(tb,r){
   const o={k:r.k??'',kc:r.kc??'',u:r.u};MF.forEach(k=>o[k]=r[k]??'');P[r.party_id]=o;return true}
  const D=dd(r.day);
  if(tb==='day_stock'){const s=D.st[r.item_id];if(!s||r.u>(s.u||0)){D.st[r.item_id]={pu:r.pu??'',us:r.us??'',cl:r.cl??'',rt:r.rt??'',u:r.u};return true}return false}
- if(tb==='entries'){const L=D[r.kind]||(D[r.kind]=[]),i=L.findIndex(x=>x.id===r.id),e={id:r.id,n:r.name,a:n(r.amount),del:r.deleted,u:r.u};
+ if(tb==='entries'){const L=D[r.kind]||(D[r.kind]=[]),i=L.findIndex(x=>x.id===r.id),e={id:r.id,n:r.name,a:n(r.amount),nt:r.note||'',del:r.deleted,u:r.u};
   if(i<0){L.push(e);return true}if(r.u>L[i].u){L[i]=e;return true}return false}
  if(tb==='cash'){if(r.u>(D.cu||0)){D.cash=r.amount==null?null:n(r.amount);D.cu=r.u;return true}return false}return false}
 // Bump DATA_VER whenever a synced column is added. A phone or browser that read a row with an older app version
 // kept that row without the new field, and the row's edit time did not change, so it would never be read again.
 // On a new DATA_VER every row is read once more and the server copy wins even at the same edit time.
-const DATA_VER=3;
+const DATA_VER=4;
 async function pull(){let ch=false;const full=S.dv!==DATA_VER;if(full)S.cur={};
  for(const tb of Object.keys(PK)){if(!canPull(tb))continue;
   // Re-read the last minute too, so rows committed slightly out of order are not missed. Merging is idempotent.
