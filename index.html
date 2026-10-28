@@ -1224,7 +1224,7 @@ function cmon(c,ym){const it={},days=[];let amt=0,old=0;
  return {items:Object.values(it),old,days,amt,pays,paid,prev,due:prev+amt-paid}}
 function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCase();
  const R=S.dl.cs.slice().sort(byOrd).map(c=>[c,cmon(c.id,ym)]).filter(([c,m])=>!c.off||Math.round(m.due)),T=R.reduce((a,[,m])=>a+m.due,0),M=R.reduce((a,[,m])=>a+m.amt,0);
- const V=R.filter(([c])=>(c.name+' '+(c.addr||'')).toLowerCase().includes(s)),off=S.dl.cs.filter(c=>c.off);
+ const V=R.filter(([c])=>(c.name+' '+(c.addr||'')).toLowerCase().includes(s)),off=S.dl.cs.filter(c=>c.off).map(c=>[c,cmon(c.id,ym).due]).sort((x,y)=>y[1]-x[1]),OT=off.reduce((a,[,d])=>a+d,0);
  return `<div class="card"><div class="fld"><label for="bmo">Mahina</label><input type="month" id="bmo" value="${ym}" onchange="bm=this.value||null;render()"></div>
  <div class="sum"><span>${monName(ym)} ka maal</span><b>${f(M)}</b></div><div class="sum tot"><span>Sab customers ka kul baqi</span><b>${f(T)}</b></div>
  <p class="hint" style="margin-top:8px">Customer par tap karein: bill dekhein, WhatsApp par bhejein ya wasooli likhein.</p></div>
@@ -1236,7 +1236,7 @@ function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCas
  <div class="fld"><label for="co">Purana baqaya (agar ho)</label><input type="number" inputmode="decimal" id="co"></div>
  <div class="fld"><label for="cmr">Doodh ka rate (khali = aam delivery rate)</label><input type="number" inputmode="decimal" id="cmr"></div>
  <button class="btn full" onclick="addC()">+ Customer add karein</button></div></details></div>
- ${off.length?`<div class="card"><details><summary>Hataye gaye customers (${off.length})</summary>${off.map(c=>`<div class="row"><span>${esc(c.name)}</span><button class="btn ghost" ${sbtn} onclick="offC('${c.id}',false)">Wapas layein</button></div>`).join('')}</details></div>`:''}
+ ${off.length?`<div class="card"><details${OPEN.offc?' open':''} ontoggle="OPEN.offc=this.open"><summary>Hataye gaye customers (${off.length}) · baqi ${f(OT)}</summary><p class="hint" style="margin:6px 0">${monName(ym)} ke aakhir tak. Naam par tap karein: bill aur wasooli.</p>${off.map(([c,d])=>`<div class="row"><button class="crow" style="flex:1;min-width:0;padding:6px 0;border:0" onclick="bc='${c.id}';render();scrollTo(0,0)"><span style="min-width:0"><b>${esc(c.name)}</b></span><b class="${d<0?'pos':''}">${f(d)}</b></button><button class="btn ghost" ${sbtn} onclick="offC('${c.id}',false)">Wapas layein</button></div>`).join('')}<div class="sum tot"><span>Hataye gaye ka kul baqi</span><b>${f(OT)}</b></div></details></div>`:''}
  ${bpV()}`}
 // Bill header and offers, set once by the owner and printed on every bill.
 function bpV(){const B=S.dl.bp,inp=(k,l,t)=>`<div class="fld"><label for="bp_${k}">${l}</label><input type="${t||'text'}" id="bp_${k}" value="${esc(B[k]||'')}" onchange="upBP('${k}',this.value)"></div>`;
