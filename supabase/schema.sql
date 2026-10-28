@@ -529,3 +529,11 @@ insert into public.cash_book (id,k,name,ex,ord,u) values
 on conflict (id) do nothing;
 insert into public.cash_book (id,k,name,amount,day,note,u) values ('s1','s','SAVINGS',3300000,'2026-10-28','Shuru ki savings',1000) on conflict (id) do nothing;
 insert into public.cash_book (id,k,name,ex,amount,day,u) values ('roz','r','ROZ RAQAM','296019',32000,'2026-10-28',1000) on conflict (id) do nothing;
+
+-- Roz raqam split into hisse; k='p' rows are money given from a hissa, ref = the hissa's id.
+alter table public.cash_book add column if not exists ref text;
+update public.cash_book set name='DAILY EXP', amount=26000, ord=1, u=1793210000000 where id='roz' and u<1793210000000;
+insert into public.cash_book (id,k,name,ex,amount,day,ord,u) values
+ ('roz2','r','PRINTED SHOPPER','0',3000,'2026-10-28',2,1793210000000),
+ ('roz3','r','TALHA SAVING','0',3000,'2026-10-28',3,1793210000000)
+on conflict (id) do nothing;
