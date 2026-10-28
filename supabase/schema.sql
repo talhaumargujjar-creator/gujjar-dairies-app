@@ -448,3 +448,20 @@ drop policy deliveries_team_update on public.deliveries;
 create policy deliveries_dlv_select on public.deliveries for select to authenticated using (public.is_dlv());
 create policy deliveries_dlv_insert on public.deliveries for insert to authenticated with check (public.is_dlv());
 create policy deliveries_dlv_update on public.deliveries for update to authenticated using (public.is_dlv()) with check (public.is_dlv());
+
+-- Doodh hisaab is the owner's only: staff and delivery can neither read nor write any milk table.
+do $$
+declare t text; p record;
+begin
+  foreach t in array array['milk_parties','milk_rates','milk_days','milk_pay','milk_day_info','milk_party_rates'] loop
+    for p in select policyname from pg_policies where schemaname='public' and tablename=t loop
+      execute format('drop policy %I on public.%I', p.policyname, t);
+    end loop;
+    execute format('create policy %I on public.%I for select using (public.is_owner())', t||'_owner_select', t);
+    execute format('create policy %I on public.%I for insert with check (public.is_owner())', t||'_owner_insert', t);
+    execute format('create policy %I on public.%I for update using (public.is_owner()) with check (public.is_owner())', t||'_owner_update', t);
+  end loop;
+end $$;
+
+-- items.ai: the item's purchase comes from a Doodh party by itself, so staff know not to type it.
+alter table public.items add column if not exists ai boolean not null default false;

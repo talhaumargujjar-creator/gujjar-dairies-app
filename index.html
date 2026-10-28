@@ -374,7 +374,7 @@ const ICON={stock:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"
  prd:'<path d="M5 9h14l-1.5 11a1 1 0 0 1-1 .9h-9a1 1 0 0 1-1-.9z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/><path d="M9 14h6"/>'};
 // [key, label, who can open (o owner, s staff, d delivery), shown in the bottom bar].
 // Items and Cost open from the Account page so the bar fits a phone.
-const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','os',1],['dlv','Delivery','od',1],['prd','Production','os',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0],['emp','Employees','o',0]];
+const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','o',1],['dlv','Delivery','od',1],['prd','Production','os',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0],['emp','Employees','o',0]];
 const tabs=()=>TABS.filter(t=>t[2].includes(role()[0]));
 const ROLE={owner:'Owner',staff:'Staff',delivery:'Delivery',pending:'Manzoori baqi'};
 function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button data-k="${k}" aria-current="${tab==k||((tab==='items'||tab==='cost'||tab==='emp')&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
@@ -395,7 +395,11 @@ function render(){const a=$('#app');
 
 // Stock
 const isDone=it=>has((day(date).st[it.id]||{}).cl);
-function line(it){const s=day(date).st[it.id]||{},mk=made(it,date),up=usedP(it,date),mi=milkIn(it,date),tin=opening(it,date)+n(s.pu)+mi.q+mk-up;
+// items.ai: this item's purchase comes from a Doodh party by itself. The owner's phone keeps the flag in step with the
+// parties so staff, who never see the Doodh hisaab, know not to type that purchase by hand.
+function markAI(){let ch=false;S.items.forEach(it=>{const a=S.mk.ps.some(p=>p.si===it.id&&!p.off);if(!!it.ai!==a){it.ai=a;it.u=now();mark('it:'+it.id);ch=true}});if(ch)save();return ch}
+function line(it){if(it.ai&&!own()){const s=day(date).st[it.id]||{};return `<span style="flex-basis:100%">Is ki purchase Doodh ke hisaab se khud judti hai. <b>Purchase mein na likhein</b>, sirf Closing likhein.</span><span>${has(s.cl)?'Closing likh di':'Closing likhni hai'}</span>`}
+ const s=day(date).st[it.id]||{},mk=made(it,date),up=usedP(it,date),mi=milkIn(it,date),tin=opening(it,date)+n(s.pu)+mi.q+mk-up;
  const pl=(mi.q?`<span style="flex-basis:100%">Doodh hisaab se purchase: <b>+${fq(mi.q)} litre</b>${own()&&mi.a?` · Rs ${f(mi.a/mi.q)} fi litre`:''}</span>`+(n(s.pu)?`<span class="neg" style="flex-basis:100%">Purchase mein hath se bhi ${fq(s.pu)} likha hai. Agar ye wahi Johar wala doodh hai to Purchase khali karein, warna do dafa ginega.</span>`:''):'')+(mk||up?`<span style="flex-basis:100%">Production: ${mk?'+'+fq(mk)+' bana':''}${mk&&up?', ':''}${up?'−'+fq(up)+' recipe mein laga':''}</span>`:'');
  // Before closing is counted, show how much already went out on home delivery and what should be left.
  const dq0=dday(date).q[it.id]||0;
@@ -407,7 +411,7 @@ function line(it){const s=day(date).st[it.id]||{},mk=made(it,date),up=usedP(it,d
 function card(it){const s=day(date).st[it.id]||{};
  const inp=(k,l)=>`<div class="f"><label for="${k}${it.id}">${l}</label><input type="number" inputmode="decimal" enterkeyhint="next" id="${k}${it.id}" value="${s[k]??''}" onchange="setS('${it.id}','${k}',this)"></div>`;
  return `<div class="card item${isDone(it)?' done':''}"><div class="ih"><b>${esc(it.name)}</b>${own()?`<button class="tag rt" onclick="setRt('${it.id}')" aria-label="${esc(it.name)}: aaj ka rate">${has(s.rt)?'Aaj ka rate '+fq(s.rt):'Rate '+fq(it.rate)} ✎</button>`:''}</div>
- <div class="g4"><div class="f"><span class="l">Opening</span><div class="v">${fq(opening(it,date))}</div></div>${inp('pu','Purchase')}${inp('us','Istemal')}${inp('cl','Closing')}</div>
+ <div class="g4"><div class="f"><span class="l">Opening</span><div class="v">${fq(opening(it,date))}</div></div>${it.ai&&!own()?'<div class="f"><span class="l">Purchase</span><div class="v">Doodh se</div></div>':inp('pu','Purchase')}${inp('us','Istemal')}${inp('cl','Closing')}</div>
  <div class="res">${line(it)}</div></div>`}
 // Items in register order; ones without an order keep their place at the end.
 const ordered=()=>S.items.map((it,i)=>[it,i]).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
@@ -1324,8 +1328,9 @@ async function logout(){if(!confirm('Logout karna hai? Is phone ka hisaab phone 
 // ---- Online sync (Supabase). Everything is saved on the phone first, then sent when internet is available.
 let sb=null,who=null,busy=false,syncErr='',lastSync=null,kickT=null,MEM=null,syncP=null;
 const PK={items:'id',prices:'item_id',settings:'key',day_stock:'day,item_id',entries:'id',cash:'day',milk_parties:'id',milk_rates:'day',milk_days:'day,party_id',milk_party_rates:'party_id,from_day',milk_pay:'id',milk_day_info:'day',bank_accounts:'id',bank_tx:'id',costs:'item_id,day'};
-const OWNER_ONLY={it:1,pr:1,set:1,mp:1,mpr:1,mob:1,szk:1,ba:1,bt:1,cs:1};
-const OWNER_TABLES={prices:1,settings:1,milk_party_rates:1,bank_accounts:1,bank_tx:1,costs:1};
+// The whole Doodh hisaab is the owner's only (owner's wish): staff neither read nor write any milk table.
+const OWNER_ONLY={it:1,pr:1,set:1,mp:1,mpr:1,mob:1,szk:1,md:1,mr:1,mpy:1,mx:1,ba:1,bt:1,cs:1};
+const OWNER_TABLES={prices:1,settings:1,milk_parties:1,milk_rates:1,milk_days:1,milk_party_rates:1,milk_pay:1,milk_day_info:1,bank_accounts:1,bank_tx:1,costs:1};
 // Home delivery tables. The delivery man only reads item names and customers and writes deliveries.
 Object.assign(PK,{customers:'id',deliveries:'day,cust_id,item_id',dpay:'id'});Object.assign(OWNER_ONLY,{dc:1,dp:1,bp:1});OWNER_TABLES.dpay=1;
 // Production: recipes are written by the owner only; owner and staff write what was made.
@@ -1347,7 +1352,7 @@ function status(){const e=$('#sy');if(!e)return;const c=Object.keys(S.q).length,
  e.textContent=busy?'Sync ho raha hai…':!navigator.onLine?`Offline${c?' · '+c+' baqi':''}`:syncErr?'⚠ Sync nahi hua':c?`${c} baqi`:'✓ Online'}
 function toRow(t,r){
  if(t==='it'||t==='pr'){const it=itm(r);if(!it)return null;
-  return t==='it'?['items',{id:it.id,name:it.name,op:n(it.op),off:!!it.off,ord:it.ord??null,u:it.u}]:['prices',{item_id:it.id,rate:n(it.rate),cost:n(it.cost),drate:num(it.drate),u:it.pru}]}
+  return t==='it'?['items',{id:it.id,name:it.name,op:n(it.op),off:!!it.off,ord:it.ord??null,ai:!!it.ai,u:it.u}]:['prices',{item_id:it.id,rate:n(it.rate),cost:n(it.cost),drate:num(it.drate),u:it.pru}]}
  if(t==='dc'){const c=S.dl.cs.find(x=>x.id===r);return c?['customers',{id:c.id,name:c.name,addr:c.addr||null,phone:c.phone||null,op:n(c.op),ord:c.ord??null,off:!!c.off,rates:c.rates||{},u:c.u}]:null}
  if(t==='dp'){const p=S.dl.py.find(x=>x.id===r);return p?['dpay',{id:p.id,day:p.day,cust_id:p.c,amount:n(p.a),mode:p.m,note:p.note||null,deleted:!!p.del,u:p.u}]:null}
  if(t==='dv'){const [d,c,i]=r.split('|'),e=((S.dl.d[d]||{})[c]||{})[i];if(!e)return null;
@@ -1378,7 +1383,7 @@ async function push(){const snap={...S.q},R=Object.fromEntries(Object.keys(PK).m
  for(const [tb,rows] of Object.entries(R))for(let i=0;i<rows.length;i+=500){const {error}=await sb.from(tb).upsert(rows.slice(i,i+500),{onConflict:PK[tb]});if(error)throw error}
  for(const k in snap)if(S.q[k]===snap[k])delete S.q[k];save()}
 function merge(tb,r){
- if(tb==='items'){const it=itm(r.id),o={name:r.name,op:n(r.op),off:r.off,ord:r.ord??undefined,u:r.u};if(!it){S.items.push(Object.assign({id:r.id,rate:0,cost:0,pru:0},o));return true}
+ if(tb==='items'){const it=itm(r.id),o={name:r.name,op:n(r.op),off:r.off,ord:r.ord??undefined,ai:!!r.ai,u:r.u};if(!it){S.items.push(Object.assign({id:r.id,rate:0,cost:0,pru:0},o));return true}
   if(r.u>it.u){Object.assign(it,o);return true}return false}
  if(tb==='fixed_costs'){const i=S.fx.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,amt:r.amt||{},off:r.off,u:r.u};
   if(i<0){S.fx.push(o);return true}if(r.u>S.fx[i].u){S.fx[i]=o;return true}return false}
@@ -1422,7 +1427,7 @@ function merge(tb,r){
 // Bump DATA_VER whenever a synced column is added. A phone or browser that read a row with an older app version
 // kept that row without the new field, and the row's edit time did not change, so it would never be read again.
 // On a new DATA_VER every row is read once more and the server copy wins even at the same edit time.
-const DATA_VER=2;
+const DATA_VER=3;
 async function pull(){let ch=false;const full=S.dv!==DATA_VER;if(full)S.cur={};
  for(const tb of Object.keys(PK)){if(!canPull(tb))continue;
   // Re-read the last minute too, so rows committed slightly out of order are not missed. Merging is idempotent.
@@ -1444,9 +1449,14 @@ async function doSync(){sbInit();if(!sb||!navigator.onLine){status();return}
   // Shop staff do not see home delivery: drop any copy this phone kept from before.
   if(r==='staff'&&(S.dl.cs.length||Object.keys(S.dl.d).length||S.dl.py.length)){S.dl.cs=[];S.dl.d={};S.dl.py=[];delete S.cur.customers;delete S.cur.deliveries;
    for(const k in S.q)if(/^(dv|dc|dp|bp):/.test(k))delete S.q[k];redraw=true;save()}
+  // The same for the Doodh hisaab, which only the owner sees.
+  if((r==='staff'||r==='delivery')&&(S.mk.ps.length||Object.keys(S.mk.d).length||Object.keys(S.mk.pay).length)){
+   Object.assign(S.mk,{ps:[],mr:{},d:{},pr:{},ob:{},pay:{},x:{},szk:{v:[],u:0}});
+   ['milk_parties','milk_rates','milk_days','milk_party_rates','milk_pay','milk_day_info'].forEach(t=>delete S.cur[t]);
+   for(const k in S.q)if(/^(md|mr|mpy|mx|mp|mpr|mob|szk):/.test(k))delete S.q[k];redraw=true;save()}
   if(r==='owner'&&!S.seeded){const {count,error:ce}=await sb.from('items').select('id',{count:'exact',head:true});if(ce)throw ce;
    if(!count)S.items.forEach(it=>{S.q['it:'+it.id]=S.q['it:'+it.id]||1;S.q['pr:'+it.id]=S.q['pr:'+it.id]||1});S.seeded=true;save()}
-  if(r!=='pending'){await push();if(await pull())redraw=true}
+  if(r!=='pending'){await push();if(await pull())redraw=true;if(r==='owner'&&markAI())await push()}
   lastSync=new Date();syncErr=''}
  catch(e){syncErr=e.message||String(e)}
  finally{busy=false}
