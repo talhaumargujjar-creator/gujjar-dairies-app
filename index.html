@@ -499,8 +499,42 @@ function ledger(d){const B={};const base=s=>nkey(s).replace(/\s*\([\d+.\s]*\)$/,
  return Object.entries(B).filter(([,v])=>Math.round(v)!==0).sort((a,b)=>b[1]-a[1])}
 function udhaarV(){const L=ledger(date),T=L.reduce((a,[,v])=>a+v,0);
  return `<div class="card"><details ${OPEN.led?'open':''} ontoggle="OPEN.led=this.open"><summary><span>Udhaar khata (kis se kitna lena hai)</span><b style="margin-left:auto;padding-right:8px">${f(T)}</b></summary>
- ${L.length?L.map(([k,v])=>`<div class="row"><span>${esc(k)}</span><b class="${v<0?'pos':''}">${f(v)}</b></div>`).join(''):'<p class="hint" style="margin-top:8px">Abhi kisi ka udhaar baqi nahi.</p>'}
- <p class="hint" style="margin-top:8px">"Udhaar diya" se baqaya barhta hai, "Cash wasool" mein usi naam se likhne par kam hota hai. Purana baqaya ho to pehle din "Udhaar diya" mein likh dein.</p></details></div>`}
+ ${L.length?L.map(([k,v])=>`<button class="row" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left;font:inherit;color:inherit;cursor:pointer" data-n="${esc(k)}" onclick="ubOpen(this.dataset.n)"><span>${esc(k)} <span class="muted" style="font-size:14px">· bill ›</span></span><b class="${v<0?'pos':''}">${f(v)}</b></button>`).join(''):'<p class="hint" style="margin-top:8px">Abhi kisi ka udhaar baqi nahi.</p>'}
+ <p class="hint" style="margin-top:8px">"Udhaar diya" se baqaya barhta hai, "Cash wasool" mein usi naam se likhne par kam hota hai. Purana baqaya ho to pehle din "Udhaar diya" mein likh dein. Naam dabayein to us ka tareekh wise bill khulta hai.</p></details></div>${ubV()}`}
+// Udhaar bill: one name's "Udhaar diya" and "Cash wasool" day by day between two dates, with the baqaya from before.
+let ubn='',ubf='',ubt='';
+const ubase=s=>nkey(s).replace(/\s*\([\d+.\s]*\)$/,'');
+function ubNames(){const N=new Set();for(const D of Object.values(S.days))['ud','rc'].forEach(k=>(D[k]||[]).forEach(e=>{if(!e.del&&e.n)N.add(ubase(e.n))}));return [...N].filter(Boolean).sort()}
+function ustate(nm,fr,to){let op=0;const rows=[];
+ for(const x of keys()){if(x>to)break;const D=norm(S.days[x]),u=live(D,'ud').filter(e=>ubase(e.n)===nm),w=live(D,'rc').filter(e=>ubase(e.n)===nm);
+  const a=u.reduce((s,e)=>s+n(e.a),0),b=w.reduce((s,e)=>s+n(e.a),0);if(!u.length&&!w.length)continue;
+  if(x<fr){op+=a-b;continue}rows.push({d:x,a,b,u,w})}
+ let bal=op;rows.forEach(r=>{bal+=r.a-r.b;r.bal=bal});
+ return {op,rows,ta:rows.reduce((s,r)=>s+r.a,0),tb:rows.reduce((s,r)=>s+r.b,0),bal}}
+function ubOpen(nm){ubn=nm;ubf=date.slice(0,8)+'01';ubt=date;OPEN.led=true;render();const c=$('#ubill');if(c)c.scrollIntoView({behavior:'smooth'})}
+// An entry written as "HAJI HOTEL (375+375)" keeps its bracket on the bill line so the parts stay visible.
+const ubDet=L=>L.map(e=>{const m=String(e.n).match(/\(([^)]*)\)\s*$/);return m?m[1]:''}).filter(Boolean).join(', ');
+function ubV(){if(!ubn)return '';const s=ustate(ubn,ubf,ubt);
+ return `<div class="card" id="ubill"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3>Udhaar ka bill</h3><button class="link" onclick="ubn='';render()">Band karein ✕</button></div>
+ <div class="fld" style="margin-top:10px"><label for="ubn">Naam</label><select id="ubn" onchange="ubn=this.value;render()" style="width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font-size:17px;color:inherit">${ubNames().map(x=>`<option${x===ubn?' selected':''}>${esc(x)}</option>`).join('')}</select></div>
+ <div class="g3" style="grid-template-columns:1fr 1fr"><div class="fld"><label for="ubf">Se</label><input type="date" id="ubf" value="${ubf}" onchange="ubf=this.value||ubf;render()"></div><div class="fld"><label for="ubt">Tak</label><input type="date" id="ubt" value="${ubt}" onchange="ubt=this.value||ubt;render()"></div></div>
+ <div class="sum"><span>Pichla baqaya (${pk(ubf).slice(0,5)} se pehle)</span><b>${f(s.op)}</b></div>
+ ${s.rows.length?`<table style="margin-top:8px"><tr><th style="text-align:left">Tareekh</th><th>Udhaar</th><th>Wasool</th><th>Baqaya</th></tr>${s.rows.map(r=>{const da=ubDet(r.u),db=ubDet(r.w);return `<tr><td style="text-align:left">${pk(r.d).slice(0,5)}${da||db?`<br><small class="muted">${esc([da,db].filter(Boolean).join(' · '))}</small>`:''}</td><td>${r.a?f(r.a):''}</td><td>${r.b?f(r.b):''}</td><td>${f(r.bal)}</td></tr>`}).join('')}</table>`:'<p class="hint" style="margin-top:8px">In tareekhon mein is naam ki koi entry nahi.</p>'}
+ <div class="sum"><span>Kul udhaar diya</span><b>${f(s.ta)}</b></div><div class="sum"><span>Kul wasool</span><b>−${f(s.tb)}</b></div>
+ <div class="sum tot"><span>Baqaya ${pk(ubt).slice(0,5)} tak</span><b>${f(s.bal)}</b></div>
+ <div class="btns" style="margin-top:12px"><button class="btn" onclick="ubWA()">WhatsApp par bhejein</button><button class="btn ghost" onclick="ubPrint()">PDF / Print</button></div></div>`}
+function ubText(){const s=ustate(ubn,ubf,ubt);
+ return `*Gujjar Dairies — Udhaar ka hisaab*\n${ubn}\n${pk(ubf)} se ${pk(ubt)} tak\n\nPichla baqaya: Rs ${f(s.op)}\n`+s.rows.map(r=>`${pk(r.d).slice(0,5)}: ${r.a?'Udhaar '+f(r.a):''}${r.a&&r.b?', ':''}${r.b?'Wasool '+f(r.b):''} → ${f(r.bal)}`).join('\n')+
+  `\n\nKul udhaar: Rs ${f(s.ta)}\nKul wasool: Rs ${f(s.tb)}\n*Baqaya: Rs ${f(s.bal)}*`}
+function ubWA(){wa(ubText())}
+async function ubPrint(){const s=ustate(ubn,ubf,ubt),B=S.dl.bp||{},R=(l,v)=>`<tr><td colspan="3" class="l">${l}</td><td>${v}</td></tr>`;
+ let el=$('#prt');if(!el){el=document.createElement('div');el.id='prt';document.body.appendChild(el)}
+ el.innerHTML=`<div class="ph"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}</div></div>
+ <div class="pb"><div><h2>${esc(ubn)}</h2><p>Udhaar ka hisaab</p></div><div style="text-align:right"><b>${pk(ubf)} se ${pk(ubt)} tak</b></div></div>
+ <table><tr><th class="l">Tareekh</th><th>Udhaar (Rs)</th><th>Wasool (Rs)</th><th>Baqaya</th></tr>${R('Pichla baqaya',f(s.op))}
+ ${s.rows.map(r=>{const dd=[ubDet(r.u),ubDet(r.w)].filter(Boolean).join(' · ');return `<tr><td class="l">${pk(r.d)}${dd?`<br><span style="font-size:11px;color:#444">${esc(dd)}</span>`:''}</td><td>${r.a?f(r.a):''}</td><td>${r.b?f(r.b):''}</td><td>${f(r.bal)}</td></tr>`}).join('')}
+ ${R('Kul udhaar',f(s.ta))}${R('Kul wasool','−'+f(s.tb))}${R('<b>Baqaya '+pk(ubt)+' tak</b>','<b>Rs '+f(s.bal)+'</b>')}</table><p style="margin-top:12px">Shukriya!</p>`;
+ await Promise.all([...el.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));window.print()}
 function galla(){const t=tot(date),ci=`<div class="fld" style="margin:12px 0 0"><label for="ch">Galle mein asal cash (gin kar likhein)</label><input type="number" inputmode="decimal" id="ch" value="${t.cash??''}" onchange="setC(this.value)"></div>`;
  if(!own())return `<div class="card"><h3>Galla</h3>${ci}</div>`;
  const b=t.diff==null?'':Math.round(t.diff)===0?'<div class="badge ok">✓ Galla poora hai</div>':t.diff<0?`<div class="badge bad">Rs ${f(-t.diff)} kam hain</div>`:`<div class="badge more">Rs ${f(t.diff)} zyada hain</div>`;
