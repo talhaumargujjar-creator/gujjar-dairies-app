@@ -274,7 +274,7 @@ const PR_SEED=[['r_dahi','i2',[{t:'it',id:'i0',q:0}]],['r_lassi','i10',[{t:'it',
 function prInit(s){if(s.pr)return;s.pr={rc:{},d:{}};PR_SEED.forEach(([id,out,ins])=>{s.pr.rc[id]={id,out,ins,off:false,u:1};s.q['rp:'+id]=s.q['rp:'+id]||1})}
 // Employees: em = [{id,name,phone,start:'YYYY-MM',sal:{'YYYY-MM':salary from that month},off,u}].
 // Salary paid = Hisaab "Salary" entries written with the employee's name.
-function emInit(s){if(!s.em)s.em=[];if(!s.fx)s.fx=[];if(!s.xn)s.xn=[]}
+function emInit(s){if(!s.em)s.em=[];if(!s.fx)s.fx=[];if(!s.xn)s.xn=[];if(!s.cb)s.cb=[]}
 // Fixed costs: fx = [{id,name,amt:{'YYYY-MM':monthly amount from that month},off,u}] (rent, bijli). Their monthly amount,
 // and every employee's salary, is shared over the days of the month in the daily munafa; paying them only moves the galla.
 let S=load(),MEMO={};mkInit(S);bkInit(S);dlInit(S);prInit(S);emInit(S);
@@ -392,12 +392,12 @@ const ICON={stock:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"
  prd:'<path d="M5 9h14l-1.5 11a1 1 0 0 1-1 .9h-9a1 1 0 0 1-1-.9z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/><path d="M9 14h6"/>'};
 // [key, label, who can open (o owner, s staff, d delivery), shown in the bottom bar].
 // Items and Cost open from the Account page so the bar fits a phone.
-const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','o',1],['dlv','Delivery','od',1],['prd','Production','os',1],['bank','Bank','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0],['emp','Employees','o',0]];
+const TABS=[['stock','Stock','os',1],['hisaab','Hisaab','os',1],['doodh','Doodh','o',1],['dlv','Delivery','od',1],['prd','Production','os',1],['bank','Cash','o',1],['report','Report','o',1],['acct','Account','osd',1],['items','Items','o',0],['cost','Cost','o',0],['kc','Khata','os',0],['emp','Employees','o',0]];
 const tabs=()=>TABS.filter(t=>t[2].includes(role()[0]));
 const ROLE={owner:'Owner',staff:'Staff',delivery:'Delivery',pending:'Manzoori baqi'};
 function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button data-k="${k}" aria-current="${tab==k||((tab==='items'||tab==='cost'||tab==='emp')&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
 function go(t){tab=t;render();scrollTo(0,0);if(t==='acct')loadMembers()}
-function statsV(){if(tab==='doodh')return mstatsV();if(tab==='bank')return bstatsV();if(tab==='dlv')return dstatsV();const t=tot(date);return `<div class="stat"><span>Sale</span><b>${f(t.sale+t.dsale)}</b></div><div class="stat"><span>Munafa</span><b class="y">${f(t.pl)}</b></div><div class="stat"><span>Galla farq</span><b>${t.diff==null?'—':f(t.diff)}</b></div>`}
+function statsV(){if(tab==='doodh')return mstatsV();if(tab==='bank')return cbStatsV();if(tab==='dlv')return dstatsV();const t=tot(date);return `<div class="stat"><span>Sale</span><b>${f(t.sale+t.dsale)}</b></div><div class="stat"><span>Munafa</span><b class="y">${f(t.pl)}</b></div><div class="stat"><span>Galla farq</span><b>${t.diff==null?'—':f(t.diff)}</b></div>`}
 function hdr(){return `<header class="hdr"><div class="top"><div class="brand"><img src="/img/logo.png" alt="Gujjar Dairies"><small><b>${ROLE[role()]}</b><br>Hisaab</small></div><button class="pill" id="sy" onclick="go('acct')"></button></div>
  <div class="dbar"><button onclick="shift(-1)" aria-label="Pichla din">‹</button><div class="dmid"><input type="date" id="dt" value="${date}" onchange="setDate(this.value)" aria-label="Tareekh"><small>${dayName(date)}${date===tz()?' · Aaj':''}</small></div><button onclick="shift(1)" aria-label="Agla din">›</button></div>
  ${own()||tab==='doodh'||tab==='dlv'?`<div class="stats" id="stats">${statsV()}</div>`:''}</header>`}
@@ -409,7 +409,7 @@ function render(){const a=$('#app');
  if(!S.me||!S.me.email){a.innerHTML=loginV();return}
  if(S.me.role==='pending'){a.innerHTML=pendingV();return}
  if(!tabs().some(t=>t[0]===tab))tab=tabs()[0][0];
- a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank,cost,report,items,acct,kc,prd,emp})[tab]()}</main>`+navV();status()}
+ a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank:cashV,cost,report,items,acct,kc,prd,emp})[tab]()}</main>`+navV();status()}
 
 // Stock
 const isDone=it=>has((day(date).st[it.id]||{}).cl);
@@ -892,6 +892,47 @@ function doodh(){const P=mps(),R=S.mk.mr[date]||{};if(!P.some(p=>p.id===mp))mp=P
  ${p?mcard(p)+(own()?`<div class="card" id="mraq">${mraqIn(p)}</div>`:'')+mpayV(p)+(own()?`<div class="card" id="mbal">${mbalIn(p)}</div>`+mrateV(p):''):'<p class="hint" style="text-align:center;padding:20px">Koi party nahi. Neeche Parties mein add karein.</p>'}
  <div class="card" id="msum">${msumIn()}</div>${own()?`<div class="card" id="mball">${mallIn()}</div>`+partiesV():''}`}
 
+// Cash in hand (owner only, in place of the Bank page): the owner's lines with their own sums, minus savings and the roz raqam.
+// S.cb rows: k 'l' line {name,ex,ord}, k 's' saving {a,day,nt}, k 'r' roz raqam {ex = taken till day, a = taken every day after}.
+const evx=s=>{const t=String(s??'').replace(/[\s,]/g,'');if(!t)return 0;if(!/^[-+]?\d+(\.\d+)?([-+]\d+(\.\d+)?)*$/.test(t))return null;return t.match(/[-+]?\d+(\.\d+)?/g).reduce((a,x)=>a+parseFloat(x),0)};
+const cbL=()=>S.cb.filter(x=>x.k==='l'&&!x.del).sort((a,b)=>(a.ord??1e6)-(b.ord??1e6));
+const cbS=()=>S.cb.filter(x=>x.k==='s'&&!x.del).sort((a,b)=>(a.day||'')<(b.day||'')?-1:1);
+const cbR=()=>S.cb.find(x=>x.k==='r'&&!x.del);
+function rozT(d){const r=cbR();if(!r)return {v:0,days:0};const days=r.day&&d>r.day?Math.round((Date.parse(d)-Date.parse(r.day))/864e5):0;return {v:(evx(r.ex)||0)+n(r.a)*days,days}}
+function cbTot(){const lt=cbL().reduce((s,x)=>s+(evx(x.ex)||0),0),st=cbS().reduce((s,x)=>s+n(x.a),0),rz=rozT(tz());return {lt,st,rz,t:lt-st-rz.v}}
+function cbStatsV(){const T=cbTot();return `<div class="stat"><span>Cash in hand</span><b class="y">${f(T.t)}</b></div><div class="stat"><span>Savings</span><b>${f(T.st)}</b></div><div class="stat"><span>Roz raqam</span><b>${f(T.rz.v)}</b></div>`}
+function cbPut(x){x.u=now();mark('cb:'+x.id);render()}
+function cashV(){const L=cbL(),SV=cbS(),r=cbR(),T=cbTot();
+ let h=`<div class="card"><h3>Cash in hand</h3>${L.map(x=>{const v=evx(x.ex);return `<div class="fld" style="margin-top:12px"><label for="cb_${x.id}" style="display:flex;justify-content:space-between;gap:8px"><b>${esc(x.name)}</b><b class="${v==null?'neg':'y'}">${v==null?'sahi likhein':f(v)}</b></label><input type="text" id="cb_${x.id}" value="${esc(x.ex||'')}" data-id="${x.id}" onchange="cbEx(this.dataset.id,this.value)" placeholder="Jaise 1270026-200000"></div>`}).join('')||'<p class="hint">Abhi koi line nahi. Neeche "Lines badlein" se jodein.</p>'}
+ <div class="sum tot" style="margin-top:12px"><span>Sab ka jod</span><b>${f(T.lt)}</b></div>
+ <div class="sum"><span>− Roz raqam</span><b>${f(T.rz.v)}</b></div><div class="sum"><span>− Savings</span><b>${f(T.st)}</b></div>
+ <div class="sum tot"><span>TOTAL</span><b class="y">${f(T.t)}</b></div>
+ <p class="hint" style="margin-top:8px">Raqam waise hi likhein jaise kaghaz par: 10000+4000 ya 2927320-339340-13830. Khaane se bahar aate hi save.</p></div>`;
+ h+=`<div class="card"><h3>Roz raqam</h3>${r?`<p class="hint" style="margin:6px 0">${pk(r.day)} tak ${f(evx(r.ex)||0)}. Us ke baad har din ${f(n(r.a))} khud kat-ta hai${T.rz.days?` (${T.rz.days} din × ${f(n(r.a))} = ${f(n(r.a)*T.rz.days)})`:''}. Aaj tak kul <b>${f(T.rz.v)}</b>.</p>`:''}
+ <div class="fld"><label for="rza">Roz kitni kate</label><input type="number" inputmode="decimal" id="rza" value="${r?n(r.a):32000}"></div>
+ <div class="fld"><label for="rzb">Aaj tak ka kul jod</label><input type="text" id="rzb" value="${T.rz.v}"></div>
+ <button class="btn full" onclick="rzSave()">Roz raqam save karein</button></div>`;
+ h+=`<div class="card"><h3>Savings</h3>${SV.map(x=>`<div class="row"><span style="min-width:0">${pk(x.day||tz())}${x.nt?' · '+esc(x.nt):''}</span><span>${f(n(x.a))}<button class="x" data-id="${x.id}" onclick="svDel(this.dataset.id)" aria-label="Saving hatayen">✕</button></span></div>`).join('')||'<p class="hint">Abhi koi saving nahi.</p>'}
+ <div class="sum tot"><span>Kul savings</span><b>${f(T.st)}</b></div>
+ <div class="fld" style="margin-top:12px"><label for="sva">Nayi saving (raqam)</label><input type="text" inputmode="decimal" id="sva" placeholder="Jaise 50000"></div>
+ <div class="fld"><label for="svn">Detail (marzi se)</label><input type="text" id="svn" placeholder="Jaise committee"></div>
+ <div class="fld"><label for="svd">Tareekh</label><input type="date" id="svd" value="${tz()}"></div>
+ <button class="btn full" onclick="svAdd()">+ Saving likhein</button></div>`;
+ h+=`<div class="card"><details${OPEN.cbl?' open':''} ontoggle="OPEN.cbl=this.open"><summary>Lines badlein (naam, tarteeb)</summary><div style="margin-top:10px">${L.map(x=>`<div class="row" style="gap:4px"><span style="flex:1;min-width:0">${esc(x.name)}</span><button class="x" data-id="${x.id}" onclick="cbMove(this.dataset.id,-1)" aria-label="Upar">↑</button><button class="x" data-id="${x.id}" onclick="cbMove(this.dataset.id,1)" aria-label="Neeche">↓</button><button class="x" data-id="${x.id}" onclick="cbRen(this.dataset.id)" aria-label="Naam badlein">✎</button><button class="x" data-id="${x.id}" onclick="cbDel(this.dataset.id)" aria-label="Line hatayen">✕</button></div>`).join('')}
+ <div class="fld" style="margin-top:10px"><label for="cbn">Nayi line ka naam</label><input type="text" id="cbn" placeholder="Jaise UBL BANK"></div><button class="btn full" onclick="cbAdd()">+ Line jodein</button></div></details></div>`;
+ return h}
+function cbEx(id,v){const x=S.cb.find(y=>y.id===id);if(!x)return;const t=v.trim();if(evx(t)==null){alert('Raqam sahi likhein, jaise 10000+4000 ya 50000-2000.');render();return}x.ex=t;cbPut(x)}
+function rzSave(){const a=n($('#rza').value),b=$('#rzb').value.trim(),v=evx(b);if(v==null){alert('Kul jod sahi likhein.');return}
+ let r=cbR();if(!r){r={id:'roz',k:'r',name:'ROZ RAQAM'};S.cb.push(r)}r.a=a;r.ex=String(v);r.day=tz();cbPut(r)}
+function svAdd(){const v=evx($('#sva').value);if(!v){alert('Saving ki raqam likhein.');return}
+ const x={id:'s'+Date.now().toString(36),k:'s',name:'SAVINGS',a:v,nt:$('#svn').value.trim(),day:$('#svd').value||tz()};S.cb.push(x);cbPut(x)}
+function svDel(id){const x=S.cb.find(y=>y.id===id);if(!x||!confirm(`Ye saving (${f(n(x.a))}) hatani hai?`))return;x.del=true;cbPut(x)}
+function cbAdd(){const nm=nkey($('#cbn').value);if(!nm)return;if(cbL().some(x=>nkey(x.name)===nm)){alert('Ye line pehle se hai.');return}
+ const L=cbL(),x={id:'l'+Date.now().toString(36),k:'l',name:nm,ex:'',ord:(L.length?Math.max(...L.map(y=>y.ord??0)):0)+1};S.cb.push(x);OPEN.cbl=true;cbPut(x)}
+function cbRen(id){const x=S.cb.find(y=>y.id===id),nm=x&&prompt('Line ka naya naam:',x.name);if(!nm||!nm.trim())return;x.name=nkey(nm);cbPut(x)}
+function cbDel(id){const x=S.cb.find(y=>y.id===id);if(!x||!confirm(`"${x.name}" line hatani hai? Is ki raqam total se nikal jayegi.`))return;x.del=true;cbPut(x)}
+function cbMove(id,d){const L=cbL(),i=L.findIndex(x=>x.id===id),j=i+d;if(i<0||j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];
+ L.forEach((x,k)=>{if(x.ord!==k+1){x.ord=k+1;x.u=now();mark('cb:'+x.id)}});render()}
 // Bank
 const acs=()=>S.bk.ac.filter(a=>!a.off);
 const acName=id=>(S.bk.ac.find(a=>a.id===id)||{name:'?'}).name;
@@ -1450,6 +1491,7 @@ Object.assign(PK,{recipes:'id',production:'day,recipe_id'});OWNER_ONLY.rp=1;
 Object.assign(PK,{employees:'id'});OWNER_ONLY.em=1;OWNER_TABLES.employees=1;
 // The kharcha names everyone may write (owner keeps the list); staff read it.
 Object.assign(PK,{exp_names:'id'});OWNER_ONLY.xn=1;
+Object.assign(PK,{cash_book:'id'});OWNER_ONLY.cb=1;OWNER_TABLES.cash_book=1;
 Object.assign(PK,{fixed_costs:'id'});OWNER_ONLY.fx=1;OWNER_TABLES.fixed_costs=1;
 const DLV_TABLES={items:1,customers:1,deliveries:1};
 const canPush=t=>role()==='delivery'?t==='dv':role()==='staff'&&/^(dv|dc|dp|bp)$/.test(t)?false:own()||!OWNER_ONLY[t];
@@ -1475,6 +1517,7 @@ function toRow(t,r){
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
  if(t==='fx'){const x=S.fx.find(y=>y.id===r);return x?['fixed_costs',{id:x.id,name:x.name,amt:x.amt||{},off:!!x.off,u:x.u}]:null}
+ if(t==='cb'){const x=S.cb.find(y=>y.id===r);return x?['cash_book',{id:x.id,k:x.k,name:x.name||null,ex:x.ex??null,amount:num(x.a),day:x.day||null,note:x.nt||null,ord:x.ord??null,deleted:!!x.del,u:x.u}]:null}
  if(t==='xn'){const x=S.xn.find(y=>y.id===r);return x?['exp_names',{id:x.id,name:x.name,ord:x.ord??null,ln:x.ln!==false,off:!!x.off,u:x.u}]:null}
  if(t==='em'){const e=S.em.find(x=>x.id===r);return e?['employees',{id:e.id,name:e.name,phone:e.phone||null,start:e.start||null,sal:e.sal||{},off:!!e.off,u:e.u}]:null}
  if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,y:x.y??null,off:!!x.off,u:x.u}]:null}
@@ -1502,6 +1545,7 @@ function merge(tb,r){
   if(r.u>it.u){Object.assign(it,o);return true}return false}
  if(tb==='fixed_costs'){const i=S.fx.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,amt:r.amt||{},off:r.off,u:r.u};
   if(i<0){S.fx.push(o);return true}if(r.u>S.fx[i].u){S.fx[i]=o;return true}return false}
+ if(tb==='cash_book'){const x=S.cb.find(y=>y.id===r.id),o={id:r.id,k:r.k,name:r.name||'',ex:r.ex??'',a:num(r.amount),day:r.day||'',nt:r.note||'',ord:r.ord??undefined,del:!!r.deleted,u:r.u};if(!x){S.cb.push(o);return true}if(r.u>(x.u||0)){Object.assign(x,o);return true}return false}
  if(tb==='exp_names'){const x=S.xn.find(y=>y.id===r.id),o={id:r.id,name:r.name,ord:r.ord,ln:r.ln!==false,off:!!r.off,u:r.u};if(!x){S.xn.push(o);return true}if(r.u>(x.u||0)){Object.assign(x,o);return true}return false}
  if(tb==='employees'){const i=S.em.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,phone:r.phone||'',start:r.start||'',sal:r.sal||{},off:r.off,u:r.u};
   if(i<0){S.em.push(o);return true}if(r.u>S.em[i].u){S.em[i]=o;return true}return false}

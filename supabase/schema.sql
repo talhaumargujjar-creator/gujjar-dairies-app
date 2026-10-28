@@ -495,3 +495,37 @@ revoke all on public.exp_names from anon;
 -- A detail written next to an entry's amount (e.g. which bike the petrol was for).
 alter table public.entries add column if not exists note text;
 -- Seeded with the 27 register lines (x01..x27) and the fixed costs (xf_<id>, ln=false).
+
+-- Cash in hand (replaces the Bank tab, owner only). One row per thing on the owner's page:
+-- k='l' a line (name + the owner's sum as written, e.g. "1270026-200000"), k='s' a saving (amount, day, note),
+-- k='r' the roz raqam rule (ex = amount already taken till `day`, amount = taken every day after it).
+create table if not exists public.cash_book (
+  id text primary key, k text not null, name text, ex text, amount numeric, day date, note text, ord int,
+  deleted boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid
+);
+drop trigger if exists cash_book_lww on public.cash_book;
+create trigger cash_book_lww before insert or update on public.cash_book for each row execute function public.lww();
+create index if not exists cash_book_sa_idx on public.cash_book (sa);
+alter table public.cash_book enable row level security;
+drop policy if exists cash_book_owner_select on public.cash_book;
+drop policy if exists cash_book_owner_insert on public.cash_book;
+drop policy if exists cash_book_owner_update on public.cash_book;
+create policy cash_book_owner_select on public.cash_book for select to authenticated using (public.is_owner());
+create policy cash_book_owner_insert on public.cash_book for insert to authenticated with check (public.is_owner());
+create policy cash_book_owner_update on public.cash_book for update to authenticated using (public.is_owner()) with check (public.is_owner());
+revoke all on public.cash_book from anon;
+
+-- The owner's page as of 28/10/2026.
+insert into public.cash_book (id,k,name,ex,ord,u) values
+ ('l1','l','MEEZAN BANK','1270026-200000',1,1000),
+ ('l2','l','HABIB METRO BANK','2927320-339340-13830-12000',2,1000),
+ ('l3','l','EASYPAISA','53445+12000',3,1000),
+ ('l4','l','JAZZ CASH','2309',4,1000),
+ ('l5','l','CASH AT HOME','10000+4000',5,1000),
+ ('l6','l','JOHAR SHOP','10000+307000+32000',6,1000),
+ ('l7','l','OFFICE','50000+24000',7,1000),
+ ('l8','l','WALLET','5000',8,1000)
+on conflict (id) do nothing;
+insert into public.cash_book (id,k,name,amount,day,note,u) values ('s1','s','SAVINGS',3300000,'2026-10-28','Shuru ki savings',1000) on conflict (id) do nothing;
+insert into public.cash_book (id,k,name,ex,amount,day,u) values ('roz','r','ROZ RAQAM','296019',32000,'2026-10-28',1000) on conflict (id) do nothing;
