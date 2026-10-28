@@ -310,8 +310,15 @@ function milkIn(it,d){let q=0,a=0;for(const p of S.mk.ps)if(p.si===it.id&&S.mk.d
 const rateOf=(it,d)=>{const s=day(d).st[it.id];return s&&has(s.rt)?n(s.rt):n(it.rate)};
 // Cost on a day = the latest cost change on or before it (Cost tab), otherwise the item's starting cost.
 // A day with milk from a linked Doodh party is a cost change too (its bill ÷ litres); a Cost tab entry on the same day wins.
+// So is a day the item was made in Production (owner's wish, no button): cost = that day's laagat fi unit, averaged
+// over its recipes by how much each made. CSTK stops a recipe that uses its own output from looping.
+const CSTK=new Set();
+function prodCost(it,x){if(CSTK.has(it.id))return null;let q=0,a=0;CSTK.add(it.id);
+ try{for(const r of Object.values(S.pr.rc)){if(r.off||r.out!==it.id)continue;const m=prq(x,r.id),l=m?laagat(r,x):0;if(m>0&&l>0){q+=m;a+=m*l}}}finally{CSTK.delete(it.id)}
+ return q?a/q:null}
 function costAt(it,d){const C=S.cs[it.id];let best=null;if(C)for(const x in C)if(x<=d&&has(C[x].c)&&(!best||x>best))best=x;
  if(S.mk.ps.some(p=>p.si===it.id))for(const x of Object.keys(S.mk.d).filter(x=>x<=d&&(!best||x>best)).sort().reverse()){const m=milkIn(it,x);if(m.q>0&&m.a>0)return {c:m.a/m.q,from:x,milk:1}}
+ if(Object.values(S.pr.rc).some(r=>!r.off&&r.out===it.id))for(const x of Object.keys(S.pr.d).filter(x=>x<=d&&(!best||x>best)).sort().reverse()){const c=prodCost(it,x);if(c!=null)return {c,from:x,prod:1}}
  return best?{c:n(C[best].c),from:best}:{c:n(it.cost),from:null}}
 const costOf=(it,d)=>costAt(it,d).c;
 // Opening galla = previous working day's counted cash, or what it should have been if not counted.
@@ -864,7 +871,7 @@ function costList(){return act().filter(i=>i.name.toLowerCase().includes(q.toLow
  return `<div class="card item"><div class="ih"><b>${esc(it.name)}</b><span class="tag">Rate ${fq(r)}</span></div>
  <div class="g3" style="grid-template-columns:1fr 1fr;align-items:end"><div class="f"><label for="cs${it.id}">Cost</label><input type="number" inputmode="decimal" id="cs${it.id}" value="${q2(c.c)}" onchange="setCost('${it.id}',this.value)"></div>
  <div class="f"><span class="l">Munafa fi unit</span><div class="v ${r-c.c<0?'neg':''}">${fq(r-c.c)}</div></div></div>
- <div class="res"><span>${c.from?(here?'Ye cost isi din se lagi hai':'Cost '+pk(c.from)+' se'):'Shuru wali cost'}</span>${here?`<button class="link" style="padding:0" onclick="setCost('${it.id}','')">Ye tabdeeli hatayen</button>`:''}</div></div>`}).join('')||'<p class="hint">Koi item nahi mila.</p>'}
+ <div class="res"><span>${c.prod?'Production ki laagat se ('+pk(c.from).slice(0,5)+')':c.milk?'Doodh ke bill se ('+pk(c.from).slice(0,5)+')':c.from?(here?'Ye cost isi din se lagi hai':'Cost '+pk(c.from)+' se'):'Shuru wali cost'}</span>${here&&!c.prod&&!c.milk?`<button class="link" style="padding:0" onclick="setCost('${it.id}','')">Ye tabdeeli hatayen</button>`:''}</div></div>`}).join('')||'<p class="hint">Koi item nahi mila.</p>'}
 function setCost(id,v){const C=S.cs[id]=S.cs[id]||{};C[date]={c:v===''?'':n(v),u:now()};mark('cs:'+id+'|'+date);
  const y=scrollY;render();scrollTo(0,y)}
 
@@ -973,7 +980,7 @@ function prd(){const L=rcList(),P=S.pr.d[date]||{},raw={};
   ${set?`<p class="hint" style="margin:0 0 8px">Recipe: ${r.ins.filter(x=>n(x.q)).map(x=>fq(rcB(r,x))+' '+esc(inName(x))).join(' + ')} → ${fq(rcY(r))} ${esc(it.name)}</p>`:'<p class="msg" style="margin:0 0 8px">Recipe ki miqdaar abhi nahi likhi.'+(own()?' "Recipe ✎" daba kar likhein.':' Owner se likhwayein.')+'</p>'}
   <div class="f"><label for="pq${r.id}">Aaj kitna bana</label><input type="number" inputmode="decimal" id="pq${r.id}" value="${(P[r.id]||{}).q??''}" onchange="setPQ('${r.id}',this.value)"></div>
   ${m&&set?`<div style="margin-top:8px">${r.ins.filter(x=>n(x.q)).map(x=>`<div class="sum"><span>${esc(inName(x))}</span><b>${fq(n(x.q)*m)} ${x.t==='raw'?esc(x.unit):''}</b></div>`).join('')}</div>`:''}
-  ${own()&&set?`<div class="res"><span>Laagat fi unit: <b>Rs ${fq(laagat(r,date))}</b> (rate ${fq(it.rate)})</span><button class="link" style="padding:0" onclick="rcCost('${r.id}')">Cost mein lagayein</button></div>`:''}
+  ${own()&&set?`<div class="res"><span>Laagat fi unit: <b>Rs ${fq(laagat(r,date))}</b> (rate ${fq(it.rate)})</span><span class="muted" style="font-size:14px">${prq(date,r.id)?'Aaj ki cost mein khud lag gayi':'Jis din banega, us din ki cost mein khud lagegi'}</span></div>`:''}
   ${PRE===r.id?rcEditV(r):''}</div>`}).join('');
  const RW=Object.entries(raw);
  if(RW.length)h+=`<div class="card"><h3>Aaj doosra saman kitna laga</h3>${RW.map(([k,v])=>{const [nm,u]=k.split('|');return `<div class="sum"><span>${esc(nm)}</span><b>${fq(v)} ${esc(u)}</b></div>`}).join('')}<p class="hint" style="margin-top:6px">Ye saman ka hisaab hai. Is ki kharidari Hisaab ke Kharcha mein likhte rahein.</p></div>`;
