@@ -465,3 +465,11 @@ end $$;
 
 -- items.ai: the item's purchase comes from a Doodh party by itself, so staff know not to type it.
 alter table public.items add column if not exists ai boolean not null default false;
+
+-- Staff may only write salary for the owner's employees, so they need the names (never the salary amounts).
+create or replace function public.emp_names() returns setof text
+language sql stable security definer set search_path = public as $$
+  select name from public.employees where not coalesce(off,false) and public.is_member() order by name
+$$;
+revoke all on function public.emp_names() from public, anon;
+grant execute on function public.emp_names() to authenticated;

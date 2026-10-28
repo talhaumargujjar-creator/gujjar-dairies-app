@@ -48,7 +48,7 @@ let S=null;try{S=JSON.parse(localStorage.getItem('gd_hisaab_v2'))}catch(e){}
 const FD=window.FORM_DATA||null;
 const custs=(FD?FD.cs:S&&S.dl&&S.dl.cs?S.dl.cs:[]).map((c,i)=>[c,i]).filter(x=>!x[0].off).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
 const marks='<div class="mk tl"></div><div class="mk tr"></div><div class="mk bl"></div><div class="mk br"></div>';
-const dateBoxes='<div class="dt">TAREEKH: <i>D</i><i>D</i> - <i>M</i><i>M</i> - <i>2</i><i>0</i><i>Y</i><i>Y</i><b>DELIVERY WALA:</b><u></u></div>';
+const dateBoxes='<div class="dt">TAREEKH: <i>D</i><i>D</i> / <i>M</i><i>M</i> / <i>2</i><i>0</i><i>Y</i><i>Y</i><b>DELIVERY WALA:</b><u></u></div>';
 const RULE='<div class="rule"><b>Qaide:</b> Doodh <b>litre</b> mein (1.5 = dairh litre). Aur saman: naam aur ginti, jaise <b>Bread 1, Dahi 1 kg</b>. Customer ne paise diye to <b>Wasooli</b> mein raqam aur <b>C</b> (cash) ya <b>O</b> (online) par gol daira. Delivery nahi hui to line khaali chhor dein. Naya customer neeche khaali line mein.</div>';
 const HEAD='<tr><th style="width:9mm">#</th><th style="width:52mm">CUSTOMER</th><th style="width:20mm">DOODH<br>(litre)</th><th>AUR SAMAN<br>(kya + kitna)</th><th style="width:22mm">WASOOLI<br>(Rs)</th><th style="width:11mm">C / O</th><th style="width:30mm">REMARKS</th></tr>';
 const row=(no,c)=>`<tr><td class="no">${no}</td><td class="nm">${c?`<b>${esc(c.name)}</b><small>${esc(c.addr||'')}</small>`:''}</td><td></td><td></td><td></td><td class="co">C &nbsp; O</td><td></td></tr>`;

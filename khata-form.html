@@ -67,7 +67,7 @@ const SECS=[['K1','KHARCHA (1)',KH.ex,12],['K2','SALARY (1)',KH.sl,3],['K3','GHA
 // Three columns on page 3 so everything fits one A4 sheet; a long kharcha list gets a column of its own.
 const COLS=[['K1'],['K2','K3','K4'],['K5','K6','K7']];
 const marks='<div class="mk tl"></div><div class="mk tr"></div><div class="mk bl"></div><div class="mk br"></div>';
-const dateBoxes='<div class="dt">TAREEKH: <i>D</i><i>D</i> - <i>M</i><i>M</i> - <i>2</i><i>0</i><i>Y</i><i>Y</i></div>';
+const dateBoxes='<div class="dt">TAREEKH: <i>D</i><i>D</i> / <i>M</i><i>M</i> / <i>2</i><i>0</i><i>Y</i><i>Y</i></div>';
 const head=(code,title)=>`${marks}<div class="hd"><div><h1>GUJJAR DAIRIES — DUKAAN KA REGISTER</h1><div style="font-size:12px;font-weight:700">${title}</div>${dateBoxes}</div><div class="code">${code}</div></div>`;
 const RULE='<div class="rule"><b>Qaide:</b> Sirf angrezi hindse 0-9 likhein, bare aur saaf. Khaali khana = kuch nahi hua. Sab bik gaya ho to <b>0</b> likhein. Ghalti ho to number <b>kaat kar</b> usi khane mein saaf dobara likhein, upar na likhein. Aadha kilo: 0.5. <b>Istemal</b> = jo bika nahi, dukaan mein kaam aaya (jaise doodh se dahi).</div>';
 function stockPage(code,title,list,start,extra){
