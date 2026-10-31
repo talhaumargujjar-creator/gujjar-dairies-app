@@ -1431,12 +1431,31 @@ function ipV(){const m=date.slice(0,7),days=ipM?keys().filter(d=>d.startsWith(m)
  <tr><td></td><td><b>Kul</b></td><td></td><td><b>${f(L.reduce((a,x)=>a+x.sale,0))}</b></td><td><b>${f(tp)}</b></td></tr></table>
 ${L.length>5?`<button class="btn ghost full" style="margin-top:10px" onclick="ipAll=!ipAll;render()">${ipAll?"Kam dikhayein (sirf top 5)":"Sab items dekhein ("+(L.length-5)+" aur)"}</button>`:""}
  <p class="hint">Sab se zyada munafa wala item upar. Counter aur delivery dono jud kar. % = kul items ke munafa mein us ka hissa.</p>`:'<p class="hint">Is waqt ka koi bika hua maal nahi.</p>'}</div>`}
+// Kharche ki report (owner): one Hisaab hissa between two dates, all names with totals, or one name day by day with its detail.
+let xrk='ex',xrn='',xrf='',xrt='';
+const XRK=['ex','sl','cr','bl','sp','ud'];
+function xrState(){const fr=xrf||date.slice(0,8)+'01',to=xrt||date,M={},rows=[];
+ for(const d of keys()){if(d<fr)continue;if(d>to)break;const D=norm(S.days[d]);
+  live(D,xrk).forEach(e=>{const b=ubase(e.n||'');if(!b)return;M[b]=(M[b]||0)+n(e.a);if(xrn&&b===xrn){const m=String(e.n).match(/\(([^)]*)\)\s*$/);rows.push({d,a:n(e.a),nt:[m&&m[1],e.nt].filter(Boolean).join(' · ')})}})}
+ const L=Object.entries(M).sort((a,b)=>b[1]-a[1]);return {fr,to,L,rows,t:xrn?rows.reduce((s,r)=>s+r.a,0):L.reduce((s,x)=>s+x[1],0)}}
+function xrText(){const s=xrState();return `*Gujjar Dairies — ${SECS[xrk][0]}${xrn?': '+xrn:''}*\n${pk(s.fr)} se ${pk(s.to)} tak\n`+(xrn?s.rows.map(r=>`${pk(r.d)}: Rs ${f(r.a)}${r.nt?' ('+r.nt+')':''}`):s.L.map(([k,v])=>`${k}: Rs ${f(v)}`)).join('\n')+`\n*Kul: Rs ${f(s.t)}*`}
+function xrV(){const s=xrState(),sel='width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font-size:17px;color:inherit',names=s.L.map(x=>x[0]);if(xrn&&!names.includes(xrn))names.unshift(xrn);
+ return `<h2>Kharche ki report</h2><div class="card" id="xrep"><div class="fld"><label for="xrk">Hissa</label><select id="xrk" style="${sel}" onchange="xrk=this.value;xrn='';render()">${XRK.map(k=>`<option value="${k}"${k===xrk?' selected':''}>${esc(SECS[k][0])}</option>`).join('')}</select></div>
+ <div class="fld"><label for="xrn">Naam</label><select id="xrn" style="${sel}" onchange="xrn=this.value;render()"><option value="">Sab naam</option>${names.map(x=>`<option${x===xrn?' selected':''}>${esc(x)}</option>`).join('')}</select></div>
+ <div class="g3" style="grid-template-columns:1fr 1fr"><div class="fld"><label for="xrf">Se</label><input type="date" id="xrf" value="${s.fr}" onchange="xrf=this.value;render()"></div><div class="fld"><label for="xrt">Tak</label><input type="date" id="xrt" value="${s.to}" onchange="xrt=this.value;render()"></div></div>
+ ${xrn?(s.rows.length?`<table style="margin-top:8px"><tr><th style="text-align:left">Tareekh</th><th style="text-align:left">Detail</th><th>Raqam</th></tr>${s.rows.map(r=>`<tr><td style="text-align:left">${pk(r.d)}</td><td style="text-align:left">${esc(r.nt)}</td><td>${f(r.a)}</td></tr>`).join('')}</table>
+  <div class="sum"><span>${s.rows.length} dafa · ausat</span><b>${f(Math.round(s.t/s.rows.length))}</b></div>`:'<p class="hint" style="margin-top:8px">In tareekhon mein is naam ka koi kharcha nahi.</p>')
+  :(s.L.length?s.L.map(([k,v])=>`<button class="row" style="width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left;font:inherit;color:inherit;cursor:pointer" data-n="${esc(k)}" onclick="xrn=this.dataset.n;render()"><span>${esc(k)} <span class="muted" style="font-size:14px">›</span></span><b>${f(v)}</b></button>`).join(''):'<p class="hint" style="margin-top:8px">In tareekhon mein koi entry nahi.</p>')}
+ <div class="sum tot"><span>Kul ${xrn?esc(xrn):esc(SECS[xrk][0])}</span><b class="y">${f(s.t)}</b></div>
+ <div class="btns" style="margin-top:10px">${xrn?`<button class="btn ghost" onclick="xrn='';render()">← Sab naam</button>`:''}<button class="btn" onclick="wa(xrText())">WhatsApp par bhejein</button></div>
+ <p class="hint">Naam dabayein to us ki har din ki raqam aur detail khulti hai. Tareekh badal kar mahina ya koi bhi din se din tak dekhein.</p></div>`}
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
  return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Delivery ka munafa',f(t.dprof),t.dprof<0?'neg':'pos')}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Kharcha (roz wala)',f(t.exV+t.slV))}${T('Fixed + salary (aaj ka hissa)',f(t.fxd))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Udhaar diya',f(t.ud))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
  <div class="btns" style="margin:12px 0"><button class="btn" onclick="shareDay()">WhatsApp par bhejein</button></div>
  ${monthV()}
  ${ipV()}
+ ${xrV()}
  <h2>Pichle din</h2><div class="card">${days.length?`<table><tr><th>Tareekh</th><th>Sale</th><th>Kharcha</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr onclick="date='${d}';render();scrollTo(0,0)"><td>${pk(d)}</td><td>${f(x.sale+x.dsale)}</td><td>${f(x.ex+x.sl)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table>`:'<p class="hint">Abhi koi din ka hisaab nahi.</p>'}</div>
  <p class="hint">Munafa = bike maal ka (rate − cost) minus kharcha aur salary. Ghar aur gari kharcha, udhaar, owner ko di raqam aur supplier payment munafa mein nahi ginte.</p>`}
 
