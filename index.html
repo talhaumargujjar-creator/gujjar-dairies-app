@@ -180,10 +180,8 @@ input[type=tel],input[type=month]{width:100%;min-height:48px;padding:10px 12px;b
 .crow>b{white-space:nowrap;font-size:17px}
 #prt{display:none}
 /* Off-screen copy of the printed bill that is turned into a PDF file for sharing. */
-#pdfb{position:fixed;left:-10000px;top:0;width:760px;padding:24px;color:#000;background:#fff;font:13px/1.4 Arial,sans-serif}#pdfb h1{font-size:20px;margin:0}#pdfb h2{font-size:16px;margin:10px 0 0}#pdfb p{margin:2px 0}#pdfb table{margin-top:10px;font-size:13px}#pdfb td,#pdfb th{padding:2px 4px;border-bottom:1px solid #ccc;color:#000;text-align:right}#pdfb .l{text-align:left}
-#pdfb .ph{display:flex;align-items:center;gap:16px;border-bottom:3px solid #c71c2b;padding-bottom:10px}#pdfb .ph img{height:60px;width:auto}#pdfb .pb{display:flex;justify-content:space-between;gap:12px;margin-top:10px}
-#pdfb .po{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}#pdfb .po div{border:1px solid #ccc;border-radius:8px;padding:6px;text-align:center}#pdfb .po img{width:100%;height:90px;object-fit:contain;border-radius:6px}#pdfb .po p{font-weight:bold;margin-top:4px}
-@media print{body>*:not(#prt){display:none!important}#prt{display:block;color:#000;background:#fff;font:13px/1.4 Arial,sans-serif}#prt h1{font-size:20px;margin:0}#prt h2{font-size:16px;margin:10px 0 0}#prt p{margin:2px 0}#prt table{margin-top:10px;font-size:13px}#prt td,#prt th{padding:4px;border-bottom:1px solid #ccc;color:#000}#prt .l{text-align:left}
+#pdfb{position:fixed;left:-10000px;top:0;width:760px;padding:24px;background:#fff}
+@media print{body>*:not(#prt){display:none!important}#prt{display:block;color:#000;background:#fff;font:13px/1.4 Arial,sans-serif}#prt h1{font-size:20px;margin:0}#prt h2{font-size:16px;margin:10px 0 0}#prt p{margin:2px 0}#prt table{margin-top:10px;font-size:13px}#prt td,#prt th{padding:4px;border-bottom:1px solid #ccc}#prt .l{text-align:left}
  #prt .ph{display:flex;align-items:center;gap:16px;border-bottom:3px solid #c71c2b;padding-bottom:10px}#prt .ph img{height:72px;width:auto}
  #prt .pb{display:flex;justify-content:space-between;gap:12px;margin-top:10px}
  #prt .po{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}#prt .po div{border:1px solid #ccc;border-radius:8px;padding:6px;text-align:center;break-inside:avoid}
@@ -1421,16 +1419,30 @@ function nextBill(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},x=custs().fin
 // Bill with or without the item detail (owner's tick `bdet`): without it, each day shows only its amount, so register days and app days look alike.
 let bdet=(()=>{try{return localStorage.getItem('gd_bdet')!=='0'}catch(e){return true}})();
 function setBdet(v){bdet=v;try{localStorage.setItem('gd_bdet',v?'1':'0')}catch(e){}render()}
-function billHTML(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,rm=m.days.some(x=>x[3]),cs=(rm?2:1)+(bdet?1:0);
- const R=(l,v)=>`<tr><td colspan="${cs}">${l}</td><td>${v}</td></tr>`;
- return `<div class="ph"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}${B.web?`<p>${esc(B.web)}</p>`:''}</div></div>
- <div class="pb"><div><h2>${esc(c.name)}</h2>${c.addr?`<p>${esc(c.addr)}</p>`:''}</div><div style="text-align:right"><b>Bill: ${monName(ym)}</b>${c.phone?`<p>${esc(c.phone)}</p>`:''}</div></div>
- <table><tr><th>Date</th>${bdet?'<th class="l">Item</th>':''}${rm?'<th class="l">Remarks</th>':''}<th>Amount (Rs)</th></tr>${m.days.map(([d,pa,a,nt])=>`<tr><td>${pk(d)}</td>${bdet?`<td class="l">${pa.length?esc(pa.join(', ')):a?'Milk / items (as per register)':''}</td>`:''}${rm?`<td class="l">${esc(nt||'')}</td>`:''}<td>${a?f(a):''}</td></tr>`).join('')}
-  ${bdet?m.items.map(x=>R(`${esc(iname(x.i))}: ${fq(x.q)} × ${fq(x.r)}`,f(x.a))).join(''):''}${R('<b>Total for '+monName(ym)+'</b>','<b>'+f(m.amt)+'</b>')}${R('Previous balance',f(m.prev))}
- ${m.pays.map(x=>R('Payment received '+pk(x.day),'−'+f(x.a))).join('')}${R('<b>Total due</b>','<b>Rs '+f(m.due)+'</b>')}</table>
- ${B.bank?`<div style="margin-top:12px;border:1px solid #ccc;border-radius:8px;padding:8px 10px"><b>Bank details (for online payment)</b><p style="white-space:pre-line">${esc(B.bank)}</p></div>`:''}
- ${B.offers.length?`<div class="pof"><h2 style="margin-top:16px">Offers for you</h2><div class="po">${B.offers.map(o=>`<div>${o.img?`<img src="${o.img}" alt="">`:''}<p>${esc(o.t)}</p></div>`).join('')}</div></div>`:''}
- <p style="margin-top:12px">Thank you!</p>`}
+// The bill carries its own styles (.bill) so the print view and the PDF look the same: date on the left, amount on the right,
+// a red header row, light stripes, the totals in a box on the right and the bank details beside them.
+const BILLCSS=`.bill{-webkit-print-color-adjust:exact;print-color-adjust:exact;color:#111;font:13px/1.35 Arial,Helvetica,sans-serif}.bill *{box-sizing:border-box}.bill p{margin:1px 0}
+.bill .bh{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid #c71c2b;padding-bottom:10px}.bill .bh img{height:64px;width:auto}.bill .bs{display:flex;gap:14px;align-items:center}
+.bill .bs h1{font-size:20px;margin:0;color:#c71c2b}.bill .bs p{color:#444;font-size:12px}.bill .bt{text-align:right}.bill .bt h2{font-size:22px;letter-spacing:2px;margin:0;color:#c71c2b}.bill .bt p{font-size:13px}
+.bill .bc{display:flex;justify-content:space-between;gap:12px;margin:10px 0;padding:8px 10px;background:#f6f6f6;border-radius:6px}.bill .bc small{color:#777;text-transform:uppercase;font-size:10px;letter-spacing:1px}.bill .bc b{font-size:15px}
+.bill table{width:100%;border-collapse:collapse;margin:0;font-size:12.5px}.bill th{background:#c71c2b;color:#fff;font-weight:bold;padding:5px 8px;text-align:left;border:0}.bill td{padding:3px 8px;border:0;border-bottom:1px solid #e5e5e5;text-align:left;color:#111}
+.bill tr:nth-child(even) td{background:#fafafa}.bill .r{text-align:right!important;white-space:nowrap}.bill .dt{width:92px;white-space:nowrap}
+.bill .bf{display:flex;gap:14px;margin-top:12px;align-items:flex-start}.bill .bk{flex:1;border:1px solid #ddd;border-radius:6px;padding:8px 10px}.bill .bk b{color:#c71c2b}.bill .bk p{white-space:pre-line}
+.bill .tt{width:280px;margin-left:auto;border:1px solid #ddd;border-radius:6px;overflow:hidden}.bill .tt div{display:flex;justify-content:space-between;padding:4px 10px;border-bottom:1px solid #eee}.bill .tt .due{background:#c71c2b;color:#fff;font-weight:bold;font-size:15px;border:0}
+.bill .is{margin-top:10px}.bill .is th{background:#444}
+.bill .po{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}.bill .po div{border:1px solid #ddd;border-radius:6px;padding:6px;text-align:center}.bill .po img{width:100%;height:90px;object-fit:contain}.bill .po p{font-weight:bold;margin-top:4px}
+.bill .ty{margin-top:12px;text-align:center;color:#777;font-size:12px}`;
+function billHTML(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,rm=m.days.some(x=>x[3]);
+ const T=(l,v,k)=>`<div${k?` class="${k}"`:''}><span>${l}</span><span>${v}</span></div>`;
+ return `<style>${BILLCSS}</style><div class="bill"><div class="bh"><div class="bs"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}${B.web?`<p>${esc(B.web)}</p>`:''}</div></div>
+ <div class="bt"><h2>BILL</h2><p><b>${monName(ym)}</b></p></div></div>
+ <div class="bc"><div><small>Bill to</small><br><b>${esc(c.name)}</b>${c.addr?`<p>${esc(c.addr)}</p>`:''}</div>${c.phone?`<div style="text-align:right"><small>Phone</small><p>${esc(c.phone)}</p></div>`:''}</div>
+ <table><tr><th class="dt">Date</th>${bdet?'<th>Item</th>':''}${rm?'<th>Remarks</th>':''}<th class="r">Amount (Rs)</th></tr>${m.days.map(([d,pa,a,nt])=>`<tr><td class="dt">${pk(d)}</td>${bdet?`<td>${pa.length?esc(pa.join(', ')):a?'Milk / items (as per register)':''}</td>`:''}${rm?`<td>${esc(nt||'')}</td>`:''}<td class="r">${a?f(a):''}</td></tr>`).join('')}</table>
+ ${bdet&&m.items.length?`<table class="is"><tr><th>Item summary</th><th class="r">Qty × Rate</th><th class="r">Amount (Rs)</th></tr>${m.items.map(x=>`<tr><td>${esc(iname(x.i))}</td><td class="r">${fq(x.q)} × ${fq(x.r)}</td><td class="r">${f(x.a)}</td></tr>`).join('')}</table>`:''}
+ <div class="bf">${B.bank?`<div class="bk"><b>Bank details (for online payment)</b><p>${esc(B.bank)}</p></div>`:''}
+ <div class="tt">${T('Total for '+monName(ym),f(m.amt))}${T('Previous balance',f(m.prev))}${m.pays.map(x=>T('Payment received '+pk(x.day),'−'+f(x.a))).join('')}${T('Total due','Rs '+f(m.due),'due')}</div></div>
+ ${B.offers.length?`<div class="pof"><h2 style="margin:14px 0 0;font-size:15px">Offers for you</h2><div class="po">${B.offers.map(o=>`<div>${o.img?`<img src="${o.img}" alt="">`:''}<p>${esc(o.t)}</p></div>`).join('')}</div></div>`:''}
+ <p class="ty">Thank you for your business!</p></div>`}
 // Printing (or "Save as PDF") shows only this bill. Waits for the logo and offer pictures so they are not blank.
 async function printBill(id){let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.appendChild(p)}
  p.innerHTML=billHTML(id);await Promise.all([...p.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));window.print()}
