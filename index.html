@@ -180,9 +180,9 @@ input[type=tel],input[type=month]{width:100%;min-height:48px;padding:10px 12px;b
 .crow>b{white-space:nowrap;font-size:17px}
 #prt{display:none}
 /* Off-screen copy of the printed bill that is turned into a PDF file for sharing. */
-#pdfb{position:fixed;left:-10000px;top:0;width:760px;padding:24px;color:#000;background:#fff;font:13px/1.4 Arial,sans-serif}#pdfb h1{font-size:20px;margin:0}#pdfb h2{font-size:16px;margin:10px 0 0}#pdfb p{margin:2px 0}#pdfb table{margin-top:10px;font-size:13px}#pdfb td,#pdfb th{padding:3px 4px;border-bottom:1px solid #ccc;color:#000;text-align:right}#pdfb .l{text-align:left}
-#pdfb .ph{display:flex;align-items:center;gap:16px;border-bottom:3px solid #c71c2b;padding-bottom:10px}#pdfb .ph img{height:72px;width:auto}#pdfb .pb{display:flex;justify-content:space-between;gap:12px;margin-top:10px}
-#pdfb .po{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}#pdfb .po div{border:1px solid #ccc;border-radius:8px;padding:6px;text-align:center}#pdfb .po img{width:100%;height:120px;object-fit:contain;border-radius:6px}#pdfb .po p{font-weight:bold;margin-top:4px}
+#pdfb{position:fixed;left:-10000px;top:0;width:760px;padding:24px;color:#000;background:#fff;font:13px/1.4 Arial,sans-serif}#pdfb h1{font-size:20px;margin:0}#pdfb h2{font-size:16px;margin:10px 0 0}#pdfb p{margin:2px 0}#pdfb table{margin-top:10px;font-size:13px}#pdfb td,#pdfb th{padding:2px 4px;border-bottom:1px solid #ccc;color:#000;text-align:right}#pdfb .l{text-align:left}
+#pdfb .ph{display:flex;align-items:center;gap:16px;border-bottom:3px solid #c71c2b;padding-bottom:10px}#pdfb .ph img{height:60px;width:auto}#pdfb .pb{display:flex;justify-content:space-between;gap:12px;margin-top:10px}
+#pdfb .po{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}#pdfb .po div{border:1px solid #ccc;border-radius:8px;padding:6px;text-align:center}#pdfb .po img{width:100%;height:90px;object-fit:contain;border-radius:6px}#pdfb .po p{font-weight:bold;margin-top:4px}
 @media print{body>*:not(#prt){display:none!important}#prt{display:block;color:#000;background:#fff;font:13px/1.4 Arial,sans-serif}#prt h1{font-size:20px;margin:0}#prt h2{font-size:16px;margin:10px 0 0}#prt p{margin:2px 0}#prt table{margin-top:10px;font-size:13px}#prt td,#prt th{padding:4px;border-bottom:1px solid #ccc;color:#000}#prt .l{text-align:left}
  #prt .ph{display:flex;align-items:center;gap:16px;border-bottom:3px solid #c71c2b;padding-bottom:10px}#prt .ph img{height:72px;width:auto}
  #prt .pb{display:flex;justify-content:space-between;gap:12px;margin-top:10px}
@@ -1337,6 +1337,10 @@ function bpV(){const B=S.dl.bp,inp=(k,l,t)=>`<div class="fld"><label for="bp_${k
  return `<div class="card"><details ${OPEN.bp?'open':''} ontoggle="OPEN.bp=this.open"><summary>Bill par kya chhapega (naam, number, offers)</summary><div style="margin-top:12px">
  <p class="hint" style="margin-bottom:10px">Ye sab bill ke upar logo ke saath aur neeche offers mein aata hai. Bill English mein hai, is liye English mein likhein.</p>
  ${inp('shop','Dukaan ka naam')}${inp('owner','Owner ka naam')}${inp('phone','Phone / WhatsApp number','tel')}${inp('addr','Dukaan ka pata')}${inp('web','Facebook / website link')}
+ <div class="fld"><label for="bp_bank">Bank details (online payment ke liye)</label><textarea id="bp_bank" rows="4" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font:inherit;font-size:17px;color:inherit" placeholder="Meezan Bank
+Account title: Talha Umer
+Account no: 0123...
+Easypaisa: 0346..." onchange="upBP('bank',this.value)">${esc(B.bank||'')}</textarea></div>
  <h3 style="margin:16px 0 8px">Offers</h3>
  ${B.offers.map(o=>`<div class="row" style="align-items:center">${o.img?`<img src="${o.img}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:10px;flex:none">`:''}<span style="flex:1;min-width:0">${esc(o.t)}</span><button class="x" onclick="delOffer('${o.id}')" aria-label="Offer hatayen">✕</button></div>`).join('')||'<p class="hint">Abhi koi offer nahi.</p>'}
  <div class="fld" style="margin-top:12px"><label for="oft">Naya offer</label><input type="text" id="oft" placeholder="Lassi: 10% off on 5 glasses"></div>
@@ -1404,6 +1408,7 @@ function billText(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,
   if(bdet)m.items.forEach(x=>L.push(`${iname(x.i)}: ${fq(x.q)} × ${fq(x.r)} = Rs ${f(x.a)}`));
  L.push(`Total for ${monName(ym)}: Rs ${f(m.amt)}`);if(m.prev)L.push(`Previous balance: Rs ${f(m.prev)}`);
  m.pays.forEach(p=>L.push(`Payment received ${pk(p.day)}: Rs ${f(p.a)}`));L.push(`*Total due: Rs ${f(m.due)}*`);
+ if(B.bank){L.push('','*Bank details:*',B.bank)}
  if(B.offers.length){L.push('','*Offers:*');B.offers.forEach(o=>L.push('• '+o.t))}
  L.push('','Thank you!');if(B.web)L.push(B.web);return L.join('\n')}
 // Pakistani number "0300 1234567" -> "923001234567" for wa.me. No number opens WhatsApp to pick the contact.
@@ -1423,6 +1428,7 @@ function billHTML(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,
  <table><tr><th>Date</th>${bdet?'<th class="l">Item</th>':''}${rm?'<th class="l">Remarks</th>':''}<th>Amount (Rs)</th></tr>${m.days.map(([d,pa,a,nt])=>`<tr><td>${pk(d)}</td>${bdet?`<td class="l">${pa.length?esc(pa.join(', ')):a?'Milk / items (as per register)':''}</td>`:''}${rm?`<td class="l">${esc(nt||'')}</td>`:''}<td>${a?f(a):''}</td></tr>`).join('')}
   ${bdet?m.items.map(x=>R(`${esc(iname(x.i))}: ${fq(x.q)} × ${fq(x.r)}`,f(x.a))).join(''):''}${R('<b>Total for '+monName(ym)+'</b>','<b>'+f(m.amt)+'</b>')}${R('Previous balance',f(m.prev))}
  ${m.pays.map(x=>R('Payment received '+pk(x.day),'−'+f(x.a))).join('')}${R('<b>Total due</b>','<b>Rs '+f(m.due)+'</b>')}</table>
+ ${B.bank?`<div style="margin-top:12px;border:1px solid #ccc;border-radius:8px;padding:8px 10px"><b>Bank details (for online payment)</b><p style="white-space:pre-line">${esc(B.bank)}</p></div>`:''}
  ${B.offers.length?`<div class="pof"><h2 style="margin-top:16px">Offers for you</h2><div class="po">${B.offers.map(o=>`<div>${o.img?`<img src="${o.img}" alt="">`:''}<p>${esc(o.t)}</p></div>`).join('')}</div></div>`:''}
  <p style="margin-top:12px">Thank you!</p>`}
 // Printing (or "Save as PDF") shows only this bill. Waits for the logo and offer pictures so they are not blank.
@@ -1437,10 +1443,10 @@ async function pdfBill(id){if(pdfBusy)return;pdfBusy=true;PDFR=null;render();
  try{await Promise.all(PDFL.map(loadJs))}catch(e){pdfBusy=false;render();alert('PDF banane ke liye pehli dafa internet chahiye. Internet chala kar dobara dabayein.');return}
  const c=cst(id),ym=bm||ymOf(date),el=document.createElement('div');el.id='pdfb';el.innerHTML=billHTML(id);document.body.appendChild(el);
  try{await Promise.all([...el.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));
-  const cv=await html2canvas(el,{scale:2,backgroundColor:'#fff'}),{jsPDF}=window.jspdf,pdf=new jsPDF({unit:'pt',format:'a4'}),W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight(),mg=20,iw=W-2*mg,ph=Math.floor((H-2*mg)*cv.width/iw);
-  // Long bills go over more pages: the picture is cut into page-high slices.
-  for(let y=0,pg=0;y<cv.height;y+=ph,pg++){const h=Math.min(ph,cv.height-y),sc=document.createElement('canvas');sc.width=cv.width;sc.height=h;sc.getContext('2d').drawImage(cv,0,y,cv.width,h,0,0,cv.width,h);
-   if(pg)pdf.addPage();pdf.addImage(sc.toDataURL('image/jpeg',0.92),'JPEG',mg,mg,iw,h*iw/cv.width)}
+  const cv=await html2canvas(el,{scale:2,backgroundColor:'#fff'}),{jsPDF}=window.jspdf,pdf=new jsPDF({unit:'pt',format:'a4'}),W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight(),mg=16;
+  // Always one page (owner): a long bill is shrunk to fit the page height and centred.
+  let iw=W-2*mg,ih=cv.height*iw/cv.width;if(ih>H-2*mg){ih=H-2*mg;iw=cv.width*ih/cv.height}
+  pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',(W-iw)/2,mg,iw,ih)
   const nm=`${c.name} ${monName(ym)} bill.pdf`.replace(/[\\/:*?"<>|]/g,'');PDFR={id,file:new File([pdf.output('blob')],nm,{type:'application/pdf'})}}
  catch(e){alert('PDF nahi ban saka. Dobara koshish karein.')}finally{el.remove();pdfBusy=false}
  if(PDFR)await pdfSend();render()}
@@ -1613,7 +1619,7 @@ function toRow(t,r){
  if(t==='dp'){const p=S.dl.py.find(x=>x.id===r);return p?['dpay',{id:p.id,day:p.day,cust_id:p.c,amount:n(p.a),mode:p.m,note:p.note||null,deleted:!!p.del,u:p.u}]:null}
  if(t==='dv'){const [d,c,i]=r.split('|'),e=((S.dl.d[d]||{})[c]||{})[i];if(!e)return null;
   return['deliveries',{day:d,cust_id:c,item_id:i,qty:num(e.q),rate:num(e.r),amount:num(e.a),note:e.n||null,deleted:!!e.del,u:e.u}]}
- if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,web:B.web,offers:B.offers},u:B.u}]}
+ if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,web:B.web,bank:B.bank||'',offers:B.offers},u:B.u}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
  if(t==='fx'){const x=S.fx.find(y=>y.id===r);return x?['fixed_costs',{id:x.id,name:x.name,amt:x.amt||{},jd:x.jd||null,ob:n(x.ob),off:!!x.off,u:x.u}]:null}
