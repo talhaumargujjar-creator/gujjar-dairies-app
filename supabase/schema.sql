@@ -542,3 +542,21 @@ on conflict (id) do nothing;
 -- carried in before it (+ we owe, − advance already given). Owner asked for both on employees and fixed costs.
 alter table public.employees add column if not exists jd date, add column if not exists ob numeric not null default 0;
 alter table public.fixed_costs add column if not exists jd date, add column if not exists ob numeric not null default 0;
+
+-- A delivery line that was removed or empty takes the customer's current rate again when it is written anew
+-- (a stale 250 stayed on Toufeeq's 24/10 line after the customer got 270). Only a live line keeps its old rate.
+create or replace function public.delivery_rate() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.rate is null and new.item_id not like '\_%' then
+    if tg_op = 'UPDATE' and old.rate is not null and not old.deleted and coalesce(old.qty,0) <> 0 then
+      new.rate := old.rate;
+    else
+      select coalesce((c.rates->>new.item_id)::numeric, p.drate, p.rate) into new.rate
+        from public.prices p left join public.customers c on c.id = new.cust_id
+        where p.item_id = new.item_id;
+    end if;
+  end if;
+  return new;
+end $$;
+revoke execute on function public.delivery_rate() from public, anon, authenticated;
