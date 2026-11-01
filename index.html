@@ -606,19 +606,11 @@ function ubV(){if(!ubn)return '';const s=ustate(ubn,ubf,ubt);
  ${s.rows.length?`<table style="margin-top:8px"><tr><th style="text-align:left">Tareekh</th><th>Udhaar</th><th>Wasool</th><th>Baqaya</th></tr>${s.rows.map(r=>{const da=ubDet(r.u),db=ubDet(r.w);return `<tr><td style="text-align:left">${pk(r.d)}${da||db?`<br><small class="muted">${esc([da,db].filter(Boolean).join(' · '))}</small>`:''}</td><td>${r.a?f(r.a):''}</td><td>${r.b?f(r.b):''}</td><td>${f(r.bal)}</td></tr>`}).join('')}</table>`:'<p class="hint" style="margin-top:8px">In tareekhon mein is naam ki koi entry nahi.</p>'}
  <div class="sum"><span>Kul udhaar diya</span><b>${f(s.ta)}</b></div><div class="sum"><span>Kul wasool</span><b>−${f(s.tb)}</b></div>
  <div class="sum tot"><span>Baqaya ${pk(ubt)} tak</span><b>${f(s.bal)}</b></div>
- <div class="btns" style="margin-top:12px"><button class="btn" onclick="ubWA()">WhatsApp par bhejein</button><button class="btn ghost" onclick="ubPrint()">PDF / Print</button></div></div>`}
+ ${pdfBtn('u:'+ubn,'ubPdf()')}<div class="btns" style="margin-top:10px"><button class="btn ghost" onclick="ubWA()">Text WhatsApp par</button><button class="btn ghost" onclick="ubPrint()">PDF / Print</button></div></div>`}
 function ubText(){const s=ustate(ubn,ubf,ubt);
  return `*Gujjar Dairies — Udhaar ka hisaab*\n${ubn}\n${pk(ubf)} se ${pk(ubt)} tak\n\nPichla baqaya: Rs ${f(s.op)}\n`+s.rows.map(r=>`${pk(r.d)}: ${r.a?'Udhaar '+f(r.a):''}${r.a&&r.b?', ':''}${r.b?'Wasool '+f(r.b):''} → ${f(r.bal)}`).join('\n')+
   `\n\nKul udhaar: Rs ${f(s.ta)}\nKul wasool: Rs ${f(s.tb)}\n*Baqaya: Rs ${f(s.bal)}*`}
 function ubWA(){wa(ubText())}
-async function ubPrint(){const s=ustate(ubn,ubf,ubt),B=S.dl.bp||{},R=(l,v)=>`<tr><td colspan="3" class="l">${l}</td><td>${v}</td></tr>`;
- let el=$('#prt');if(!el){el=document.createElement('div');el.id='prt';document.body.appendChild(el)}
- el.innerHTML=`<div class="ph"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}</div></div>
- <div class="pb"><div><h2>${esc(ubn)}</h2><p>Udhaar ka hisaab</p></div><div style="text-align:right"><b>${pk(ubf)} se ${pk(ubt)} tak</b></div></div>
- <table><tr><th class="l">Tareekh</th><th>Udhaar (Rs)</th><th>Wasool (Rs)</th><th>Baqaya</th></tr>${R('Pichla baqaya',f(s.op))}
- ${s.rows.map(r=>{const dd=[ubDet(r.u),ubDet(r.w)].filter(Boolean).join(' · ');return `<tr><td class="l">${pk(r.d)}${dd?`<br><span style="font-size:11px;color:#444">${esc(dd)}</span>`:''}</td><td>${r.a?f(r.a):''}</td><td>${r.b?f(r.b):''}</td><td>${f(r.bal)}</td></tr>`}).join('')}
- ${R('Kul udhaar',f(s.ta))}${R('Kul wasool','−'+f(s.tb))}${R('<b>Baqaya '+pk(ubt)+' tak</b>','<b>Rs '+f(s.bal)+'</b>')}</table><p style="margin-top:12px">Shukriya!</p>`;
- await Promise.all([...el.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));window.print()}
 function galla(){const t=tot(date),ci=`<div class="fld" style="margin:12px 0 0"><label for="ch">Galle mein asal cash (gin kar likhein)</label><input type="number" inputmode="decimal" id="ch" value="${t.cash??''}" onchange="setC(this.value)"></div>`;
  if(!own())return `<div class="card"><h3>Galla</h3>${ci}</div>`;
  const b=t.diff==null?'':Math.round(t.diff)===0?'<div class="badge ok">✓ Galla poora hai</div>':t.diff<0?`<div class="badge bad">Rs ${f(-t.diff)} kam hain</div>`:`<div class="badge more">Rs ${f(t.diff)} zyada hain</div>`;
@@ -866,20 +858,12 @@ function mbillV(){const P=S.mk.ps.filter(p=>!p.off);if(!P.some(p=>p.id===mbp))mb
  ${s.rows.length?`<table style="margin-top:8px"><tr><th>Tareekh</th><th>Doodh</th><th>Raqam</th><th>${sup?'Payment di':'Payment aayi'}</th><th>Baqaya</th></tr>${s.rows.map(r=>`<tr><td>${pk(r.d)}</td><td style="font-size:13px">${fmk(r.kg)}</td><td>${f(r.t)}</td><td>${r.pays.length?f(payTot(r)):''}</td><td>${f(r.bal)}</td></tr>${payLine(r,'font-size:13px;color:var(--mut);padding-top:0')}`).join('')}</table>`:'<p class="hint">Is dauran koi doodh ya payment nahi.</p>'}
  <div class="sum tot"><span>Kul doodh</span><b>${fmk(s.T.kg)}</b></div><div class="sum"><span>Kul raqam</span><b>${f(s.T.t)}</b></div><div class="sum"><span>Kul payment</span><b>${f(s.T.p)}</b></div>
  <div class="sum tot"><span>Baqaya (${pk(mbt)} tak)</span><b class="${s.bal<0?'neg':''}">${f(s.bal)}</b></div><p class="hint" style="text-align:right">${balTxt(p,s.bal)}</p>
- <div class="btns" style="margin-top:10px"><button class="btn" onclick="mbillPrint()">🖨 PDF / Print</button><button class="btn ghost" onclick="mbillWA()">WhatsApp par bhejein</button></div></div>`}
+ ${pdfBtn('m:'+mbp,'mbPdf()')}<div class="btns" style="margin-top:10px"><button class="btn ghost" onclick="mbillWA()">Text WhatsApp par</button><button class="btn ghost" onclick="mbillPrint()">🖨 PDF / Print</button></div></div>`}
 function mbillText(){const p=S.mk.ps.find(x=>x.id===mbp),s=mstate(p.id,mbf,mbt),B=S.dl.bp||{},sup=p.kind==='sup',L=[`*${B.shop||'Gujjar Dairies'} — Doodh ka hisaab*`];
  if(B.owner||B.phone)L.push([B.owner,B.phone].filter(Boolean).join(' · '));L.push('',`${p.name}`,`${pk(mbf)} se ${pk(mbt)} tak`,'',`Pichla baqaya: Rs ${f(s.op)}`);
  s.rows.forEach(r=>{L.push(`${pk(r.d)}: ${fmk(r.kg)} = Rs ${f(r.t)}`);if(r.pays.length){L.push(`   ${sup?'Payment di':'Payment aayi'}: Rs ${f(payTot(r))}`);if(r.pays.length>1||r.pays[0].n!=='Payment')r.pays.forEach(x=>L.push(`      - ${x.n||'Payment'}: ${f(x.a)}`))}L.push(`   Baqaya: Rs ${f(r.bal)}`)});
  L.push('',`Kul doodh: ${fmk(s.T.kg)}`,`Kul raqam: Rs ${f(s.T.t)}`,`Kul payment: Rs ${f(s.T.p)}`,`*Baqaya: Rs ${f(s.bal)}*`);return L.join('\n')}
 function mbillWA(){open('https://wa.me/?text='+encodeURIComponent(mbillText()),'_blank')}
-async function mbillPrint(){const p=S.mk.ps.find(x=>x.id===mbp),s=mstate(p.id,mbf,mbt),B=S.dl.bp||{},sup=p.kind==='sup',R=(l,v)=>`<tr><td colspan="4" class="l">${l}</td><td>${v}</td></tr>`;
- let el=$('#prt');if(!el){el=document.createElement('div');el.id='prt';document.body.appendChild(el)}
- el.innerHTML=`<div class="ph"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}</div></div>
- <div class="pb"><div><h2>${esc(p.name)}</h2><p>Doodh ka hisaab</p></div><div style="text-align:right"><b>${pk(mbf)} se ${pk(mbt)} tak</b></div></div>
- <table><tr><th class="l">Tareekh</th><th class="l">Doodh</th><th>Raqam (Rs)</th><th>${sup?'Payment di':'Payment aayi'}</th><th>Baqaya</th></tr>${R('Pichla baqaya',f(s.op))}
- ${s.rows.map(r=>`<tr><td class="l">${pk(r.d)}</td><td class="l">${fmk(r.kg)}</td><td>${f(r.t)}</td><td>${r.pays.length?f(payTot(r)):''}</td><td>${f(r.bal)}</td></tr>${payLine(r,'font-size:11px;color:#444;padding-top:0')}`).join('')}
- ${R('<b>Kul</b> — '+fmk(s.T.kg),'')}${R('Kul raqam',f(s.T.t))}${R('Kul payment','−'+f(s.T.p))}${R('<b>Baqaya '+pk(mbt)+' tak</b>','<b>Rs '+f(s.bal)+'</b>')}</table><p style="margin-top:12px">Shukriya!</p>`;
- await Promise.all([...el.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));window.print()}
 function partiesV(){return `<div class="card"><details ${pOpen?'open':''} ontoggle="pOpen=this.open"><summary>Parties</summary>
  ${S.mk.ps.map(p=>`<div class="row"><span style="flex:1;min-width:0"><input type="text" class="nm" value="${esc(p.name)}" onchange="upP('${p.id}',this.value)" aria-label="Party ka naam"><span class="hint" style="padding-left:4px">${p.kind==='sup'?'Doodh dene wali':'Doodh lene wali'}${p.off?' · hatai hui':''}</span></span>${p.off?`<button class="btn ghost" onclick="offP('${p.id}',false)">Wapas</button>`:`<button class="x" aria-label="${esc(p.name)} hatayen" onclick="offP('${p.id}',true)">✕</button>`}</div>`).join('')}
  <input type="text" id="npn" placeholder="Nayi party ka naam" aria-label="Nayi party ka naam" style="margin-top:12px">
@@ -1363,7 +1347,7 @@ function billV(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),R=(l,v,k)=>`<
  ${R('Kul baqi','Rs '+f(m.due),'tot')}</div>
  <div class="fld" style="margin-top:12px"><label for="wph">WhatsApp number</label><input type="tel" id="wph" value="${esc(c.phone||'')}" placeholder="03xx xxxxxxx" onchange="upC('${id}','phone',this.value)"></div>
  <label style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:17px"><input type="checkbox" style="width:24px;height:24px" ${bdet?'checked':''} onchange="setBdet(this.checked)"> Bill mein detail (items) dikhayein</label>
- ${PDFR&&PDFR.id===id?`<button class="btn full" style="margin-top:10px" onclick="pdfSend()">📄 PDF tayyar hai — WhatsApp par bhejein</button>`:`<button class="btn full" style="margin-top:10px" ${pdfBusy?'disabled':''} onclick="pdfBill('${id}')">${pdfBusy?'PDF ban raha hai…':'📄 PDF WhatsApp par bhejein'}</button>`}
+ ${pdfBtn('d:'+id,`pdfBill('${id}')`)}
  <div class="btns"><button class="btn ghost" style="flex:1" onclick="sendWA('${id}')">Text WhatsApp par</button><button class="btn ghost" style="flex:1" onclick="printBill('${id}')">PDF / Print</button></div>
  ${(S.dl.sent[ym]||{})[id]?'<p class="msg ok">✓ Is mahine ka bill bhej diya</p>':''}
  <button class="btn ghost full" style="margin-top:10px" onclick="nextBill()">Agla customer ›</button></div>
@@ -1432,41 +1416,63 @@ const BILLCSS=`.bill{-webkit-print-color-adjust:exact;print-color-adjust:exact;c
 .bill .is{margin-top:10px}.bill .is th{background:#444}
 .bill .po{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}.bill .po div{border:1px solid #ddd;border-radius:6px;padding:6px;text-align:center}.bill .po img{width:100%;height:90px;object-fit:contain}.bill .po p{font-weight:bold;margin-top:4px}
 .bill .ty{margin-top:12px;text-align:center;color:#777;font-size:12px}`;
-function billHTML(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,rm=m.days.some(x=>x[3]);
- const T=(l,v,k)=>`<div${k?` class="${k}"`:''}><span>${l}</span><span>${v}</span></div>`;
+// Every bill (delivery, udhaar, doodh) uses one frame (owner): shop header with BILL and the period, a "Bill to" box,
+// the table, then bank details beside the totals box. tot = [[label, value, 'due'?]].
+function billFrame({to,sub,period,body,tot,bank,foot}){const B=S.dl.bp||{},T=([l,v,k])=>`<div${k?` class="${k}"`:''}><span>${l}</span><span>${v}</span></div>`;
  return `<style>${BILLCSS}</style><div class="bill"><div class="bh"><div class="bs"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}${B.web?`<p>${esc(B.web)}</p>`:''}</div></div>
- <div class="bt"><h2>BILL</h2><p><b>${monName(ym)}</b></p></div></div>
- <div class="bc"><div><small>Bill to</small><br><b>${esc(c.name)}</b>${c.addr?`<p>${esc(c.addr)}</p>`:''}</div>${c.phone?`<div style="text-align:right"><small>Phone</small><p>${esc(c.phone)}</p></div>`:''}</div>
- <table><tr><th class="dt">Date</th>${bdet?'<th>Item</th>':''}${rm?'<th>Remarks</th>':''}<th class="r">Amount (Rs)</th></tr>${m.days.map(([d,pa,a,nt])=>`<tr><td class="dt">${pk(d)}</td>${bdet?`<td>${pa.length?esc(pa.join(', ')):a?'Milk / items (as per register)':''}</td>`:''}${rm?`<td>${esc(nt||'')}</td>`:''}<td class="r">${a?f(a):''}</td></tr>`).join('')}</table>
- ${bdet&&m.items.length?`<table class="is"><tr><th>Item summary</th><th class="r">Qty × Rate</th><th class="r">Amount (Rs)</th></tr>${m.items.map(x=>`<tr><td>${esc(iname(x.i))}</td><td class="r">${fq(x.q)} × ${fq(x.r)}</td><td class="r">${f(x.a)}</td></tr>`).join('')}</table>`:''}
- <div class="bf">${B.bank?`<div class="bk"><b>Bank details (for online payment)</b><p>${esc(B.bank)}</p></div>`:''}
- <div class="tt">${T('Total for '+monName(ym),f(m.amt))}${T('Previous balance',f(m.prev))}${m.pays.map(x=>T('Payment received '+pk(x.day),'−'+f(x.a))).join('')}${T('Total due','Rs '+f(m.due),'due')}</div></div>
- ${B.offers.length?`<div class="pof"><h2 style="margin:14px 0 0;font-size:15px">Offers for you</h2><div class="po">${B.offers.map(o=>`<div>${o.img?`<img src="${o.img}" alt="">`:''}<p>${esc(o.t)}</p></div>`).join('')}</div></div>`:''}
- <p class="ty">Thank you for your business!</p></div>`}
+ <div class="bt"><h2>BILL</h2><p><b>${period}</b></p></div></div>
+ <div class="bc"><div><small>Bill to</small><br><b>${esc(to)}</b>${sub?`<p>${sub}</p>`:''}</div></div>
+ ${body}<div class="bf">${bank&&B.bank?`<div class="bk"><b>Bank details (for online payment)</b><p>${esc(B.bank)}</p></div>`:''}<div class="tt">${tot.map(T).join('')}</div></div>
+ ${foot||''}<p class="ty">Thank you for your business!</p></div>`}
+function billHTML(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,rm=m.days.some(x=>x[3]);
+ const body=`<table><tr><th class="dt">Date</th>${bdet?'<th>Item</th>':''}${rm?'<th>Remarks</th>':''}<th class="r">Amount (Rs)</th></tr>${m.days.map(([d,pa,a,nt])=>`<tr><td class="dt">${pk(d)}</td>${bdet?`<td>${pa.length?esc(pa.join(', ')):a?'Milk / items (as per register)':''}</td>`:''}${rm?`<td>${esc(nt||'')}</td>`:''}<td class="r">${a?f(a):''}</td></tr>`).join('')}</table>
+ ${bdet&&m.items.length?`<table class="is"><tr><th>Item summary</th><th class="r">Qty × Rate</th><th class="r">Amount (Rs)</th></tr>${m.items.map(x=>`<tr><td>${esc(iname(x.i))}</td><td class="r">${fq(x.q)} × ${fq(x.r)}</td><td class="r">${f(x.a)}</td></tr>`).join('')}</table>`:''}`;
+ const foot=B.offers.length?`<div class="pof"><h2 style="margin:14px 0 0;font-size:15px">Offers for you</h2><div class="po">${B.offers.map(o=>`<div>${o.img?`<img src="${o.img}" alt="">`:''}<p>${esc(o.t)}</p></div>`).join('')}</div></div>`:'';
+ return billFrame({to:c.name,sub:[c.addr,c.phone].filter(Boolean).map(esc).join(' · '),period:monName(ym),body,bank:1,foot,
+  tot:[['Total for '+monName(ym),f(m.amt)],['Previous balance',f(m.prev)],...m.pays.map(x=>['Payment received '+pk(x.day),'−'+f(x.a)]),['Total due','Rs '+f(m.due),'due']]})}
+// Udhaar bill: the name's udhaar and wasool day by day with the running baqaya.
+function ubHTML(){const s=ustate(ubn,ubf,ubt);
+ const body=`<table><tr><th class="dt">Date</th><th>Detail</th><th class="r">Udhaar (Rs)</th><th class="r">Received (Rs)</th><th class="r">Balance</th></tr><tr><td class="dt"></td><td>Previous balance</td><td></td><td></td><td class="r">${f(s.op)}</td></tr>
+ ${s.rows.map(r=>`<tr><td class="dt">${pk(r.d)}</td><td>${esc([ubDet(r.u),ubDet(r.w)].filter(Boolean).join(' · '))}</td><td class="r">${r.a?f(r.a):''}</td><td class="r">${r.b?f(r.b):''}</td><td class="r">${f(r.bal)}</td></tr>`).join('')}</table>`;
+ return billFrame({to:ubn,sub:'Udhaar account',period:`${pk(ubf)} – ${pk(ubt)}`,body,bank:1,
+  tot:[['Previous balance',f(s.op)],['Total udhaar',f(s.ta)],['Total received','−'+f(s.tb)],['Balance due','Rs '+f(s.bal),'due']]})}
+// Doodh bill: each day's milk, amount and payments with the running baqaya. Bank details only when the party pays us.
+function mbHTML(){const p=S.mk.ps.find(x=>x.id===mbp),s=mstate(p.id,mbf,mbt),sup=p.kind==='sup';
+ const body=`<table><tr><th class="dt">Date</th><th>Milk</th><th class="r">Amount (Rs)</th><th class="r">${sup?'Paid':'Received'} (Rs)</th><th class="r">Balance</th></tr><tr><td class="dt"></td><td>Previous balance</td><td></td><td></td><td class="r">${f(s.op)}</td></tr>
+ ${s.rows.map(r=>`<tr><td class="dt">${pk(r.d)}</td><td>${fmk(r.kg)}${r.pays.some(x=>x.n&&x.n!=='Payment')?`<br><small style="color:#666">${esc(r.pays.map(x=>`${x.n||'Payment'} ${f(x.a)}`).join(' · '))}</small>`:''}</td><td class="r">${f(r.t)}</td><td class="r">${r.pays.length?f(payTot(r)):''}</td><td class="r">${f(r.bal)}</td></tr>`).join('')}</table>`;
+ return billFrame({to:p.name,sub:'Milk account · '+fmk(s.T.kg),period:`${pk(mbf)} – ${pk(mbt)}`,body,bank:!sup,
+  tot:[['Previous balance',f(s.op)],['Total amount',f(s.T.t)],[sup?'Total paid':'Total received','−'+f(s.T.p)],['Balance','Rs '+f(s.bal),'due']]})}
 // Printing (or "Save as PDF") shows only this bill. Waits for the logo and offer pictures so they are not blank.
-async function printBill(id){let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.appendChild(p)}
- p.innerHTML=billHTML(id);await Promise.all([...p.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));window.print()}
+async function printHTML(h){let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.appendChild(p)}
+ p.innerHTML=h;await Promise.all([...p.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));window.print()}
+const printBill=id=>printHTML(billHTML(id)),ubPrint=()=>printHTML(ubHTML()),mbillPrint=()=>printHTML(mbHTML());
 // Bill as a PDF file shared to WhatsApp through the phone's share sheet (owner agreed to the free jsPDF + html2canvas libraries, loaded only here).
 // WhatsApp cannot open a given number with a file, so the owner picks the contact. Phones that cannot share files get a download.
 const PDFL=['https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js','https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'];
 const loadJs=u=>new Promise((ok,no)=>{if(document.querySelector(`script[src="${u}"]`)&&(u.includes('jspdf')?window.jspdf:window.html2canvas))return ok();const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>{s.remove();no(new Error('load'))};document.head.appendChild(s)});
-let PDFR=null,pdfBusy=false;
-async function pdfBill(id){if(pdfBusy)return;pdfBusy=true;PDFR=null;render();
- try{await Promise.all(PDFL.map(loadJs))}catch(e){pdfBusy=false;render();alert('PDF banane ke liye pehli dafa internet chahiye. Internet chala kar dobara dabayein.');return}
- const c=cst(id),ym=bm||ymOf(date),el=document.createElement('div');el.id='pdfb';el.innerHTML=billHTML(id);document.body.appendChild(el);
+// PDFR = {key, file, done} of the bill made last; key tells which bill page shows its "PDF tayyar hai" button.
+let PDFR=null,pdfBusy=null;
+async function pdfMake(key,html,name,done){if(pdfBusy)return;pdfBusy=key;PDFR=null;render();
+ try{await Promise.all(PDFL.map(loadJs))}catch(e){pdfBusy=null;render();alert('PDF banane ke liye pehli dafa internet chahiye. Internet chala kar dobara dabayein.');return}
+ const el=document.createElement('div');el.id='pdfb';el.innerHTML=html;document.body.appendChild(el);
  try{await Promise.all([...el.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));
   const cv=await html2canvas(el,{scale:2,backgroundColor:'#fff'}),{jsPDF}=window.jspdf,pdf=new jsPDF({unit:'pt',format:'a4'}),W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight(),mg=16;
   // Always one page (owner): a long bill is shrunk to fit the page height and centred.
   let iw=W-2*mg,ih=cv.height*iw/cv.width;if(ih>H-2*mg){ih=H-2*mg;iw=cv.width*ih/cv.height}
-  pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',(W-iw)/2,mg,iw,ih)
-  const nm=`${c.name} ${monName(ym)} bill.pdf`.replace(/[\\/:*?"<>|]/g,'');PDFR={id,file:new File([pdf.output('blob')],nm,{type:'application/pdf'})}}
- catch(e){alert('PDF nahi ban saka. Dobara koshish karein.')}finally{el.remove();pdfBusy=false}
+  pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',(W-iw)/2,mg,iw,ih);
+  PDFR={key,done,file:new File([pdf.output('blob')],(name+' bill.pdf').replace(/[\\/:*?"<>|]/g,''),{type:'application/pdf'})}}
+ catch(e){alert('PDF nahi ban saka. Dobara koshish karein.')}finally{el.remove();pdfBusy=null}
  if(PDFR)await pdfSend();render()}
 // Sharing needs a fresh tap on some phones; if the first try is refused, the "PDF tayyar hai" button sends it.
-async function pdfSend(){const R=PDFR;if(!R)return;const ym=bm||ymOf(date);
- if(navigator.canShare&&navigator.canShare({files:[R.file]})){try{await navigator.share({files:[R.file],title:R.file.name});PDFR=null;(S.dl.sent[ym]=S.dl.sent[ym]||{})[R.id]=1;save()}catch(e){if(e.name==='AbortError')PDFR=null}render();return}
+async function pdfSend(){const R=PDFR;if(!R)return;
+ if(navigator.canShare&&navigator.canShare({files:[R.file]})){try{await navigator.share({files:[R.file],title:R.file.name});PDFR=null;if(R.done)R.done()}catch(e){if(e.name==='AbortError')PDFR=null}render();return}
  const a=document.createElement('a');a.href=URL.createObjectURL(R.file);a.download=R.file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),6e4);PDFR=null;render();
- alert('Ye phone seedha share nahi karta. PDF download ho gaya hai, WhatsApp mein customer ki chat khol kar 📎 se bhej dein.')}
+ alert('Ye phone seedha share nahi karta. PDF download ho gaya hai, WhatsApp mein chat khol kar 📎 se bhej dein.')}
+// The big PDF button for a bill page: makes and shares, or sends the one already made.
+const pdfBtn=(key,call)=>PDFR&&PDFR.key===key?`<button class="btn full" style="margin-top:10px" onclick="pdfSend()">📄 PDF tayyar hai — WhatsApp par bhejein</button>`:`<button class="btn full" style="margin-top:10px" ${pdfBusy?'disabled':''} onclick="${call}">${pdfBusy===key?'PDF ban raha hai…':'📄 PDF WhatsApp par bhejein'}</button>`;
+function pdfBill(id){const c=cst(id),ym=bm||ymOf(date);return pdfMake('d:'+id,billHTML(id),`${c.name} ${monName(ym)}`,()=>{(S.dl.sent[ym]=S.dl.sent[ym]||{})[id]=1;save()})}
+function ubPdf(){return pdfMake('u:'+ubn,ubHTML(),`${ubn} udhaar ${pk(ubt).replace(/\//g,'-')}`)}
+function mbPdf(){const p=S.mk.ps.find(x=>x.id===mbp);return pdfMake('m:'+mbp,mbHTML(),`${p.name} doodh ${pk(mbt).replace(/\//g,'-')}`)}
 
 // Value of stock left at the end of a day: closing (or opening if no closing yet) × cost on that day.
 function stockVal(d){return act().reduce((a,it)=>{const s=day(d).st[it.id],q=s&&has(s.cl)?n(s.cl):opening(it,d);return a+Math.max(0,q)*costOf(it,d)},0)}
