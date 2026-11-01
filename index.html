@@ -1135,7 +1135,9 @@ function emPaid(e,m){const K=nkey(e.name),L=[];for(const d of keys()){if(d.slice
 // The joining month's salary runs only from the joining day.
 const salIn=(e,m)=>Math.round(salAt(e,m)*actDays(e,m)/dim(m));
 function emState(e,m){const st=(jdOf(e)||m+'-01').slice(0,7);if(m<st)return null;let carry=n(e.ob);for(let x=st;x<m;x=addMon(x,1))carry+=salIn(e,x)-emPaid(e,x).reduce((a,p)=>a+p.a,0);
- const P=emPaid(e,m),paid=P.reduce((a,p)=>a+p.a,0),sal=salIn(e,m);return {sal,full:salAt(e,m),carry,P,paid,due:carry+sal-paid}}
+ // The chosen date's month earns day by day (owner): 30,000 a month on the 1st is 1,000 so far; earlier months count in full.
+ const P=emPaid(e,m),paid=P.reduce((a,p)=>a+p.a,0),msal=salIn(e,m),cur=m===date.slice(0,7),j=jdOf(e),d0=j&&j.slice(0,7)===m?+j.slice(8):1,dn=cur?Math.max(0,+date.slice(8)-d0+1):0;
+ const sal=cur?Math.round(salAt(e,m)*dn/dim(m)):msal;return {sal,msal,cur,dn,full:salAt(e,m),carry,P,paid,due:carry+sal-paid}}
 // Fixed costs keep the same kind of khata: monthly amount from the joining day, minus Hisaab Kharcha written with the same name.
 function fxPaid(x,m){const K=nkey(x.name),L=[];for(const d of keys()){if(d.slice(0,7)!==m)continue;live(day(d),'ex').forEach(e=>{if(nkey(baseN(e.n))===K)L.push({d,a:n(e.a)})})}return L}
 function fxState(x,m){const st=(jdOf(x)||Object.keys(x.amt||{}).sort()[0]||m).slice(0,7);if(m<st)return null;const amt=y=>Math.round(atM(x.amt,y)*actDays(x,y)/dim(y));
@@ -1148,10 +1150,10 @@ function emp(){emM=emM||date.slice(0,7);const E=S.em.filter(e=>!e.off),st=E.map(
  const K=new Set(S.em.map(e=>nkey(e.name))),unk={};keys().filter(d=>d.slice(0,7)===emM).forEach(d=>live(day(d),'sl').forEach(x=>{const b=nkey(baseN(x.n));if(!K.has(b))unk[b]=(unk[b]||0)+n(x.a)}));
  let h=`<button class="link" onclick="go('acct')">← Account par wapas</button>
  <div class="card"><div class="dbar" style="background:var(--soft);margin:0"><button style="color:var(--ink)" onclick="emM=addMon(emM,-1);render()" aria-label="Pichla mahina">‹</button><div class="dmid"><b>${monLbl(emM)}</b><small style="color:var(--mut)">Salary ka mahina</small></div><button style="color:var(--ink)" onclick="emM=addMon(emM,1);render()" aria-label="Agla mahina">›</button></div>
- ${st.length?`<div class="sum" style="margin-top:10px"><span>Kul salary</span><b>${f(T.sal)}</b></div><div class="sum"><span>Is mahine diya</span><b>${f(T.paid)}</b></div><div class="sum tot"><span>Mahine ke aakhir par dena hai</span><b>${f(T.due)}</b></div>`:''}</div>`;
- h+=st.map(([e,s])=>`<div class="card"><div class="ih"><b>${esc(e.name)}</b><span class="tag">Salary ${f(s.sal)}</span></div>
+ ${st.length?`<div class="sum" style="margin-top:10px"><span>Kul salary${emM===date.slice(0,7)?` (${pk(date)} tak)`:''}</span><b>${f(T.sal)}</b></div><div class="sum"><span>Is mahine diya</span><b>${f(T.paid)}</b></div><div class="sum tot"><span>${emM===date.slice(0,7)?pk(date)+' tak dena hai':'Mahine ke aakhir par dena hai'}</span><b>${f(T.due)}</b></div>`:''}</div>`;
+ h+=st.map(([e,s])=>`<div class="card"><div class="ih"><b>${esc(e.name)}</b><span class="tag">Salary ${f(s.full)}</span></div>
   ${s.carry?`<div class="sum"><span>Pichla ${s.carry>0?'baqaya':'advance'}</span><b class="${s.carry<0?'pos':''}">${f(s.carry)}</b></div>`:''}
-  <div class="sum"><span>+ Is mahine ki salary${s.sal!==s.full?` (${pk(jdOf(e))} se)`:''}</span><b>${f(s.sal)}</b></div>
+  <div class="sum"><span>+ Is mahine ki salary${s.cur?` (${s.dn} din, ${pk(date)} tak)`:s.sal!==s.full?` (${pk(jdOf(e))} se)`:''}</span><b>${f(s.sal)}</b></div>${s.cur&&s.sal!==s.msal?`<p class="hint" style="margin:0 0 4px">Poore mahine ki ${f(s.msal)}, roz ${f(Math.round(s.full/dim(emM)))} judti hai.</p>`:''}
   ${s.P.map(p=>`<div class="sum"><span class="muted">− Diya ${pk(p.d)}</span><b>${f(p.a)}</b></div>`).join('')||'<p class="hint">Is mahine abhi kuch nahi diya.</p>'}
   <div class="sum tot"><span>${s.due>=0?'Dena hai':'Advance diya hua'}</span><b class="${s.due<0?'pos':s.due>0?'neg':''}">${f(Math.abs(s.due))}</b></div>
   <details ${emOpen===e.id?'open':''} ontoggle="if(this.open)emOpen='${e.id}'"><summary>Detail badlein</summary><div style="margin-top:10px">
