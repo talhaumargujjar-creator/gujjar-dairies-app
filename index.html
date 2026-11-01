@@ -372,10 +372,14 @@ function tot(d){if(MEMO['t'+d])return MEMO['t'+d];const D=day(d),V=dday(d);let s
 const atM=(o,m)=>{const k=Object.keys(o||{}).filter(x=>x<=m).sort().pop();return k?n(o[k]):0};
 const dim=m=>new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),0)).getUTCDate();
 const fixNames=()=>MEMO.fxn||(MEMO.fxn=new Set(S.fx.map(x=>nkey(x.name))));
-// This month's fixed costs and salaries ÷ days in the month.
-function fixedMonth(m){if(MEMO['fm'+m])return MEMO['fm'+m];const F=S.fx.map(x=>[x.name,atM(x.amt,m)]),E=S.em.filter(e=>(e.start||'')<=m).map(e=>[e.name,atM(e.sal,m)]);
+// A fixed cost or employee counts from its joining day `jd` (owner); without one, from the first of its start month.
+const jdOf=x=>x.jd||(x.start?x.start+'-01':'');
+const actDays=(x,m)=>{const j=jdOf(x);if(!j||j.slice(0,7)<m)return dim(m);if(j.slice(0,7)>m)return 0;return dim(m)-(+j.slice(8))+1};
+// This month's fixed costs and salaries, the joining month only from the joining day.
+function fixedMonth(m){if(MEMO['fm'+m])return MEMO['fm'+m];const p=(x,a)=>a*actDays(x,m)/dim(m),F=S.fx.map(x=>[x.name,p(x,atM(x.amt,m))]),E=S.em.map(e=>[e.name,p(e,atM(e.sal,m))]);
  const L=F.concat(E).filter(x=>x[1]);return MEMO['fm'+m]={L,t:L.reduce((a,x)=>a+x[1],0),fx:F.reduce((a,x)=>a+x[1],0),sl:E.reduce((a,x)=>a+x[1],0)}}
-const fixedDay=d=>{const m=d.slice(0,7);return fixedMonth(m).t/dim(m)};
+const fixedDay=d=>{const k='fd'+d;if(MEMO[k]!=null)return MEMO[k];const m=d.slice(0,7),on=x=>{const j=jdOf(x);return !j||d>=j};
+ return MEMO[k]=(S.fx.filter(on).reduce((a,x)=>a+atM(x.amt,m),0)+S.em.filter(on).reduce((a,e)=>a+atM(e.sal,m),0))/dim(m)};
 const $=s=>document.querySelector(s);
 const itm=id=>S.items.find(x=>x.id===id);
 
@@ -1127,9 +1131,18 @@ const addMon=(m,k)=>{let [y,mo]=m.split('-').map(Number);mo+=k;while(mo>12){mo-=
 const monLbl=m=>MONTHS[+m.slice(5)-1]+' '+m.slice(0,4);
 function salAt(e,m){const k=Object.keys(e.sal||{}).filter(x=>x<=m).sort().pop();return k?n(e.sal[k]):0}
 function emPaid(e,m){const K=nkey(e.name),L=[];for(const d of keys()){if(d.slice(0,7)!==m)continue;live(day(d),'sl').forEach(x=>{if(nkey(baseN(x.n))===K)L.push({d,a:n(x.a)})})}return L}
-// Baqaya carried into month m = every earlier month's salary minus what was paid, from the starting month.
-function emState(e,m){const st=e.start||m;if(m<st)return null;let carry=0;for(let x=st;x<m;x=addMon(x,1))carry+=salAt(e,x)-emPaid(e,x).reduce((a,p)=>a+p.a,0);
- const P=emPaid(e,m),paid=P.reduce((a,p)=>a+p.a,0),sal=salAt(e,m);return {sal,carry,P,paid,due:carry+sal-paid}}
+// Baqaya carried into month m = the pichla baqaya `ob` (+ owed, − advance) plus every earlier month's salary minus what was paid.
+// The joining month's salary runs only from the joining day.
+const salIn=(e,m)=>Math.round(salAt(e,m)*actDays(e,m)/dim(m));
+function emState(e,m){const st=(jdOf(e)||m+'-01').slice(0,7);if(m<st)return null;let carry=n(e.ob);for(let x=st;x<m;x=addMon(x,1))carry+=salIn(e,x)-emPaid(e,x).reduce((a,p)=>a+p.a,0);
+ const P=emPaid(e,m),paid=P.reduce((a,p)=>a+p.a,0),sal=salIn(e,m);return {sal,full:salAt(e,m),carry,P,paid,due:carry+sal-paid}}
+// Fixed costs keep the same kind of khata: monthly amount from the joining day, minus Hisaab Kharcha written with the same name.
+function fxPaid(x,m){const K=nkey(x.name),L=[];for(const d of keys()){if(d.slice(0,7)!==m)continue;live(day(d),'ex').forEach(e=>{if(nkey(baseN(e.n))===K)L.push({d,a:n(e.a)})})}return L}
+function fxState(x,m){const st=(jdOf(x)||Object.keys(x.amt||{}).sort()[0]||m).slice(0,7);if(m<st)return null;const amt=y=>Math.round(atM(x.amt,y)*actDays(x,y)/dim(y));
+ let carry=n(x.ob);for(let y=st;y<m;y=addMon(y,1))carry+=amt(y)-fxPaid(x,y).reduce((a,p)=>a+p.a,0);const P=fxPaid(x,m),paid=P.reduce((a,p)=>a+p.a,0),a=amt(m);return {a,carry,P,paid,due:carry+a-paid}}
+// Pichla baqaya input: amount plus whether it is owed by us or already given as advance; stored signed.
+const obV=(pre,v)=>`<div style="display:flex;gap:8px"><div class="fld" style="flex:1;min-width:0"><label for="${pre}a">Pichla baqaya / advance</label><input type="number" inputmode="decimal" id="${pre}a" value="${Math.abs(n(v))||''}" placeholder="0"></div><div class="fld" style="flex:1;min-width:0"><label for="${pre}k">Kis ka</label><select id="${pre}k" style="width:100%;min-height:48px;padding:10px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font-size:17px;color:inherit"><option value="1">Baqaya (hum ne dena hai)</option><option value="-1"${n(v)<0?' selected':''}>Advance (pehle de diya)</option></select></div></div>`;
+const obGet=pre=>n($('#'+pre+'a').value)*n($('#'+pre+'k').value);
 function emp(){emM=emM||date.slice(0,7);const E=S.em.filter(e=>!e.off),st=E.map(e=>[e,emState(e,emM)]).filter(x=>x[1]);
  const T=st.reduce((a,[,s])=>{a.sal+=s.sal;a.paid+=s.paid;a.due+=s.due;return a},{sal:0,paid:0,due:0});
  const K=new Set(S.em.map(e=>nkey(e.name))),unk={};keys().filter(d=>d.slice(0,7)===emM).forEach(d=>live(day(d),'sl').forEach(x=>{const b=nkey(baseN(x.n));if(!K.has(b))unk[b]=(unk[b]||0)+n(x.a)}));
@@ -1137,44 +1150,55 @@ function emp(){emM=emM||date.slice(0,7);const E=S.em.filter(e=>!e.off),st=E.map(
  <div class="card"><div class="dbar" style="background:var(--soft);margin:0"><button style="color:var(--ink)" onclick="emM=addMon(emM,-1);render()" aria-label="Pichla mahina">‹</button><div class="dmid"><b>${monLbl(emM)}</b><small style="color:var(--mut)">Salary ka mahina</small></div><button style="color:var(--ink)" onclick="emM=addMon(emM,1);render()" aria-label="Agla mahina">›</button></div>
  ${st.length?`<div class="sum" style="margin-top:10px"><span>Kul salary</span><b>${f(T.sal)}</b></div><div class="sum"><span>Is mahine diya</span><b>${f(T.paid)}</b></div><div class="sum tot"><span>Mahine ke aakhir par dena hai</span><b>${f(T.due)}</b></div>`:''}</div>`;
  h+=st.map(([e,s])=>`<div class="card"><div class="ih"><b>${esc(e.name)}</b><span class="tag">Salary ${f(s.sal)}</span></div>
-  ${s.carry?`<div class="sum"><span>Pichle mahinon ka ${s.carry>0?'baqaya':'advance'}</span><b class="${s.carry<0?'pos':''}">${f(s.carry)}</b></div>`:''}
-  <div class="sum"><span>+ Is mahine ki salary</span><b>${f(s.sal)}</b></div>
+  ${s.carry?`<div class="sum"><span>Pichla ${s.carry>0?'baqaya':'advance'}</span><b class="${s.carry<0?'pos':''}">${f(s.carry)}</b></div>`:''}
+  <div class="sum"><span>+ Is mahine ki salary${s.sal!==s.full?` (${pk(jdOf(e))} se)`:''}</span><b>${f(s.sal)}</b></div>
   ${s.P.map(p=>`<div class="sum"><span class="muted">− Diya ${pk(p.d)}</span><b>${f(p.a)}</b></div>`).join('')||'<p class="hint">Is mahine abhi kuch nahi diya.</p>'}
   <div class="sum tot"><span>${s.due>=0?'Dena hai':'Advance diya hua'}</span><b class="${s.due<0?'pos':s.due>0?'neg':''}">${f(Math.abs(s.due))}</b></div>
   <details ${emOpen===e.id?'open':''} ontoggle="if(this.open)emOpen='${e.id}'"><summary>Detail badlein</summary><div style="margin-top:10px">
   <div class="fld"><label>Naam (Hisaab mein isi naam se salary likhein)</label><input type="text" value="${esc(e.name)}" onchange="emUp('${e.id}','name',this.value)"></div>
   <div class="fld"><label>Mahine ki salary (${monLbl(emM)} se)</label><input type="number" inputmode="decimal" value="${s.sal||''}" onchange="emSal('${e.id}',this.value)"></div>
-  <div class="fld"><label>Kis mahine se kaam par</label><input type="month" value="${e.start||''}" onchange="emUp('${e.id}','start',this.value)"></div>
+  <div class="fld"><label>Joining ki tareekh</label><input type="date" value="${jdOf(e)}" onchange="emJd('${e.id}',this.value)"></div>
+  ${obV('eob'+e.id,e.ob)}<button class="btn ghost full" style="margin-bottom:10px" onclick="emOb('${e.id}')">Pichla baqaya save karein</button>
   <div class="fld"><label>Phone</label><input type="text" inputmode="tel" value="${esc(e.phone||'')}" onchange="emUp('${e.id}','phone',this.value)"></div>
   <button class="btn danger" onclick="emOff('${e.id}')">Employee hatayein</button></div></details></div>`).join('');
  const U=Object.entries(unk);
  if(U.length)h+=`<div class="card"><h3>Salary mein ye naam kisi employee ke nahi</h3>${U.map(([nm,a])=>`<div class="row"><span>${esc(nm)}<br><span class="hint">${monLbl(emM)} mein ${f(a)}</span></span><button class="btn ghost" onclick="emAdd(this.dataset.n)" data-n="${esc(nm)}">Employee banayein</button></div>`).join('')}</div>`;
  h+=`<div class="card"><h3>Naya employee</h3><div class="fld" style="margin-top:10px"><label for="enm">Naam</label><input type="text" id="enm"></div>
- <div class="g3" style="grid-template-columns:1fr 1fr"><div class="fld"><label for="esl">Mahine ki salary</label><input type="number" inputmode="decimal" id="esl"></div><div class="fld"><label for="est">Kis mahine se</label><input type="month" id="est" value="${emM}"></div></div>
+ <div class="g3" style="grid-template-columns:1fr 1fr"><div class="fld"><label for="esl">Mahine ki salary</label><input type="number" inputmode="decimal" id="esl"></div><div class="fld"><label for="est">Joining ki tareekh</label><input type="date" id="est" value="${emM}-01"></div></div>
+ ${obV('nob','')}
  <button class="btn full" onclick="emAdd()">+ Employee add karein</button>
  <p class="hint" style="margin-top:8px">Roz Hisaab ke "Salary" hisse mein employee ka naam likh kar jo raqam denge, wo yahan us ki salary mein se kat jayegi.</p></div>`;
  const off=S.em.filter(e=>e.off);if(off.length)h+=`<div class="card"><h3>Hataye gaye</h3>${off.map(e=>`<div class="row"><span>${esc(e.name)}</span><button class="btn ghost" onclick="emUp('${e.id}','off',false)">Wapas</button></div>`).join('')}</div>`;
  return h+fxV()}
 function emSave(e){e.u=now();mark('em:'+e.id);const y=scrollY;render();scrollTo(0,y)}
 function emUp(id,k,v){const e=S.em.find(x=>x.id===id);if(k==='name'){v=nkey(v);if(!v)return}e[k]=v;emOpen=id;emSave(e)}
+// The joining day also sets the start month, so salary and the daily fixed share both begin that day.
+function emJd(id,v){const e=S.em.find(x=>x.id===id);if(!v)return;e.jd=v;e.start=v.slice(0,7);if(!Object.keys(e.sal||{}).some(k=>k<=e.start)){const k=Object.keys(e.sal||{}).sort()[0];if(k){e.sal[e.start]=e.sal[k]}}emOpen=id;emSave(e)}
+function emOb(id){const e=S.em.find(x=>x.id===id);e.ob=obGet('eob'+id);emOpen=id;emSave(e)}
 function emSal(id,v){const e=S.em.find(x=>x.id===id);e.sal=e.sal||{};e.sal[emM]=n(v);emOpen=id;emSave(e)}
 // Leaving stops the salary from the next month, so earlier months keep their hisaab.
 function emOff(id){if(!confirm('Ye employee list se hata dein? Agle mahine se salary band ho jayegi, purana hisaab waisa hi rahega.'))return;const e=S.em.find(x=>x.id===id);e.off=true;e.sal=e.sal||{};e.sal[addMon(emM,1)]=0;emSave(e)}
 // Fixed costs (rent, bijli): monthly amount from a month on.
 function fxV(){const L=S.fx.filter(x=>!x.off),fm=fixedMonth(emM);
  return `<h2>Fixed kharche (har mahine)</h2><div class="card"><p class="hint" style="margin-bottom:8px">Rent, bijli jaise kharche. Mahine ki raqam ${dim(emM)} din par baant kar roz ke munafa mein kat'ti hai. Jis din Hisaab ke Kharcha mein <b>isi naam</b> se paise denge, us din sirf galla kam hoga, munafa dobara nahi katega. Bijli ka asal bill aaye to us mahine ki raqam yahan badal dein.</p>
- ${L.map(x=>`<div class="row"><span style="flex:1;min-width:0"><b>${esc(x.name)}</b></span><input type="number" inputmode="decimal" style="width:130px" value="${atM(x.amt,emM)||''}" aria-label="${esc(x.name)} ${monLbl(emM)} ki raqam" onchange="fxAmt('${x.id}',this.value)"><button class="x" aria-label="${esc(x.name)} hatayen" onclick="fxOff('${x.id}')">✕</button></div>`).join('')||'<p class="hint">Abhi koi fixed kharcha nahi.</p>'}
- <div class="addr" style="margin-top:12px"><input type="text" id="fxn" placeholder="Naam (jaise RENT, BIJLI BILL)" list="dlex"><input type="number" inputmode="decimal" id="fxa" placeholder="Mahine ka"><button class="btn" onclick="fxAdd()">+ Fixed kharcha add karein</button></div>
+ ${L.map(x=>{const s=fxState(x,emM);return `<div style="border-bottom:1px solid var(--line);padding:8px 0"><div class="row" style="border:0;padding:0"><span style="flex:1;min-width:0"><b>${esc(x.name)}</b></span><input type="number" inputmode="decimal" style="width:130px" value="${atM(x.amt,emM)||''}" aria-label="${esc(x.name)} ${monLbl(emM)} ki raqam" onchange="fxAmt('${x.id}',this.value)"><button class="x" aria-label="${esc(x.name)} hatayen" onclick="fxOff('${x.id}')">✕</button></div>
+  ${s?`${s.carry?`<div class="sum"><span>Pichla ${s.carry>0?'baqaya':'advance'}</span><b class="${s.carry<0?'pos':''}">${f(s.carry)}</b></div>`:''}<div class="sum"><span>+ Is mahine${s.a!==atM(x.amt,emM)?` (${pk(jdOf(x))} se)`:''}</span><b>${f(s.a)}</b></div>${s.paid?`<div class="sum"><span class="muted">− Kharcha mein diya</span><b>${f(s.paid)}</b></div>`:''}<div class="sum"><span>${s.due>=0?'Dena hai':'Advance diya hua'}</span><b class="${s.due<0?'pos':s.due>0?'neg':''}">${f(Math.abs(s.due))}</b></div>`:`<p class="hint">${pk(jdOf(x))} se shuru hoga.</p>`}
+  <details${OPEN['fx'+x.id]?' open':''} ontoggle="OPEN['fx${x.id}']=this.open"><summary>Joining aur pichla baqaya</summary><div style="margin-top:8px"><div class="fld"><label>Kis tareekh se</label><input type="date" value="${jdOf(x)}" onchange="fxJd('${x.id}',this.value)"></div>${obV('fob'+x.id,x.ob)}<button class="btn ghost full" onclick="fxOb('${x.id}')">Pichla baqaya save karein</button></div></details></div>`}).join('')||'<p class="hint">Abhi koi fixed kharcha nahi.</p>'}
+ <div class="addr" style="margin-top:12px"><input type="text" id="fxn" placeholder="Naam (jaise RENT, BIJLI BILL)" list="dlex"><input type="number" inputmode="decimal" id="fxa" placeholder="Mahine ka"></div>
+ <div class="fld"><label for="fxd">Kis tareekh se</label><input type="date" id="fxd" value="${emM}-01"></div>${obV('fxo','')}<button class="btn full" onclick="fxAdd()">+ Fixed kharcha add karein</button>
  <div class="sum tot" style="margin-top:12px"><span>${monLbl(emM)}: fixed ${f(fm.fx)} + salary ${f(fm.sl)}</span><b>${f(fm.t)}</b></div>
  <div class="sum"><span>Roz ke munafa se katega</span><b>${f(fm.t/dim(emM))}</b></div></div>`}
 function fxSave(x){x.u=now();mark('fx:'+x.id);const y=scrollY;render();scrollTo(0,y)}
 function fxAmt(id,v){const x=S.fx.find(y=>y.id===id);x.amt=x.amt||{};x.amt[emM]=n(v);fxSave(x)}
 function fxOff(id){if(!confirm('Ye fixed kharcha band karein? Agle mahine se nahi katega, pichla hisaab waisa hi rahega.'))return;const x=S.fx.find(y=>y.id===id);x.off=true;x.amt=x.amt||{};x.amt[addMon(emM,1)]=0;fxSave(x)}
 function fxAdd(){const nm=nkey($('#fxn').value),a=n($('#fxa').value);if(!nm||!a){alert('Naam aur mahine ki raqam likhein.');return}
- if(S.fx.some(x=>nkey(x.name)===nm&&!x.off)){alert('Ye pehle se hai.');return}const x={id:'fx'+Date.now().toString(36),name:nm,amt:{[emM]:a},off:false,u:now()};S.fx.push(x);fxSave(x)}
+ if(S.fx.some(x=>nkey(x.name)===nm&&!x.off)){alert('Ye pehle se hai.');return}const jd=$('#fxd').value||emM+'-01',x={id:'fx'+Date.now().toString(36),name:nm,jd,ob:obGet('fxo'),amt:{[jd.slice(0,7)]:a},off:false,u:now()};S.fx.push(x);fxSave(x)}
+// Moving the start earlier carries the first monthly amount back to it, so those days are not left at 0.
+function fxJd(id,v){const x=S.fx.find(y=>y.id===id);if(!v)return;x.jd=v;x.amt=x.amt||{};const m=v.slice(0,7);if(!Object.keys(x.amt).some(k=>k<=m)){const k=Object.keys(x.amt).sort()[0];if(k)x.amt[m]=x.amt[k]}fxSave(x)}
+function fxOb(id){const x=S.fx.find(y=>y.id===id);x.ob=obGet('fob'+id);fxSave(x)}
 function emAdd(nm0){const nm=nkey(nm0||$('#enm').value);if(!nm){alert('Naam likhein.');return}if(S.em.some(e=>nkey(e.name)===nm)){alert('Ye employee pehle se hai.');return}
- const st=nm0?emM:($('#est').value||emM),sl=nm0?n(prompt(`${nm} ki mahine ki salary?`,'')):n($('#esl').value);
- const e={id:'em'+Date.now().toString(36),name:nm,phone:'',start:st,sal:{[st]:sl},off:false,u:now()};S.em.push(e);emSave(e)}
+ const jd=nm0?emM+'-01':($('#est').value||emM+'-01'),st=jd.slice(0,7),sl=nm0?n(prompt(`${nm} ki mahine ki salary?`,'')):n($('#esl').value);
+ const e={id:'em'+Date.now().toString(36),name:nm,phone:'',start:st,jd,ob:nm0?0:obGet('nob'),sal:{[st]:sl},off:false,u:now()};S.em.push(e);emSave(e)}
 
 // Report
 // Delivery: what the delivery man took to each customer today (any role), and for the owner the monthly bills,
@@ -1398,7 +1422,7 @@ function stockVal(d){return act().reduce((a,it)=>{const s=day(d).st[it.id],q=s&&
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function monthRows(m){return keys().filter(d=>d.startsWith(m)&&active(S.days[d])).map(d=>{const x=tot(d);return {d,sale:x.sale+x.dsale,ex:x.exV+x.slV,pl:x.pl,pl0:x.pl+x.fxd,sp:x.sp,ud:x.ud,diff:x.diff}})}
 // Month munafa takes the fixed costs for every day of the month so far, also days with no entries.
-function monthSum(m){const R=monthRows(m),S2=k=>R.reduce((a,r)=>a+(r[k]||0),0),last=m===tz().slice(0,7)?+tz().slice(8):dim(m),fx=fixedMonth(m).t*last/dim(m);
+function monthSum(m){const R=monthRows(m),S2=k=>R.reduce((a,r)=>a+(r[k]||0),0),last=m===tz().slice(0,7)?+tz().slice(8):dim(m);let fx=0;for(let i=1;i<=last;i++)fx+=fixedDay(m+'-'+String(i).padStart(2,'0'));
  return {R,S2,last,fx,pl:S2('pl0')-fx}}
 function monthV(){const m=date.slice(0,7),{R,S2,last,fx,pl}=monthSum(m),[y,mo]=m.split('-');
  return `<div class="card"><h3>${MONTHS[+mo-1]} ${y} ka hisaab</h3><div style="margin-top:6px"></div>
@@ -1559,10 +1583,10 @@ function toRow(t,r){
  if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,web:B.web,offers:B.offers},u:B.u}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
- if(t==='fx'){const x=S.fx.find(y=>y.id===r);return x?['fixed_costs',{id:x.id,name:x.name,amt:x.amt||{},off:!!x.off,u:x.u}]:null}
+ if(t==='fx'){const x=S.fx.find(y=>y.id===r);return x?['fixed_costs',{id:x.id,name:x.name,amt:x.amt||{},jd:x.jd||null,ob:n(x.ob),off:!!x.off,u:x.u}]:null}
  if(t==='cb'){const x=S.cb.find(y=>y.id===r);return x?['cash_book',{id:x.id,k:x.k,name:x.name||null,ex:x.ex??null,amount:num(x.a),day:x.day||null,note:x.nt||null,ord:x.ord??null,ref:x.ref||null,deleted:!!x.del,u:x.u}]:null}
  if(t==='xn'){const x=S.xn.find(y=>y.id===r);return x?['exp_names',{id:x.id,name:x.name,ord:x.ord??null,ln:x.ln!==false,off:!!x.off,u:x.u}]:null}
- if(t==='em'){const e=S.em.find(x=>x.id===r);return e?['employees',{id:e.id,name:e.name,phone:e.phone||null,start:e.start||null,sal:e.sal||{},off:!!e.off,u:e.u}]:null}
+ if(t==='em'){const e=S.em.find(x=>x.id===r);return e?['employees',{id:e.id,name:e.name,phone:e.phone||null,start:e.start||null,jd:e.jd||null,ob:n(e.ob),sal:e.sal||{},off:!!e.off,u:e.u}]:null}
  if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,y:x.y??null,off:!!x.off,u:x.u}]:null}
  if(t==='pd'){const [d,rid]=r.split('|'),x=(S.pr.d[d]||{})[rid];return x?['production',{day:d,recipe_id:rid,qty:num(x.q),u:x.u}]:null}
  if(t==='ba'){const a=S.bk.ac.find(x=>x.id===r);return a?['bank_accounts',{id:a.id,name:a.name,op:n(a.op),off:!!a.off,u:a.u}]:null}
@@ -1586,11 +1610,11 @@ async function push(){const snap={...S.q},R=Object.fromEntries(Object.keys(PK).m
 function merge(tb,r){
  if(tb==='items'){const it=itm(r.id),o={name:r.name,op:n(r.op),off:r.off,ord:r.ord??undefined,ai:!!r.ai,u:r.u};if(!it){S.items.push(Object.assign({id:r.id,rate:0,cost:0,pru:0},o));return true}
   if(r.u>it.u){Object.assign(it,o);return true}return false}
- if(tb==='fixed_costs'){const i=S.fx.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,amt:r.amt||{},off:r.off,u:r.u};
+ if(tb==='fixed_costs'){const i=S.fx.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,amt:r.amt||{},jd:r.jd||'',ob:num(r.ob),off:r.off,u:r.u};
   if(i<0){S.fx.push(o);return true}if(r.u>S.fx[i].u){S.fx[i]=o;return true}return false}
  if(tb==='cash_book'){const x=S.cb.find(y=>y.id===r.id),o={id:r.id,k:r.k,name:r.name||'',ex:r.ex??'',a:num(r.amount),day:r.day||'',nt:r.note||'',ord:r.ord??undefined,ref:r.ref||'',del:!!r.deleted,u:r.u};if(!x){S.cb.push(o);return true}if(r.u>(x.u||0)){Object.assign(x,o);return true}return false}
  if(tb==='exp_names'){const x=S.xn.find(y=>y.id===r.id),o={id:r.id,name:r.name,ord:r.ord,ln:r.ln!==false,off:!!r.off,u:r.u};if(!x){S.xn.push(o);return true}if(r.u>(x.u||0)){Object.assign(x,o);return true}return false}
- if(tb==='employees'){const i=S.em.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,phone:r.phone||'',start:r.start||'',sal:r.sal||{},off:r.off,u:r.u};
+ if(tb==='employees'){const i=S.em.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,phone:r.phone||'',start:r.start||'',jd:r.jd||'',ob:num(r.ob),sal:r.sal||{},off:r.off,u:r.u};
   if(i<0){S.em.push(o);return true}if(r.u>S.em[i].u){S.em[i]=o;return true}return false}
  if(tb==='recipes'){const x=S.pr.rc[r.id];if(x&&r.u<=(x.u||0))return false;S.pr.rc[r.id]={id:r.id,out:r.item_id,ins:r.ins||[],y:r.y??undefined,off:r.off,u:r.u};return true}
  if(tb==='production'){const P=S.pr.d[r.day]=S.pr.d[r.day]||{},x=P[r.recipe_id];if(x&&r.u<=(x.u||0))return false;P[r.recipe_id]={q:r.qty??'',u:r.u};return true}
@@ -1630,7 +1654,7 @@ function merge(tb,r){
 // Bump DATA_VER whenever a synced column is added. A phone or browser that read a row with an older app version
 // kept that row without the new field, and the row's edit time did not change, so it would never be read again.
 // On a new DATA_VER every row is read once more and the server copy wins even at the same edit time.
-const DATA_VER=4;
+const DATA_VER=5;
 async function pull(){let ch=false;const full=S.dv!==DATA_VER;if(full)S.cur={};
  for(const tb of Object.keys(PK)){if(!canPull(tb))continue;
   // Re-read the last minute too, so rows committed slightly out of order are not missed. Merging is idempotent.

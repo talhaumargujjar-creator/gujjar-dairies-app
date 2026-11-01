@@ -537,3 +537,8 @@ insert into public.cash_book (id,k,name,ex,amount,day,ord,u) values
  ('roz2','r','PRINTED SHOPPER','0',3000,'2026-10-28',2,1793210000000),
  ('roz3','r','TALHA SAVING','0',3000,'2026-10-28',3,1793210000000)
 on conflict (id) do nothing;
+
+-- Joining day (salary / fixed cost counts from that day; the joining month only partly) and pichla baqaya
+-- carried in before it (+ we owe, − advance already given). Owner asked for both on employees and fixed costs.
+alter table public.employees add column if not exists jd date, add column if not exists ob numeric not null default 0;
+alter table public.fixed_costs add column if not exists jd date, add column if not exists ob numeric not null default 0;
