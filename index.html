@@ -378,10 +378,10 @@ const fixNames=()=>MEMO.fxn||(MEMO.fxn=new Set(S.fx.map(x=>nkey(x.name))));
 const jdOf=x=>x.jd||(x.start?x.start+'-01':'');
 const actDays=(x,m)=>{const j=jdOf(x);if(!j||j.slice(0,7)<m)return dim(m);if(j.slice(0,7)>m)return 0;return dim(m)-(+j.slice(8))+1};
 // This month's fixed costs and salaries, the joining month only from the joining day.
-function fixedMonth(m){if(MEMO['fm'+m])return MEMO['fm'+m];const p=(x,a)=>a*actDays(x,m)/dim(m),F=S.fx.map(x=>[x.name,p(x,atM(x.amt,m))]),E=S.em.map(e=>[e.name,p(e,atM(e.sal,m))]);
+function fixedMonth(m){if(MEMO['fm'+m])return MEMO['fm'+m];const p=(x,a)=>a*actDays(x,m)/dim(m),F=S.fx.map(x=>[x.name,p(x,atM(x.amt,m))]),E=S.em.map(e=>[e.name,p(e,atM(e.sal,m))-atM(e.sal,m)*offDays(e,m)/dim(m)]);
  const L=F.concat(E).filter(x=>x[1]);return MEMO['fm'+m]={L,t:L.reduce((a,x)=>a+x[1],0),fx:F.reduce((a,x)=>a+x[1],0),sl:E.reduce((a,x)=>a+x[1],0)}}
 const fixedDay=d=>{const k='fd'+d;if(MEMO[k]!=null)return MEMO[k];const m=d.slice(0,7),on=x=>{const j=jdOf(x);return !j||d>=j};
- return MEMO[k]=(S.fx.filter(on).reduce((a,x)=>a+atM(x.amt,m),0)+S.em.filter(on).reduce((a,e)=>a+atM(e.sal,m),0))/dim(m)};
+ return MEMO[k]=(S.fx.filter(on).reduce((a,x)=>a+atM(x.amt,m),0)+S.em.filter(e=>on(e)&&!isOff(d,e)).reduce((a,e)=>a+atM(e.sal,m),0))/dim(m)};
 const $=s=>document.querySelector(s);
 const itm=id=>S.items.find(x=>x.id===id);
 
@@ -1133,11 +1133,14 @@ function salAt(e,m){const k=Object.keys(e.sal||{}).filter(x=>x<=m).sort().pop();
 function emPaid(e,m){const K=nkey(e.name),L=[];for(const d of keys()){if(d.slice(0,7)!==m)continue;live(day(d),'sl').forEach(x=>{if(nkey(baseN(x.n))===K)L.push({d,a:n(x.a)})})}return L}
 // Baqaya carried into month m = the pichla baqaya `ob` (+ owed, − advance) plus every earlier month's salary minus what was paid.
 // The joining month's salary runs only from the joining day.
-const salIn=(e,m)=>Math.round(salAt(e,m)*actDays(e,m)/dim(m));
+// Chhutti days (hazri) are cut from each employee's own salary at salary ÷ days in the month (owner), in the khata and the daily munafa.
+const isOff=(d,e)=>{const x=atOf(d,e.name);return !!(x&&x.c)};
+const offDays=(e,m,last)=>{const j=jdOf(e);return Object.keys(S.at).filter(d=>d.startsWith(m)&&(!j||d>=j)&&(!last||d<=last)&&isOff(d,e)).length};
+const salIn=(e,m)=>Math.round(salAt(e,m)*(actDays(e,m)-offDays(e,m))/dim(m));
 function emState(e,m){const st=(jdOf(e)||m+'-01').slice(0,7);if(m<st)return null;let carry=n(e.ob);for(let x=st;x<m;x=addMon(x,1))carry+=salIn(e,x)-emPaid(e,x).reduce((a,p)=>a+p.a,0);
  // The chosen date's month earns day by day (owner): 30,000 a month on the 1st is 1,000 so far; earlier months count in full.
  const P=emPaid(e,m),paid=P.reduce((a,p)=>a+p.a,0),msal=salIn(e,m),cur=m===date.slice(0,7),j=jdOf(e),d0=j&&j.slice(0,7)===m?+j.slice(8):1,dn=cur?Math.max(0,+date.slice(8)-d0+1):0;
- const sal=cur?Math.round(salAt(e,m)*dn/dim(m)):msal;return {sal,msal,cur,dn,full:salAt(e,m),carry,P,paid,due:carry+sal-paid}}
+ const od=offDays(e,m,cur?date:''),sal=cur?Math.round(salAt(e,m)*Math.max(0,dn-od)/dim(m)):msal,ocut=Math.round(salAt(e,m)*od/dim(m));return {sal,msal,cur,dn,od,ocut,full:salAt(e,m),carry,P,paid,due:carry+sal-paid}}
 // Fixed costs keep the same kind of khata: monthly amount from the joining day, minus Hisaab Kharcha written with the same name.
 function fxPaid(x,m){const K=nkey(x.name),L=[];for(const d of keys()){if(d.slice(0,7)!==m)continue;live(day(d),'ex').forEach(e=>{if(nkey(baseN(e.n))===K)L.push({d,a:n(e.a)})})}return L}
 function fxState(x,m){const st=(jdOf(x)||Object.keys(x.amt||{}).sort()[0]||m).slice(0,7);if(m<st)return null;const amt=y=>Math.round(atM(x.amt,y)*actDays(x,y)/dim(y));
@@ -1153,7 +1156,7 @@ function emp(){emM=emM||date.slice(0,7);const E=S.em.filter(e=>!e.off),st=E.map(
  ${st.length?`<div class="sum" style="margin-top:10px"><span>Kul salary${emM===date.slice(0,7)?` (${pk(date)} tak)`:''}</span><b>${f(T.sal)}</b></div><div class="sum"><span>Is mahine diya</span><b>${f(T.paid)}</b></div><div class="sum tot"><span>${emM===date.slice(0,7)?pk(date)+' tak dena hai':'Mahine ke aakhir par dena hai'}</span><b>${f(T.due)}</b></div>`:''}</div>`;
  h+=st.map(([e,s])=>`<div class="card"><div class="ih"><b>${esc(e.name)}</b><span class="tag">Salary ${f(s.full)}</span></div>
   ${s.carry?`<div class="sum"><span>Pichla ${s.carry>0?'baqaya':'advance'}</span><b class="${s.carry<0?'pos':''}">${f(s.carry)}</b></div>`:''}
-  <div class="sum"><span>+ Is mahine ki salary${s.cur?` (${s.dn} din, ${pk(date)} tak)`:s.sal!==s.full?` (${pk(jdOf(e))} se)`:''}</span><b>${f(s.sal)}</b></div>${s.cur&&s.sal!==s.msal?`<p class="hint" style="margin:0 0 4px">Poore mahine ki ${f(s.msal)}, roz ${f(Math.round(s.full/dim(emM)))} judti hai.</p>`:''}
+  <div class="sum"><span>+ Is mahine ki salary${s.cur?` (${s.dn} din, ${pk(date)} tak)`:s.sal!==s.full?` (${pk(jdOf(e))} se)`:''}</span><b>${f(s.sal)}</b></div>${s.od?`<p class="hint" style="margin:0 0 4px">${s.od} din chhutti: − ${f(s.ocut)} kat gaye (salary mein se).</p>`:''}${s.cur&&s.sal!==s.msal?`<p class="hint" style="margin:0 0 4px">Poore mahine ki ${f(s.msal)}, roz ${f(Math.round(s.full/dim(emM)))} judti hai.</p>`:''}
   ${s.P.map(p=>`<div class="sum"><span class="muted">− Diya ${pk(p.d)}</span><b>${f(p.a)}</b></div>`).join('')||'<p class="hint">Is mahine abhi kuch nahi diya.</p>'}
   <div class="sum tot"><span>${s.due>=0?'Dena hai':'Advance diya hua'}</span><b class="${s.due<0?'pos':s.due>0?'neg':''}">${f(Math.abs(s.due))}</b></div>
   ${atV(e)}<details ${emOpen===e.id?'open':''} ontoggle="if(this.open)emOpen='${e.id}'"><summary>Detail badlein</summary><div style="margin-top:10px">
