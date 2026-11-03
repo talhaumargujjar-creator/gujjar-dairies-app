@@ -1317,13 +1317,15 @@ function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCas
  ${bpV()}`}
 // Baqaya list (owner): every customer's baqaya at the end of a chosen day, to print or send and give the rider.
 // Removed customers who still owe are in it too. Order: biggest baqaya first, or the line order of the delivery register.
-let bld=null,blo='amt';
+// bln: in "zyada baqaya upar" only the first bln customers (owner), so small baqayas, often next month's bill paid early, stay out.
+let bld=null,blo='amt',bln='';
 function blRows(){const d=bld||date,R=S.dl.cs.map(c=>[c,cbal(c.id,addDay(d,1))]).filter(([,b])=>Math.round(b)>0);
- R.sort(blo==='amt'?(x,y)=>y[1]-x[1]:(x,y)=>byOrd(x[0],y[0]));return {d,R,t:R.reduce((a,[,b])=>a+b,0)}}
-function blV(){const {d,R,t}=blRows(),chip=(v,l)=>`<button class="chip" aria-pressed="${blo===v}" onclick="blo='${v}';render()">${l}</button>`;
+ R.sort(blo==='amt'?(x,y)=>y[1]-x[1]:(x,y)=>byOrd(x[0],y[0]));const all=R.length;if(blo==='amt'&&n(bln)>0)R.splice(Math.floor(n(bln)));return {d,R,all,t:R.reduce((a,[,b])=>a+b,0)}}
+function blV(){const {d,R,t,all}=blRows(),chip=(v,l)=>`<button class="chip" aria-pressed="${blo===v}" onclick="blo='${v}';render()">${l}</button>`;
  return `<div class="card"><details${OPEN.bl?' open':''} ontoggle="OPEN.bl=this.open"><summary>Baqaya ki list (rider ke liye) · ${R.length} customers · ${f(t)}</summary><div style="margin-top:10px">
  <div class="fld"><label for="bld">Kis tareekh tak</label><input type="date" id="bld" value="${d}" onchange="bld=this.value||null;render()"></div>
  <div class="chips" style="flex-wrap:wrap;margin-bottom:8px">${chip('amt','Zyada baqaya upar')}${chip('ord','Line ki tarteeb')}</div>
+ ${blo==='amt'?`<div class="fld"><label for="bln">Kitne serial number tak (khaali = sab ${all})</label><input type="number" inputmode="numeric" id="bln" value="${esc(bln)}" placeholder="Jaise 65" onchange="bln=this.value.trim();render()"></div>`:''}
  <table><tr><th>#</th><th style="text-align:left">Customer</th><th>Baqaya</th></tr>${R.map(([c,b],i)=>`<tr><td>${i+1}</td><td style="text-align:left">${esc(c.name)}${c.off?' <small class="muted">(hataya)</small>':''}</td><td>${f(b)}</td></tr>`).join('')}
  <tr><td></td><td style="text-align:left"><b>Kul baqaya</b></td><td><b>${f(t)}</b></td></tr></table>
  ${pdfBtn('bl','blPdf()')}<button class="btn ghost full" style="margin-top:8px" onclick="printHTML(blHTML())">🖨 Print karein</button>
