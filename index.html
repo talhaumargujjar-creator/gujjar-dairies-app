@@ -1304,6 +1304,7 @@ function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCas
  return `<div class="card"><div class="fld"><label for="bmo">Mahina</label><input type="month" id="bmo" value="${ym}" onchange="bm=this.value||null;render()"></div>
  <div class="sum"><span>${monName(ym)} ka maal</span><b>${f(M)}</b></div><div class="sum tot"><span>Sab customers ka kul baqi</span><b>${f(T)}</b></div>
  <p class="hint" style="margin-top:8px">Customer par tap karein: bill dekhein, WhatsApp par bhejein ya wasooli likhein.</p></div>
+ ${blV()}
  <input type="search" placeholder="Customer dhoondein" value="${esc(bq)}" oninput="bq=this.value;render();const e=$('input[type=search]');e.focus();e.setSelectionRange(e.value.length,e.value.length)" aria-label="Customer dhoondein">
  <div class="card" style="margin-top:12px">${V.map(([c,m])=>`<button class="crow" onclick="bc='${c.id}';render();scrollTo(0,0)"><span style="min-width:0"><b>${esc(c.name)}</b><br><span class="hint">Maal ${f(m.amt)}${m.paid?' · Wasool '+f(m.paid):''}${sent[c.id]?' · ✓ bheja':''}${c.phone?'':' · number nahi'}</span></span><b class="${m.due<0?'pos':''}">${f(m.due)}</b></button>`).join('')||'<p class="hint">Koi customer nahi mila.</p>'}</div>
  <div class="card"><details><summary>Naya customer</summary><div style="margin-top:12px">
@@ -1314,6 +1315,25 @@ function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCas
  <button class="btn full" onclick="addC()">+ Customer add karein</button></div></details></div>
  ${off.length?`<div class="card"><details${OPEN.offc?' open':''} ontoggle="OPEN.offc=this.open"><summary>Hataye gaye customers (${off.length}) · baqi ${f(OT)}</summary><p class="hint" style="margin:6px 0">${monName(ym)} ke aakhir tak. Naam par tap karein: bill aur wasooli.</p>${off.map(([c,d])=>`<div class="row"><button class="crow" style="flex:1;min-width:0;padding:6px 0;border:0" onclick="bc='${c.id}';render();scrollTo(0,0)"><span style="min-width:0"><b>${esc(c.name)}</b></span><b class="${d<0?'pos':''}">${f(d)}</b></button><button class="btn ghost" ${sbtn} onclick="offC('${c.id}',false)">Wapas layein</button></div>`).join('')}<div class="sum tot"><span>Hataye gaye ka kul baqi</span><b>${f(OT)}</b></div></details></div>`:''}
  ${bpV()}`}
+// Baqaya list (owner): every customer's baqaya at the end of a chosen day, to print or send and give the rider.
+// Removed customers who still owe are in it too. Order: biggest baqaya first, or the line order of the delivery register.
+let bld=null,blo='amt';
+function blRows(){const d=bld||date,R=S.dl.cs.map(c=>[c,cbal(c.id,addDay(d,1))]).filter(([,b])=>Math.round(b)>0);
+ R.sort(blo==='amt'?(x,y)=>y[1]-x[1]:(x,y)=>byOrd(x[0],y[0]));return {d,R,t:R.reduce((a,[,b])=>a+b,0)}}
+function blV(){const {d,R,t}=blRows(),chip=(v,l)=>`<button class="chip" aria-pressed="${blo===v}" onclick="blo='${v}';render()">${l}</button>`;
+ return `<div class="card"><details${OPEN.bl?' open':''} ontoggle="OPEN.bl=this.open"><summary>Baqaya ki list (rider ke liye) · ${R.length} customers · ${f(t)}</summary><div style="margin-top:10px">
+ <div class="fld"><label for="bld">Kis tareekh tak</label><input type="date" id="bld" value="${d}" onchange="bld=this.value||null;render()"></div>
+ <div class="chips" style="flex-wrap:wrap;margin-bottom:8px">${chip('amt','Zyada baqaya upar')}${chip('ord','Line ki tarteeb')}</div>
+ <table><tr><th>#</th><th style="text-align:left">Customer</th><th>Baqaya</th></tr>${R.map(([c,b],i)=>`<tr><td>${i+1}</td><td style="text-align:left">${esc(c.name)}${c.off?' <small class="muted">(hataya)</small>':''}</td><td>${f(b)}</td></tr>`).join('')}
+ <tr><td></td><td style="text-align:left"><b>Kul baqaya</b></td><td><b>${f(t)}</b></td></tr></table>
+ ${pdfBtn('bl','blPdf()')}<button class="btn ghost full" style="margin-top:8px" onclick="printHTML(blHTML())">🖨 Print karein</button>
+ <p class="hint" style="margin-top:8px">${pk(d)} ke aakhir tak jin ka baqaya hai. Print mein har customer ke saath pata, number aur "Wasool / Remarks" ka khaali khaana hota hai, rider wahan likh sakta hai.</p></div></details></div>`}
+function blHTML(){const {d,R,t}=blRows(),B=S.dl.bp||{};
+ return `<style>${BILLCSS}</style><div class="bill"><div class="bh"><div class="bs"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}</div></div>
+ <div class="bt"><h2>BAQAYA LIST</h2><p><b>${pk(d)} tak</b></p><p>${R.length} customers</p></div></div>
+ <table style="margin-top:10px"><tr><th style="width:28px">#</th><th>Customer</th><th>Address / Phone</th><th class="r">Baqaya (Rs)</th><th style="width:150px">Wasool / Remarks</th></tr>${R.map(([c,b],i)=>`<tr><td>${i+1}</td><td><b>${esc(c.name)}</b></td><td>${esc([c.addr,c.phone].filter(Boolean).join(' · '))}</td><td class="r"><b>${f(b)}</b></td><td style="border-left:1px solid #e5e5e5"></td></tr>`).join('')}</table>
+ <div class="bf"><div class="tt"><div><span>Customers</span><span>${R.length}</span></div><div class="due"><span>Kul baqaya</span><span>Rs ${f(t)}</span></div></div></div></div>`}
+function blPdf(){const {d}=blRows();return pdfMake('bl',blHTML(),`Delivery baqaya ${pk(d).replace(/\//g,'-')}`)}
 // Bill header and offers, set once by the owner and printed on every bill.
 function bpV(){const B=S.dl.bp,inp=(k,l,t)=>`<div class="fld"><label for="bp_${k}">${l}</label><input type="${t||'text'}" id="bp_${k}" value="${esc(B[k]||'')}" onchange="upBP('${k}',this.value)"></div>`;
  return `<div class="card"><details ${OPEN.bp?'open':''} ontoggle="OPEN.bp=this.open"><summary>Bill par kya chhapega (naam, number, offers)</summary><div style="margin-top:12px">
@@ -1460,7 +1480,7 @@ async function pdfMake(key,html,name,done){if(pdfBusy)return;pdfBusy=key;PDFR=nu
   // Always one page (owner): a long bill is shrunk to fit the page height and centred.
   let iw=W-2*mg,ih=cv.height*iw/cv.width;if(ih>H-2*mg){ih=H-2*mg;iw=cv.width*ih/cv.height}
   pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',(W-iw)/2,mg,iw,ih);
-  PDFR={key,done,file:new File([pdf.output('blob')],(name+' bill.pdf').replace(/[\\/:*?"<>|]/g,''),{type:'application/pdf'})}}
+  PDFR={key,done,file:new File([pdf.output('blob')],(name+'.pdf').replace(/[\\/:*?"<>|]/g,''),{type:'application/pdf'})}}
  catch(e){alert('PDF nahi ban saka. Dobara koshish karein.')}finally{el.remove();pdfBusy=null}
  if(PDFR)await pdfSend();render()}
 // Sharing needs a fresh tap on some phones; if the first try is refused, the "PDF tayyar hai" button sends it.
@@ -1470,9 +1490,9 @@ async function pdfSend(){const R=PDFR;if(!R)return;
  alert('Ye phone seedha share nahi karta. PDF download ho gaya hai, WhatsApp mein chat khol kar 📎 se bhej dein.')}
 // The big PDF button for a bill page: makes and shares, or sends the one already made.
 const pdfBtn=(key,call)=>PDFR&&PDFR.key===key?`<button class="btn full" style="margin-top:10px" onclick="pdfSend()">📄 PDF tayyar hai — WhatsApp par bhejein</button>`:`<button class="btn full" style="margin-top:10px" ${pdfBusy?'disabled':''} onclick="${call}">${pdfBusy===key?'PDF ban raha hai…':'📄 PDF WhatsApp par bhejein'}</button>`;
-function pdfBill(id){const c=cst(id),ym=bm||ymOf(date);return pdfMake('d:'+id,billHTML(id),`${c.name} ${monName(ym)}`,()=>{(S.dl.sent[ym]=S.dl.sent[ym]||{})[id]=1;save()})}
-function ubPdf(){return pdfMake('u:'+ubn,ubHTML(),`${ubn} udhaar ${pk(ubt).replace(/\//g,'-')}`)}
-function mbPdf(){const p=S.mk.ps.find(x=>x.id===mbp);return pdfMake('m:'+mbp,mbHTML(),`${p.name} doodh ${pk(mbt).replace(/\//g,'-')}`)}
+function pdfBill(id){const c=cst(id),ym=bm||ymOf(date);return pdfMake('d:'+id,billHTML(id),`${c.name} ${monName(ym)} bill`,()=>{(S.dl.sent[ym]=S.dl.sent[ym]||{})[id]=1;save()})}
+function ubPdf(){return pdfMake('u:'+ubn,ubHTML(),`${ubn} udhaar bill ${pk(ubt).replace(/\//g,'-')}`)}
+function mbPdf(){const p=S.mk.ps.find(x=>x.id===mbp);return pdfMake('m:'+mbp,mbHTML(),`${p.name} doodh bill ${pk(mbt).replace(/\//g,'-')}`)}
 
 // Value of stock left at the end of a day: closing (or opening if no closing yet) × cost on that day.
 function stockVal(d){return act().reduce((a,it)=>{const s=day(d).st[it.id],q=s&&has(s.cl)?n(s.cl):opening(it,d);return a+Math.max(0,q)*costOf(it,d)},0)}
