@@ -1345,6 +1345,8 @@ function bpV(){const B=S.dl.bp,inp=(k,l,t)=>`<div class="fld"><label for="bp_${k
 Account title: Talha Umer
 Account no: 0123...
 Easypaisa: 0346..." onchange="upBP('bank',this.value)">${esc(B.bank||'')}</textarea></div>
+ <div class="fld"><label for="bp_due">Bill ki due date: agle mahine ki kis tareekh tak (khaali = due date nahi)</label><input type="number" inputmode="numeric" id="bp_due" min="1" max="31" value="${esc(B.due||'')}" placeholder="Jaise 10" onchange="upBP('due',this.value)"></div>
+ ${inp('dmsg','Due date ke saath likha aaye (English)')}
  <h3 style="margin:16px 0 8px">Offers</h3>
  ${B.offers.map(o=>`<div class="row" style="align-items:center">${o.img?`<img src="${o.img}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:10px;flex:none">`:''}<span style="flex:1;min-width:0">${esc(o.t)}</span><button class="x" onclick="delOffer('${o.id}')" aria-label="Offer hatayen">✕</button></div>`).join('')||'<p class="hint">Abhi koi offer nahi.</p>'}
  <div class="fld" style="margin-top:12px"><label for="oft">Naya offer</label><input type="text" id="oft" placeholder="Lassi: 10% off on 5 glasses"></div>
@@ -1411,7 +1413,7 @@ function billText(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,
   if(m.days.length){L.push('Daily details:');m.days.forEach(([d,p,a,nt])=>L.push(`${pk(d)}: ${bdet&&p.length?p.join(', ')+' = ':''}${a?'Rs '+f(a):''}${nt?` (Remarks: ${nt})`:''}`));L.push('')}
   if(bdet)m.items.forEach(x=>L.push(`${iname(x.i)}: ${fq(x.q)} × ${fq(x.r)} = Rs ${f(x.a)}`));
  L.push(`Total for ${monName(ym)}: Rs ${f(m.amt)}`);if(m.prev)L.push(`Previous balance: Rs ${f(m.prev)}`);
- m.pays.forEach(p=>L.push(`Payment received ${pk(p.day)}: Rs ${f(p.a)}`));L.push(`*Total due: Rs ${f(m.due)}*`);
+ m.pays.forEach(p=>L.push(`Payment received ${pk(p.day)}: Rs ${f(p.a)}`));L.push(`*Total due: Rs ${f(m.due)}*`);if(B.due&&m.due>0)L.push(`*Due date: ${pk(dueOf(ym))}*`,dueMsg());
  if(B.bank){L.push('','*Bank details:*',B.bank)}
  if(B.offers.length){L.push('','*Offers:*');B.offers.forEach(o=>L.push('• '+o.t))}
  L.push('','Thank you!');if(B.web)L.push(B.web);return L.join('\n')}
@@ -1440,17 +1442,21 @@ const BILLCSS=`.bill{-webkit-print-color-adjust:exact;print-color-adjust:exact;c
 .bill .ty{margin-top:12px;text-align:center;color:#777;font-size:12px}`;
 // Every bill (delivery, udhaar, doodh) uses one frame (owner): shop header with BILL and the period, a "Bill to" box,
 // the table, then bank details beside the totals box. tot = [[label, value, 'due'?]].
-function billFrame({to,sub,period,body,tot,bank,foot}){const B=S.dl.bp||{},T=([l,v,k])=>`<div${k?` class="${k}"`:''}><span>${l}</span><span>${v}</span></div>`;
+// Delivery bills carry a due date (owner): day `due` of the next month, after which milk is not delivered.
+const dueOf=ym=>{const m=addMon(ym,1);return m+'-'+String(Math.min(n(S.dl.bp.due),dim(m))).padStart(2,'0')};
+const dueMsg=()=>S.dl.bp.dmsg||'Please pay by the due date. After this date milk will not be delivered.';
+function billFrame({to,sub,period,body,tot,bank,foot,note}){const B=S.dl.bp||{},T=([l,v,k])=>`<div${k?` class="${k}"`:''}><span>${l}</span><span>${v}</span></div>`;
  return `<style>${BILLCSS}</style><div class="bill"><div class="bh"><div class="bs"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}${B.addr?`<p>${esc(B.addr)}</p>`:''}${B.web?`<p>${esc(B.web)}</p>`:''}</div></div>
  <div class="bt"><h2>BILL</h2><p><b>${period}</b></p></div></div>
  <div class="bc"><div><small>Bill to</small><br><b>${esc(to)}</b>${sub?`<p>${sub}</p>`:''}</div></div>
  ${body}<div class="bf">${bank&&B.bank?`<div class="bk"><b>Bank details (for online payment)</b><p>${esc(B.bank)}</p></div>`:''}<div class="tt">${tot.map(T).join('')}</div></div>
- ${foot||''}<p class="ty">Thank you for your business!</p></div>`}
+ ${note||''}${foot||''}<p class="ty">Thank you for your business!</p></div>`}
 function billHTML(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),B=S.dl.bp,rm=m.days.some(x=>x[3]);
  const body=`<table><tr><th class="dt">Date</th>${bdet?'<th>Item</th>':''}${rm?'<th>Remarks</th>':''}<th class="r">Amount (Rs)</th></tr>${m.days.map(([d,pa,a,nt])=>`<tr><td class="dt">${pk(d)}</td>${bdet?`<td>${pa.length?esc(pa.join(', ')):a?'Milk / items (as per register)':''}</td>`:''}${rm?`<td>${esc(nt||'')}</td>`:''}<td class="r">${a?f(a):''}</td></tr>`).join('')}</table>
  ${bdet&&m.items.length?`<table class="is"><tr><th>Item summary</th><th class="r">Qty × Rate</th><th class="r">Amount (Rs)</th></tr>${m.items.map(x=>`<tr><td>${esc(iname(x.i))}</td><td class="r">${fq(x.q)} × ${fq(x.r)}</td><td class="r">${f(x.a)}</td></tr>`).join('')}</table>`:''}`;
  const foot=B.offers.length?`<div class="pof"><h2 style="margin:14px 0 0;font-size:15px">Offers for you</h2><div class="po">${B.offers.map(o=>`<div>${o.img?`<img src="${o.img}" alt="">`:''}<p>${esc(o.t)}</p></div>`).join('')}</div></div>`:'';
- return billFrame({to:c.name,sub:[c.addr,c.phone].filter(Boolean).map(esc).join(' · '),period:monName(ym),body,bank:1,foot,
+ const note=B.due&&m.due>0?`<div style="margin-top:10px;border:2px solid #c71c2b;border-radius:6px;padding:8px 10px;display:flex;justify-content:space-between;gap:10px;align-items:center"><span>${esc(dueMsg())}</span><b style="color:#c71c2b;font-size:16px;white-space:nowrap">Due date: ${pk(dueOf(ym))}</b></div>`:'';
+ return billFrame({to:c.name,sub:[c.addr,c.phone].filter(Boolean).map(esc).join(' · '),period:monName(ym),body,bank:1,foot,note,
   tot:[['Total for '+monName(ym),f(m.amt)],['Previous balance',f(m.prev)],...m.pays.map(x=>['Payment received '+pk(x.day),'−'+f(x.a)]),['Total due','Rs '+f(m.due),'due']]})}
 // Udhaar bill: the name's udhaar and wasool day by day with the running baqaya.
 function ubHTML(){const s=ustate(ubn,ubf,ubt);
@@ -1659,7 +1665,7 @@ function toRow(t,r){
  if(t==='dp'){const p=S.dl.py.find(x=>x.id===r);return p?['dpay',{id:p.id,day:p.day,cust_id:p.c,amount:n(p.a),mode:p.m,note:p.note||null,deleted:!!p.del,u:p.u}]:null}
  if(t==='dv'){const [d,c,i]=r.split('|'),e=((S.dl.d[d]||{})[c]||{})[i];if(!e)return null;
   return['deliveries',{day:d,cust_id:c,item_id:i,qty:num(e.q),rate:num(e.r),amount:num(e.a),note:e.n||null,deleted:!!e.del,u:e.u}]}
- if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,web:B.web,bank:B.bank||'',offers:B.offers},u:B.u}]}
+ if(t==='bp'){const B=S.dl.bp;return['settings',{key:'bill',value:{shop:B.shop,owner:B.owner,phone:B.phone,addr:B.addr,web:B.web,bank:B.bank||'',due:B.due||'',dmsg:B.dmsg||'',offers:B.offers},u:B.u}]}
  if(t==='set')return['settings',{key:'cash0',value:n(S.cash0),u:S.c0u}];
  if(t==='cs'){const [id,d]=r.split('|'),c=(S.cs[id]||{})[d];return c?['costs',{item_id:id,day:d,cost:num(c.c),u:c.u}]:null}
  if(t==='fx'){const x=S.fx.find(y=>y.id===r);return x?['fixed_costs',{id:x.id,name:x.name,amt:x.amt||{},jd:x.jd||null,ob:n(x.ob),off:!!x.off,u:x.u}]:null}
