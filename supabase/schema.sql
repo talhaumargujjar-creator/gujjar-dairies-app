@@ -560,3 +560,18 @@ begin
   return new;
 end $$;
 revoke execute on function public.delivery_rate() from public, anon, authenticated;
+
+-- Hazri (owner): the time each employee came to work, or chhutti, written by the shop staff or the owner. One row per day and employee name.
+create table if not exists public.attendance (
+  day date not null, name text not null, t text, chhutti boolean not null default false, deleted boolean not null default false,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid,
+  primary key (day, name)
+);
+drop trigger if exists attendance_lww on public.attendance;
+create trigger attendance_lww before insert or update on public.attendance for each row execute function public.lww();
+create index if not exists attendance_sa_idx on public.attendance (sa);
+alter table public.attendance enable row level security;
+create policy attendance_member_select on public.attendance for select to authenticated using (public.is_member());
+create policy attendance_member_insert on public.attendance for insert to authenticated with check (public.is_member());
+create policy attendance_member_update on public.attendance for update to authenticated using (public.is_member()) with check (public.is_member());
+revoke all on public.attendance from anon;
