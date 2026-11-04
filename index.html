@@ -651,6 +651,10 @@ function fmk(kg){kg=r2(kg);const a=Math.abs(kg),m=mannOf(a),k=r2(a-m*40);
  return (kg<0?'−':'')+m.toLocaleString('en-PK')+' mun '+k.toLocaleString('en-PK')+' kg'}
 // A party's milk for the day, like the sheet's TOTAL MILK: bandhi + cow + taken from mandi - sold to mandi.
 function mtot(d,id){const r=mrow(d,id);return n(r.bm)+n(r.be)+n(r.cm)+n(r.ce)+n(r.lm)+n(r.le)-n(r.sm)-n(r.se)-n(r.gm)-n(r.ge)}
+// The day's milk split by kind: full fat (bhains: bandhi + taken from mandi − sold) and cow (cow − cow sold).
+// Bandhi days use the milk that really came (x bhains, y gaye), which adds up to the same total as mtot.
+function mkind(d,id){const r=mraw(d,id);if(masal(r))return {f:n(r.xm)+n(r.xe),c:n(r.ym)+n(r.ye)};
+ const o=mrow(d,id);return {f:n(o.bm)+n(o.be)+n(o.lm)+n(o.le)-n(o.sm)-n(o.se),c:n(o.cm)+n(o.ce)-n(o.gm)-n(o.ge)}}
 const mside=(d,k)=>S.mk.ps.filter(p=>p.kind===k).reduce((a,p)=>a+mtot(d,p.id),0);
 const RATE0='2000-01-01';
 // Rate in force on day d: the latest change on or before d.
@@ -840,12 +844,15 @@ function pnlV(){const t=mpnl(date),R=(l,v,c)=>`<div class="sum${c?' '+c:''}"><sp
  <p class="hint">Munafa = Johar jaisi lene wali parties ki raqam − Wasif Chacho aur Bikri Bara jaisi dene wali parties ki raqam − Suzuki kharcha. Sheet ki PNL jaisa.</p>`}
 // Party bill for any date range: opening baqaya, each day's milk and amount, every payment with its date, running baqaya.
 let mbp=null,mbf=null,mbt=null;
-function mstate(id,from,to){const op=mbal(id,addDay(from,-1)),rows=[];let bal=op,T={kg:0,t:0,p:0};
+function mstate(id,from,to){const op=mbal(id,addDay(from,-1)),rows=[];let bal=op,T={kg:0,t:0,p:0,fk:0,ck:0};
  for(const d of mdays(id)){if(d<from||d>to)continue;const a=mamt(d,id),kg=mtot(d,id);if(!a.t&&!a.p&&!kg)continue;
   const pays=mpays(d,id).map(e=>({n:e.n||'Payment',a:n(e.a)})).concat(hkPays(d,id).map(e=>({n:e.n,a:n(e.a)})));
-  bal+=a.t-a.p;T.kg+=kg;T.t+=a.t;T.p+=a.p;rows.push({d,kg,t:a.t,pays,bal})}
+  const k=mkind(d,id);
+  bal+=a.t-a.p;T.kg+=kg;T.t+=a.t;T.p+=a.p;T.fk+=k.f;T.ck+=k.c;rows.push({d,kg,fk:k.f,ck:k.c,t:a.t,pays,bal})}
  return {op,rows,T,bal}}
 // In the bill table the payment column shows the day's total; a small line under the day names each payment.
+// Milk cell: full fat and cow on their own lines (only the kinds that came that day).
+const mkLines=r=>[[r.fk,'Full fat'],[r.ck,'Cow']].filter(x=>r2(x[0])).map(([v,l])=>`${l}: ${fmk(v)}`).join('<br>')||fmk(r.kg);
 const payTot=r=>r.pays.reduce((a,x)=>a+x.a,0);
 const payLine=(r,st)=>r.pays.length&&r.pays.some(x=>x.n&&x.n!=='Payment')?`<tr><td colspan="5" class="l" style="${st}">${r.pays.map(x=>`${esc(x.n||'Payment')} ${f(x.a)}`).join(' · ')}</td></tr>`:'';
 function mbillV(){const P=S.mk.ps.filter(p=>!p.off);if(!P.some(p=>p.id===mbp))mbp=P.length?P[0].id:null;const p=S.mk.ps.find(x=>x.id===mbp);
@@ -855,14 +862,14 @@ function mbillV(){const P=S.mk.ps.filter(p=>!p.off);if(!P.some(p=>p.id===mbp))mb
  <div class="card"><h3>Bill: ${esc(p.name)}</h3><div class="g3" style="grid-template-columns:1fr 1fr;margin-top:10px"><div class="fld"><label for="mbf">Is tareekh se</label><input type="date" id="mbf" value="${mbf}" onchange="mbf=this.value||mbf;render()"></div><div class="fld"><label for="mbt">Is tareekh tak</label><input type="date" id="mbt" value="${mbt}" onchange="mbt=this.value||mbt;render()"></div></div>
  <div class="chips" style="flex-wrap:wrap;margin:0">${[['Is mahine',date.slice(0,8)+'01',date],['Pichle 7 din',addDay(date,-6),date],['Aaj',date,date]].map(([l,a,b])=>`<button class="chip" aria-pressed="${mbf===a&&mbt===b}" onclick="mbf='${a}';mbt='${b}';render()">${l}</button>`).join('')}</div></div>
  <div class="card"><div class="sum"><span>Pichla baqaya (${pk(addDay(mbf,-1))} tak)</span><b>${f(s.op)}</b></div>
- ${s.rows.length?`<table style="margin-top:8px"><tr><th>Tareekh</th><th>Doodh</th><th>Raqam</th><th>${sup?'Payment di':'Payment aayi'}</th><th>Baqaya</th></tr>${s.rows.map(r=>`<tr><td>${pk(r.d)}</td><td style="font-size:13px">${fmk(r.kg)}</td><td>${f(r.t)}</td><td>${r.pays.length?f(payTot(r)):''}</td><td>${f(r.bal)}</td></tr>${payLine(r,'font-size:13px;color:var(--mut);padding-top:0')}`).join('')}</table>`:'<p class="hint">Is dauran koi doodh ya payment nahi.</p>'}
- <div class="sum tot"><span>Kul doodh</span><b>${fmk(s.T.kg)}</b></div><div class="sum"><span>Kul raqam</span><b>${f(s.T.t)}</b></div><div class="sum"><span>Kul payment</span><b>${f(s.T.p)}</b></div>
+ ${s.rows.length?`<table style="margin-top:8px"><tr><th>Tareekh</th><th>Doodh</th><th>Raqam</th><th>${sup?'Payment di':'Payment aayi'}</th><th>Baqaya</th></tr>${s.rows.map(r=>`<tr><td>${pk(r.d)}</td><td style="font-size:13px">${mkLines(r)}</td><td>${f(r.t)}</td><td>${r.pays.length?f(payTot(r)):''}</td><td>${f(r.bal)}</td></tr>${payLine(r,'font-size:13px;color:var(--mut);padding-top:0')}`).join('')}</table>`:'<p class="hint">Is dauran koi doodh ya payment nahi.</p>'}
+ <div class="sum tot"><span>Kul full fat milk</span><b>${fmk(s.T.fk)}</b></div><div class="sum"><span>Kul cow milk</span><b>${fmk(s.T.ck)}</b></div><div class="sum tot"><span>Kul doodh</span><b>${fmk(s.T.kg)}</b></div><div class="sum"><span>Kul raqam</span><b>${f(s.T.t)}</b></div><div class="sum"><span>Kul payment</span><b>${f(s.T.p)}</b></div>
  <div class="sum tot"><span>Baqaya (${pk(mbt)} tak)</span><b class="${s.bal<0?'neg':''}">${f(s.bal)}</b></div><p class="hint" style="text-align:right">${balTxt(p,s.bal)}</p>
  ${pdfBtn('m:'+mbp,'mbPdf()')}<div class="btns" style="margin-top:10px"><button class="btn ghost" onclick="mbillWA()">Text WhatsApp par</button><button class="btn ghost" onclick="mbillPrint()">🖨 PDF / Print</button></div></div>`}
 function mbillText(){const p=S.mk.ps.find(x=>x.id===mbp),s=mstate(p.id,mbf,mbt),B=S.dl.bp||{},sup=p.kind==='sup',L=[`*${B.shop||'Gujjar Dairies'} — Doodh ka hisaab*`];
  if(B.owner||B.phone)L.push([B.owner,B.phone].filter(Boolean).join(' · '));L.push('',`${p.name}`,`${pk(mbf)} se ${pk(mbt)} tak`,'',`Pichla baqaya: Rs ${f(s.op)}`);
- s.rows.forEach(r=>{L.push(`${pk(r.d)}: ${fmk(r.kg)} = Rs ${f(r.t)}`);if(r.pays.length){L.push(`   ${sup?'Payment di':'Payment aayi'}: Rs ${f(payTot(r))}`);if(r.pays.length>1||r.pays[0].n!=='Payment')r.pays.forEach(x=>L.push(`      - ${x.n||'Payment'}: ${f(x.a)}`))}L.push(`   Baqaya: Rs ${f(r.bal)}`)});
- L.push('',`Kul doodh: ${fmk(s.T.kg)}`,`Kul raqam: Rs ${f(s.T.t)}`,`Kul payment: Rs ${f(s.T.p)}`,`*Baqaya: Rs ${f(s.bal)}*`);return L.join('\n')}
+ s.rows.forEach(r=>{L.push(`${pk(r.d)}: ${fmk(r.kg)} = Rs ${f(r.t)}`);[[r.fk,'Full fat'],[r.ck,'Cow']].forEach(([v,l])=>{if(r2(v))L.push(`   ${l}: ${fmk(v)}`)});if(r.pays.length){L.push(`   ${sup?'Payment di':'Payment aayi'}: Rs ${f(payTot(r))}`);if(r.pays.length>1||r.pays[0].n!=='Payment')r.pays.forEach(x=>L.push(`      - ${x.n||'Payment'}: ${f(x.a)}`))}L.push(`   Baqaya: Rs ${f(r.bal)}`)});
+ L.push('',`Kul full fat milk: ${fmk(s.T.fk)}`,`Kul cow milk: ${fmk(s.T.ck)}`,`Kul doodh: ${fmk(s.T.kg)}`,`Kul raqam: Rs ${f(s.T.t)}`,`Kul payment: Rs ${f(s.T.p)}`,`*Baqaya: Rs ${f(s.bal)}*`);return L.join('\n')}
 function mbillWA(){open('https://wa.me/?text='+encodeURIComponent(mbillText()),'_blank')}
 function partiesV(){return `<div class="card"><details ${pOpen?'open':''} ontoggle="pOpen=this.open"><summary>Parties</summary>
  ${S.mk.ps.map(p=>`<div class="row"><span style="flex:1;min-width:0"><input type="text" class="nm" value="${esc(p.name)}" onchange="upP('${p.id}',this.value)" aria-label="Party ka naam"><span class="hint" style="padding-left:4px">${p.kind==='sup'?'Doodh dene wali':'Doodh lene wali'}${p.off?' · hatai hui':''}</span></span>${p.off?`<button class="btn ghost" onclick="offP('${p.id}',false)">Wapas</button>`:`<button class="x" aria-label="${esc(p.name)} hatayen" onclick="offP('${p.id}',true)">✕</button>`}</div>`).join('')}
@@ -1483,9 +1490,11 @@ function ubHTML(){const s=ustate(ubn,ubf,ubt);
   tot:[['Previous balance',f(s.op)],['Total udhaar',f(s.ta)],['Total received','−'+f(s.tb)],['Balance due','Rs '+f(s.bal),'due']]})}
 // Doodh bill: each day's milk, amount and payments with the running baqaya. Bank details only when the party pays us.
 function mbHTML(){const p=S.mk.ps.find(x=>x.id===mbp),s=mstate(p.id,mbf,mbt),sup=p.kind==='sup';
- const body=`<table><tr><th class="dt">Date</th><th>Milk</th><th class="r">Amount (Rs)</th><th class="r">${sup?'Paid':'Received'} (Rs)</th><th class="r">Balance</th></tr><tr><td class="dt"></td><td>Previous balance</td><td></td><td></td><td class="r">${f(s.op)}</td></tr>
- ${s.rows.map(r=>`<tr><td class="dt">${pk(r.d)}</td><td>${fmk(r.kg)}${r.pays.some(x=>x.n&&x.n!=='Payment')?`<br><small style="color:#666">${esc(r.pays.map(x=>`${x.n||'Payment'} ${f(x.a)}`).join(' · '))}</small>`:''}</td><td class="r">${f(r.t)}</td><td class="r">${r.pays.length?f(payTot(r)):''}</td><td class="r">${f(r.bal)}</td></tr>`).join('')}</table>`;
- return billFrame({to:p.name,sub:'Milk account · '+fmk(s.T.kg),period:`${pk(mbf)} – ${pk(mbt)}`,body,bank:!sup,
+ const mk=v=>r2(v)?fmk(v):'';
+ const body=`<table><tr><th class="dt">Date</th><th>Full fat milk</th><th>Cow milk</th><th class="r">Amount (Rs)</th><th class="r">${sup?'Paid':'Received'} (Rs)</th><th class="r">Balance</th></tr><tr><td class="dt"></td><td colspan="2">Previous balance</td><td></td><td></td><td class="r">${f(s.op)}</td></tr>
+ ${s.rows.map(r=>`<tr><td class="dt">${pk(r.d)}</td><td>${mk(r.fk)}${r.pays.some(x=>x.n&&x.n!=='Payment')?`<br><small style="color:#666">${esc(r.pays.map(x=>`${x.n||'Payment'} ${f(x.a)}`).join(' · '))}</small>`:''}</td><td>${mk(r.ck)}</td><td class="r">${f(r.t)}</td><td class="r">${r.pays.length?f(payTot(r)):''}</td><td class="r">${f(r.bal)}</td></tr>`).join('')}
+ <tr><td class="dt"><b>Total</b></td><td><b>${fmk(s.T.fk)}</b></td><td><b>${fmk(s.T.ck)}</b></td><td class="r"><b>${f(s.T.t)}</b></td><td class="r"><b>${f(s.T.p)}</b></td><td></td></tr></table>`;
+ return billFrame({to:p.name,sub:`Milk account · Full fat ${fmk(s.T.fk)} · Cow ${fmk(s.T.ck)} · Total ${fmk(s.T.kg)}`,period:`${pk(mbf)} – ${pk(mbt)}`,body,bank:!sup,
   tot:[['Previous balance',f(s.op)],['Total amount',f(s.T.t)],[sup?'Total paid':'Total received','−'+f(s.T.p)],['Balance','Rs '+f(s.bal),'due']]})}
 // Printing (or "Save as PDF") shows only this bill. Waits for the logo and offer pictures so they are not blank.
 async function printHTML(h){let p=$('#prt');if(!p){p=document.createElement('div');p.id='prt';document.body.appendChild(p)}
