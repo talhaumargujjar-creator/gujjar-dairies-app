@@ -374,6 +374,10 @@ create policy production_member_update on public.production for update to authen
 revoke all on public.recipes, public.production from anon;
 -- Batch yield: y units of item_id come out of one batch; each ingredient keeps b (amount put in the batch) and q = b / y.
 alter table public.recipes add column if not exists y numeric;
+-- Kunde (pots) for dahi: recipe kd = {m milk kg -> d dahi kg, L:[{n name, w milk kg per pot}]}; a day's k = [{n,w,c count}], qty = milk x d / m.
+alter table public.recipes add column if not exists kd jsonb;
+alter table public.production add column if not exists k jsonb;
+update public.recipes set kd='{"m":5.5,"d":5.125,"L":[{"n":"Bara kunda","w":6.5},{"n":"Chota kunda","w":5.5}]}'::jsonb, u=(extract(epoch from now())*1000)::bigint where id='r_dahi' and kd is null;
 -- Hisaab (cashbook) entry names that count as payments for a milk party, e.g. Johar paying the owner from the shop's galla.
 alter table public.milk_parties add column hk jsonb not null default '[]';
 

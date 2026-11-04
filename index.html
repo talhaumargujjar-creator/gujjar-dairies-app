@@ -311,7 +311,14 @@ function opening(it,d){for(const x of before(d)){const s=S.days[x].st[it.id];if(
 // Production of a day: what an item gained (made) and what recipes took from it (used). All recipes count, even switched-off ones, so old days stay the same.
 const prq=(d,rid)=>n(((S.pr.d[d]||{})[rid]||{}).q);
 function made(it,d){return Object.values(S.pr.rc).filter(r=>r.out===it.id).reduce((a,r)=>a+prq(d,r.id),0)}
-function usedP(it,d){return Object.values(S.pr.rc).reduce((a,r)=>{const m=prq(d,r.id);return m?a+r.ins.filter(x=>x.t==='it'&&x.id===it.id).reduce((b,x)=>b+n(x.q)*m,0):a},0)}
+// Kunde (pots): a recipe with kd = {m milk kg -> d dahi kg, L:[{n,w}]} lets the day be written as pots (milk kg per pot × count).
+// That day's dahi = milk × d / m, and the milk taken from stock is exactly the pots' milk (not the batch ratio).
+const kdOf=r=>r.kd&&r.kd.L&&r.kd.L.length&&n(r.kd.m)&&n(r.kd.d)?r.kd:null;
+const kdIng=r=>r.ins.find(x=>x.t==='it');
+const kdMilk=(d,rid)=>{const x=(S.pr.d[d]||{})[rid];return x&&Array.isArray(x.k)?x.k.reduce((a,k)=>a+n(k.w)*n(k.c),0):null};
+// Per unit amount of an ingredient on day d (the milk follows the pots on a kunde day).
+function insQ(r,x,d){if(x===kdIng(r)){const mk=kdMilk(d,r.id),m=prq(d,r.id);if(mk!=null&&m)return mk/m}return n(x.q)}
+function usedP(it,d){return Object.values(S.pr.rc).reduce((a,r)=>{const m=prq(d,r.id);return m?a+r.ins.filter(x=>x.t==='it'&&x.id===it.id).reduce((b,x)=>b+insQ(r,x,d)*m,0):a},0)}
 // Sold = opening + purchase + made - used in shop - used in production - closing. Without a closing the item is not counted.
 // Delivered quantity is part of sold; csold() splits it off.
 function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q2(opening(it,d)+n(s.pu)+milkIn(it,d).q+made(it,d)-n(s.us)-usedP(it,d)-n(s.cl))}
@@ -1076,9 +1083,32 @@ let PRE=null;
 const rcList=()=>Object.values(S.pr.rc).filter(r=>!r.off&&itm(r.out)).sort((a,b)=>itm(a.out).name.localeCompare(itm(b.out).name));
 const inName=x=>x.t==='it'?(itm(x.id)||{name:'?'}).name:x.name;
 // Cost of making one unit: shop items at their cost that day, other materials at the price written in the recipe.
-const laagat=(r,d)=>r.ins.reduce((a,x)=>a+n(x.q)*(x.t==='it'?(itm(x.id)?costOf(itm(x.id),d):0):n(x.c)),0);
+const laagat=(r,d)=>r.ins.reduce((a,x)=>a+insQ(r,x,d)*(x.t==='it'?(itm(x.id)?costOf(itm(x.id),d):0):n(x.c)),0);
 function setPQ(rid,v){const P=S.pr.d[date]=S.pr.d[date]||{};P[rid]={q:v===''?'':n(v),u:now()};mark('pd:'+date+'|'+rid);
  const y=scrollY;render();scrollTo(0,y)}
+// The day's pot lines: what was written that day, else the recipe's pots with their usual milk and no count.
+function kdRows(r,d){const K=kdOf(r),x=(S.pr.d[d]||{})[r.id],k=x&&Array.isArray(x.k)?x.k:[];
+ return K.L.map((p,i)=>{const o=k.find(z=>z.n===p.n);return {n:p.n,w:o&&has(o.w)?o.w:p.w,c:o?o.c:''}})}
+// Writing a pot's milk or count makes the day's dahi: Σ milk × count × d / m.
+function setKd(rid,i,f,v){const r=S.pr.rc[rid],K=kdOf(r),R=kdRows(r,date);R[i][f]=v===''?'':n(v);
+ const mk=R.reduce((a,k)=>a+n(k.w)*n(k.c),0),P=S.pr.d[date]=S.pr.d[date]||{};
+ P[rid]={q:mk?q2(mk*n(K.d)/n(K.m)):'',k:R.some(k=>n(k.c))?R:undefined,u:now()};mark('pd:'+date+'|'+rid);const y=scrollY;render();scrollTo(0,y)}
+function kdV(r){const K=kdOf(r),R=kdRows(r,date),rt=n(K.d)/n(K.m),mk=R.reduce((a,k)=>a+n(k.w)*n(k.c),0),it=itm(r.out);
+ return `<p class="hint" style="margin:0 0 6px">Kunde se: ${fq(K.m)} kg doodh = ${fq(K.d)} kg ${esc(it.name)}. Har kunde mein doodh ka wazan aur kitne kunde likhein.</p>
+ ${R.map((k,i)=>`<div class="card" style="margin:6px 0;padding:10px;background:var(--field)"><b>${esc(k.n)}</b>
+  <div class="g3" style="grid-template-columns:1fr 1fr;margin-top:6px"><div class="f"><label for="kw${r.id}${i}">Doodh fi kunda (kg)</label><input type="number" inputmode="decimal" id="kw${r.id}${i}" value="${k.w??''}" onchange="setKd('${r.id}',${i},'w',this.value)"></div>
+  <div class="f"><label for="kc${r.id}${i}">Kitne kunde</label><input type="number" inputmode="numeric" id="kc${r.id}${i}" value="${k.c??''}" onchange="setKd('${r.id}',${i},'c',this.value)"></div></div>
+  ${n(k.c)?`<div class="sum"><span>${fq(n(k.w)*n(k.c))} kg doodh</span><b>${fq(n(k.w)*n(k.c)*rt)} kg ${esc(it.name)}</b></div>`:''}</div>`).join('')}
+ ${mk?`<div class="sum tot"><span>Kul doodh ${fq(mk)} kg</span><b>${esc(it.name)} ${fq(mk*rt)} kg</b></div>`:''}`}
+// Owner sets the pots in the recipe: milk → dahi ratio and each pot's usual milk.
+function rcKd(rid,f,v,i){const r=S.pr.rc[rid];r.kd=r.kd||{m:'',d:'',L:[]};if(i==null)r.kd[f]=n(v);else r.kd.L[i][f]=f==='w'?n(v):String(v).trim();rcSave(r)}
+function rcKdAdd(rid){const r=S.pr.rc[rid];r.kd=r.kd||{m:'',d:'',L:[]};r.kd.L.push({n:'Kunda '+(r.kd.L.length+1),w:''});rcSave(r)}
+function rcKdDel(rid,i){const r=S.pr.rc[rid];r.kd.L.splice(i,1);rcSave(r)}
+function rcKdV(r){const K=r.kd||{m:'',d:'',L:[]};
+ return `<div class="card" style="margin:8px 0;padding:10px;background:var(--field)"><b>Kunde</b><p class="hint">Kunde se likhna ho to: kitne kg doodh se kitni dahi banti hai, aur har kunde mein aam taur par kitna doodh.</p>
+ <div class="g3" style="grid-template-columns:1fr 1fr;margin-top:6px"><div class="f"><label>Doodh (kg)</label><input type="number" inputmode="decimal" value="${K.m||''}" onchange="rcKd('${r.id}','m',this.value)"></div><div class="f"><label>Banti hai (kg)</label><input type="number" inputmode="decimal" value="${K.d||''}" onchange="rcKd('${r.id}','d',this.value)"></div></div>
+ ${K.L.map((p,i)=>`<div class="g3" style="grid-template-columns:2fr 1fr auto;margin-top:6px"><input type="text" value="${esc(p.n)}" aria-label="Kunde ka naam" onchange="rcKd('${r.id}','n',this.value,${i})"><input type="number" inputmode="decimal" value="${p.w??''}" aria-label="Doodh fi kunda kg" onchange="rcKd('${r.id}','w',this.value,${i})"><button class="x" aria-label="Hatayen" onclick="rcKdDel('${r.id}',${i})">✕</button></div>`).join('')}
+ <button class="btn ghost" style="margin-top:8px" onclick="rcKdAdd('${r.id}')">+ Kunda</button></div>`}
 function rcSave(r){r.u=now();mark('rp:'+r.id);const y=scrollY;render();scrollTo(0,y)}
 const rcY=r=>n(r.y)||1, rcB=(r,x)=>x.b!=null?n(x.b):q2(n(x.q)*rcY(r));
 function rcIn(rid,i,k,v){const r=S.pr.rc[rid],x=r.ins[i];if(k==='t'){r.ins[i]=v==='it'?{t:'it',id:act()[0].id,q:x.q,b:x.b}:{t:'raw',name:'',unit:'kg',q:x.q,b:x.b,c:0}}
@@ -1102,6 +1132,7 @@ function rcEditV(r){const opt=sel=>act().map(it=>`<option value="${it.id}"${it.i
   <div class="g3" style="grid-template-columns:1fr 1fr;margin-top:6px"><div class="f"><label>Kitna dala</label><input type="number" inputmode="decimal" value="${rcB(r,x)||''}" onchange="rcIn('${r.id}',${i},'b',this.value)"></div>
   ${x.t==='raw'?`<div class="f"><label>Qeemat fi ${esc(x.unit||'unit')}</label><input type="number" inputmode="decimal" value="${x.c||''}" onchange="rcIn('${r.id}',${i},'c',this.value)"></div>`:`<div class="f"><span class="l">Cost fi unit</span><div class="v">${itm(x.id)?fq(costOf(itm(x.id),date)):'—'}</div></div>`}</div></div>`).join('')}
  <div class="btns"><button class="btn ghost" onclick="rcAddIn('${r.id}','it')">+ Dukaan ka item</button><button class="btn ghost" onclick="rcAddIn('${r.id}','raw')">+ Doosra saman</button></div>
+ ${rcKdV(r)}
  <div class="btns" style="margin-top:8px"><button class="btn" onclick="PRE=null;render()">Ho gaya</button><button class="btn danger" onclick="rcOff('${r.id}')">Recipe band karein</button></div>`}
 function prd(){const L=rcList(),P=S.pr.d[date]||{},raw={};
  let h=`<div class="card"><h3>Production — ${dayName(date)}, ${pk(date)}</h3><p class="hint" style="margin-top:6px">Aaj jo bana us ki miqdaar likhein. Recipe se jo doodh/dahi laga wo stock se khud kam ho jayega, aur bani hui cheez stock mein jud jayegi. Stock mein "Istemal" sirf baqi kaam ke liye likhein, production ke liye dobara nahi.</p></div>`;
@@ -1109,8 +1140,9 @@ function prd(){const L=rcList(),P=S.pr.d[date]||{},raw={};
   r.ins.forEach(x=>{if(x.t==='raw'&&m){const k=x.name+'|'+x.unit;raw[k]=(raw[k]||0)+n(x.q)*m}});
   return `<div class="card item"><div class="ih"><b>${esc(it.name)}</b>${own()?`<button class="tag" onclick="PRE=PRE==='${r.id}'?null:'${r.id}';render()">Recipe ✎</button>`:''}</div>
   ${set?`<p class="hint" style="margin:0 0 8px">Recipe: ${r.ins.filter(x=>n(x.q)).map(x=>fq(rcB(r,x))+' '+esc(inName(x))).join(' + ')} → ${fq(rcY(r))} ${esc(it.name)}</p>`:'<p class="msg" style="margin:0 0 8px">Recipe ki miqdaar abhi nahi likhi.'+(own()?' "Recipe ✎" daba kar likhein.':' Owner se likhwayein.')+'</p>'}
-  <div class="f"><label for="pq${r.id}">Aaj kitna bana</label><input type="number" inputmode="decimal" id="pq${r.id}" value="${(P[r.id]||{}).q??''}" onchange="setPQ('${r.id}',this.value)"></div>
-  ${m&&set?`<div style="margin-top:8px">${r.ins.filter(x=>n(x.q)).map(x=>`<div class="sum"><span>${esc(inName(x))}</span><b>${fq(n(x.q)*m)} ${x.t==='raw'?esc(x.unit):''}</b></div>`).join('')}</div>`:''}
+  ${kdOf(r)?kdV(r):''}
+  <div class="f"><label for="pq${r.id}">Aaj kitna bana${kdOf(r)?' (kunde se khud, ya khud likhein)':''}</label><input type="number" inputmode="decimal" id="pq${r.id}" value="${(P[r.id]||{}).q??''}" onchange="setPQ('${r.id}',this.value)"></div>
+  ${m&&set?`<div style="margin-top:8px">${r.ins.filter(x=>n(x.q)).map(x=>`<div class="sum"><span>${esc(inName(x))}</span><b>${fq(insQ(r,x,date)*m)} ${x.t==='raw'?esc(x.unit):''}</b></div>`).join('')}</div>`:''}
   ${own()&&set?`<div class="res"><span>Laagat fi unit: <b>Rs ${fq(laagat(r,date))}</b> (rate ${fq(it.rate)})</span><span class="muted" style="font-size:14px">${prq(date,r.id)?'Aaj ki cost mein khud lag gayi':'Jis din banega, us din ki cost mein khud lagegi'}</span></div>`:''}
   ${PRE===r.id?rcEditV(r):''}</div>`}).join('');
  const RW=Object.entries(raw);
@@ -1700,9 +1732,9 @@ function toRow(t,r){
  if(t==='cb'){const x=S.cb.find(y=>y.id===r);return x?['cash_book',{id:x.id,k:x.k,name:x.name||null,ex:x.ex??null,amount:num(x.a),day:x.day||null,note:x.nt||null,ord:x.ord??null,ref:x.ref||null,deleted:!!x.del,u:x.u}]:null}
  if(t==='xn'){const x=S.xn.find(y=>y.id===r);return x?['exp_names',{id:x.id,name:x.name,ord:x.ord??null,ln:x.ln!==false,off:!!x.off,u:x.u}]:null}
  if(t==='em'){const e=S.em.find(x=>x.id===r);return e?['employees',{id:e.id,name:e.name,phone:e.phone||null,start:e.start||null,jd:e.jd||null,ob:n(e.ob),sal:e.sal||{},off:!!e.off,u:e.u}]:null}
- if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,y:x.y??null,off:!!x.off,u:x.u}]:null}
+ if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,y:x.y??null,kd:x.kd||null,off:!!x.off,u:x.u}]:null}
  if(t==='at'){const [d,nm]=r.split('|'),x=(S.at[d]||{})[nm];return x?['attendance',{day:d,name:nm,t:x.t||null,chhutti:!!x.c,deleted:!!x.del,u:x.u}]:null}
- if(t==='pd'){const [d,rid]=r.split('|'),x=(S.pr.d[d]||{})[rid];return x?['production',{day:d,recipe_id:rid,qty:num(x.q),u:x.u}]:null}
+ if(t==='pd'){const [d,rid]=r.split('|'),x=(S.pr.d[d]||{})[rid];return x?['production',{day:d,recipe_id:rid,qty:num(x.q),k:x.k||null,u:x.u}]:null}
  if(t==='ba'){const a=S.bk.ac.find(x=>x.id===r);return a?['bank_accounts',{id:a.id,name:a.name,op:n(a.op),off:!!a.off,u:a.u}]:null}
  if(t==='bt'){const x=S.bk.tx.find(y=>y.id===r);return x?['bank_tx',{id:x.id,day:x.day,account_id:x.ac,type:x.type,party:x.party||null,amount:n(x.a),chq_no:x.no||null,chq_date:x.cd||null,status:x.st,note:x.note||null,deleted:!!x.del,u:x.u}]:null}
  if(t==='mp'){const p=S.mk.ps.find(x=>x.id===r);return p?['milk_parties',{id:p.id,name:p.name,kind:p.kind,off:!!p.off,hk:p.hk||[],si:p.si||null,u:p.u}]:null}
@@ -1730,9 +1762,9 @@ function merge(tb,r){
  if(tb==='exp_names'){const x=S.xn.find(y=>y.id===r.id),o={id:r.id,name:r.name,ord:r.ord,ln:r.ln!==false,off:!!r.off,u:r.u};if(!x){S.xn.push(o);return true}if(r.u>(x.u||0)){Object.assign(x,o);return true}return false}
  if(tb==='employees'){const i=S.em.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,phone:r.phone||'',start:r.start||'',jd:r.jd||'',ob:num(r.ob),sal:r.sal||{},off:r.off,u:r.u};
   if(i<0){S.em.push(o);return true}if(r.u>S.em[i].u){S.em[i]=o;return true}return false}
- if(tb==='recipes'){const x=S.pr.rc[r.id];if(x&&r.u<=(x.u||0))return false;S.pr.rc[r.id]={id:r.id,out:r.item_id,ins:r.ins||[],y:r.y??undefined,off:r.off,u:r.u};return true}
+ if(tb==='recipes'){const x=S.pr.rc[r.id];if(x&&r.u<=(x.u||0))return false;S.pr.rc[r.id]={id:r.id,out:r.item_id,ins:r.ins||[],y:r.y??undefined,kd:r.kd||undefined,off:r.off,u:r.u};return true}
  if(tb==='attendance'){const A=S.at[r.day]=S.at[r.day]||{},x=A[r.name];if(x&&r.u<=(x.u||0))return false;A[r.name]={t:r.t||'',c:!!r.chhutti,del:!!r.deleted,u:r.u};return true}
- if(tb==='production'){const P=S.pr.d[r.day]=S.pr.d[r.day]||{},x=P[r.recipe_id];if(x&&r.u<=(x.u||0))return false;P[r.recipe_id]={q:r.qty??'',u:r.u};return true}
+ if(tb==='production'){const P=S.pr.d[r.day]=S.pr.d[r.day]||{},x=P[r.recipe_id];if(x&&r.u<=(x.u||0))return false;P[r.recipe_id]={q:r.qty??'',k:r.k||undefined,u:r.u};return true}
  if(tb==='costs'){const C=S.cs[r.item_id]=S.cs[r.item_id]||{},c=C[r.day];if(c&&r.u<=(c.u||0))return false;C[r.day]={c:r.cost??'',u:r.u};return true}
  if(tb==='bank_accounts'){const a=S.bk.ac.find(x=>x.id===r.id),o={name:r.name,op:n(r.op),off:r.off,u:r.u};if(!a){S.bk.ac.push(Object.assign({id:r.id},o));return true}
   if(r.u>a.u){Object.assign(a,o);return true}return false}
@@ -1769,7 +1801,7 @@ function merge(tb,r){
 // Bump DATA_VER whenever a synced column is added. A phone or browser that read a row with an older app version
 // kept that row without the new field, and the row's edit time did not change, so it would never be read again.
 // On a new DATA_VER every row is read once more and the server copy wins even at the same edit time.
-const DATA_VER=5;
+const DATA_VER=6;
 async function pull(){let ch=false;const full=S.dv!==DATA_VER;if(full)S.cur={};
  for(const tb of Object.keys(PK)){if(!canPull(tb))continue;
   // Re-read the last minute too, so rows committed slightly out of order are not missed. Merging is idempotent.
