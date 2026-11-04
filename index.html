@@ -312,13 +312,10 @@ function opening(it,d){for(const x of before(d)){const s=S.days[x].st[it.id];if(
 const prq=(d,rid)=>n(((S.pr.d[d]||{})[rid]||{}).q);
 function made(it,d){return Object.values(S.pr.rc).filter(r=>r.out===it.id).reduce((a,r)=>a+prq(d,r.id),0)}
 // Kunde (pots): a recipe with kd = {m milk kg -> d dahi kg, L:[{n,w}]} lets the day be written as pots (milk kg per pot × count).
-// That day's dahi = milk × d / m, and the milk taken from stock is exactly the pots' milk (not the batch ratio).
+// That day's dahi = milk × d / m. The pot milk is weighed after boiling, so the milk taken from stock still follows
+// the recipe's batch (owner: e.g. 152 milk → 141.625 dahi), never the pot weight.
 const kdOf=r=>r.kd&&r.kd.L&&r.kd.L.length&&n(r.kd.m)&&n(r.kd.d)?r.kd:null;
-const kdIng=r=>r.ins.find(x=>x.t==='it');
-const kdMilk=(d,rid)=>{const x=(S.pr.d[d]||{})[rid];return x&&Array.isArray(x.k)?x.k.reduce((a,k)=>a+n(k.w)*n(k.c),0):null};
-// Per unit amount of an ingredient on day d (the milk follows the pots on a kunde day).
-function insQ(r,x,d){if(x===kdIng(r)){const mk=kdMilk(d,r.id),m=prq(d,r.id);if(mk!=null&&m)return mk/m}return n(x.q)}
-function usedP(it,d){return Object.values(S.pr.rc).reduce((a,r)=>{const m=prq(d,r.id);return m?a+r.ins.filter(x=>x.t==='it'&&x.id===it.id).reduce((b,x)=>b+insQ(r,x,d)*m,0):a},0)}
+function usedP(it,d){return Object.values(S.pr.rc).reduce((a,r)=>{const m=prq(d,r.id);return m?a+r.ins.filter(x=>x.t==='it'&&x.id===it.id).reduce((b,x)=>b+n(x.q)*m,0):a},0)}
 // Sold = opening + purchase + made - used in shop - used in production - closing. Without a closing the item is not counted.
 // Delivered quantity is part of sold; csold() splits it off.
 function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q2(opening(it,d)+n(s.pu)+milkIn(it,d).q+made(it,d)-n(s.us)-usedP(it,d)-n(s.cl))}
@@ -1083,7 +1080,7 @@ let PRE=null;
 const rcList=()=>Object.values(S.pr.rc).filter(r=>!r.off&&itm(r.out)).sort((a,b)=>itm(a.out).name.localeCompare(itm(b.out).name));
 const inName=x=>x.t==='it'?(itm(x.id)||{name:'?'}).name:x.name;
 // Cost of making one unit: shop items at their cost that day, other materials at the price written in the recipe.
-const laagat=(r,d)=>r.ins.reduce((a,x)=>a+insQ(r,x,d)*(x.t==='it'?(itm(x.id)?costOf(itm(x.id),d):0):n(x.c)),0);
+const laagat=(r,d)=>r.ins.reduce((a,x)=>a+n(x.q)*(x.t==='it'?(itm(x.id)?costOf(itm(x.id),d):0):n(x.c)),0);
 function setPQ(rid,v){const P=S.pr.d[date]=S.pr.d[date]||{};P[rid]={q:v===''?'':n(v),u:now()};mark('pd:'+date+'|'+rid);
  const y=scrollY;render();scrollTo(0,y)}
 // The day's pot lines: what was written that day, else the recipe's pots with their usual milk and no count.
@@ -1099,7 +1096,7 @@ function kdV(r){const K=kdOf(r),R=kdRows(r,date),rt=n(K.d)/n(K.m),mk=R.reduce((a
   <div class="g3" style="grid-template-columns:1fr 1fr;margin-top:6px"><div class="f"><label for="kw${r.id}${i}">Doodh fi kunda (kg)</label><input type="number" inputmode="decimal" id="kw${r.id}${i}" value="${k.w??''}" onchange="setKd('${r.id}',${i},'w',this.value)"></div>
   <div class="f"><label for="kc${r.id}${i}">Kitne kunde</label><input type="number" inputmode="numeric" id="kc${r.id}${i}" value="${k.c??''}" onchange="setKd('${r.id}',${i},'c',this.value)"></div></div>
   ${n(k.c)?`<div class="sum"><span>${fq(n(k.w)*n(k.c))} kg doodh</span><b>${fq(n(k.w)*n(k.c)*rt)} kg ${esc(it.name)}</b></div>`:''}</div>`).join('')}
- ${mk?`<div class="sum tot"><span>Kul doodh ${fq(mk)} kg</span><b>${esc(it.name)} ${fq(mk*rt)} kg</b></div>`:''}`}
+ ${mk?`<div class="sum tot"><span>Kundon mein ${fq(mk)} kg</span><b>${esc(it.name)} ${fq(mk*rt)} kg</b></div><p class="hint" style="margin:4px 0 8px">Kunde ka wazan ubaalne ke baad ka hai. Stock se doodh recipe ke hisaab se kam hota hai (neeche).</p>`:''}`}
 // Owner sets the pots in the recipe: milk → dahi ratio and each pot's usual milk.
 function rcKd(rid,f,v,i){const r=S.pr.rc[rid];r.kd=r.kd||{m:'',d:'',L:[]};if(i==null)r.kd[f]=n(v);else r.kd.L[i][f]=f==='w'?n(v):String(v).trim();rcSave(r)}
 function rcKdAdd(rid){const r=S.pr.rc[rid];r.kd=r.kd||{m:'',d:'',L:[]};r.kd.L.push({n:'Kunda '+(r.kd.L.length+1),w:''});rcSave(r)}
@@ -1142,7 +1139,7 @@ function prd(){const L=rcList(),P=S.pr.d[date]||{},raw={};
   ${set?`<p class="hint" style="margin:0 0 8px">Recipe: ${r.ins.filter(x=>n(x.q)).map(x=>fq(rcB(r,x))+' '+esc(inName(x))).join(' + ')} → ${fq(rcY(r))} ${esc(it.name)}</p>`:'<p class="msg" style="margin:0 0 8px">Recipe ki miqdaar abhi nahi likhi.'+(own()?' "Recipe ✎" daba kar likhein.':' Owner se likhwayein.')+'</p>'}
   ${kdOf(r)?kdV(r):''}
   <div class="f"><label for="pq${r.id}">Aaj kitna bana${kdOf(r)?' (kunde se khud, ya khud likhein)':''}</label><input type="number" inputmode="decimal" id="pq${r.id}" value="${(P[r.id]||{}).q??''}" onchange="setPQ('${r.id}',this.value)"></div>
-  ${m&&set?`<div style="margin-top:8px">${r.ins.filter(x=>n(x.q)).map(x=>`<div class="sum"><span>${esc(inName(x))}</span><b>${fq(insQ(r,x,date)*m)} ${x.t==='raw'?esc(x.unit):''}</b></div>`).join('')}</div>`:''}
+  ${m&&set?`<div style="margin-top:8px">${r.ins.filter(x=>n(x.q)).map(x=>`<div class="sum"><span>${esc(inName(x))}</span><b>${fq(n(x.q)*m)} ${x.t==='raw'?esc(x.unit):''}</b></div>`).join('')}</div>`:''}
   ${own()&&set?`<div class="res"><span>Laagat fi unit: <b>Rs ${fq(laagat(r,date))}</b> (rate ${fq(it.rate)})</span><span class="muted" style="font-size:14px">${prq(date,r.id)?'Aaj ki cost mein khud lag gayi':'Jis din banega, us din ki cost mein khud lagegi'}</span></div>`:''}
   ${PRE===r.id?rcEditV(r):''}</div>`}).join('');
  const RW=Object.entries(raw);
