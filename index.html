@@ -524,6 +524,8 @@ function drRow(k,r,i){const nmIn=k==='sl'&&slOnly()?`<select class="dn" id="dn${
 const XK=['ex','cr','bl','sp'];
 const xnAct=(k='ex')=>S.xn.filter(x=>!x.off&&(x.kd||'ex')===k).sort((a,b)=>(a.ord??1e6)-(b.ord??1e6));
 const xOnly=(k='ex')=>xnAct(k).length>0,xnOf=(nm,k='ex')=>xnAct(k).find(x=>nkey(x.name)===nkey(baseN(nm)));
+// Typed name in the "Aur" box (owner): the full name in any case, or a start or part that fits only one list name ("pet" → PETROL).
+const xnFind=(nm,k='ex')=>{const x=xnOf(nm,k);if(x)return x;const t=nkey(baseN(nm));if(!t)return null;const A=xnAct(k),s=A.filter(y=>nkey(y.name).startsWith(t));if(s.length===1)return s[0];const c=A.filter(y=>nkey(y.name).includes(t));return c.length===1?c[0]:null};
 const DRX={},drx=(k='ex')=>DRX[date+'|'+k]||(DRX[date+'|'+k]={L:{},X:[{n:'',a:'',d:''}]});
 function xSet(el,f){const R=drx(el.dataset.k),i=el.dataset.i;if(i!=null)R.X[+i][f]=el.value;else(R.L[el.dataset.n]=R.L[el.dataset.n]||{})[f]=el.value}
 const xFill=k=>{const R=drx(k);return Object.values(R.L).filter(v=>String(v.a||'').trim()).length+R.X.filter(v=>v.n&&String(v.a).trim()).length};
@@ -535,22 +537,22 @@ function exSec(k='ex'){const D=day(date),[title,,,hint]=SECS[k],L=live(D,k),tt=L
   return `<div style="display:grid;grid-template-columns:minmax(0,1.2fr) 84px minmax(0,1fr);gap:6px;margin-top:6px;align-items:center"><span style="font-weight:600;font-size:15px;overflow-wrap:anywhere">${esc(x.name)}</span>
   <input type="text" inputmode="decimal" class="xin" data-k="${k}" data-n="${esc(x.name)}" value="${esc(v.a||'')}" placeholder="Raqam" aria-label="${esc(x.name)} raqam" enterkeyhint="next" oninput="xSet(this,'a')" style="${XI}">
   <input type="text" class="xin" data-k="${k}" data-n="${esc(x.name)}" value="${esc(v.d||'')}" placeholder="Detail" aria-label="${esc(x.name)} detail" enterkeyhint="next" oninput="xSet(this,'d')" style="${XI}"></div>`};
- const xrow=(r,i)=>`<div style="display:grid;grid-template-columns:minmax(0,1.2fr) 84px minmax(0,1fr);gap:6px;margin-top:6px"><select class="xin" data-k="${k}" data-i="${i}" onchange="xSet(this,'n')" aria-label="Naam" style="${XI};border:1.5px solid var(--line);border-radius:12px;background:var(--field);color:inherit;min-width:0"><option value="">Chunein</option>${A.map(x=>`<option${x.name===r.n?' selected':''}>${esc(x.name)}</option>`).join('')}</select>
+ const xrow=(r,i)=>`<div style="display:grid;grid-template-columns:minmax(0,1.2fr) 84px minmax(0,1fr);gap:6px;margin-top:6px"><input type="text" class="xin" list="xdl_${k}" data-k="${k}" data-i="${i}" value="${esc(r.n)}" placeholder="Naam likhein" aria-label="Naam" autocapitalize="characters" autocomplete="off" enterkeyhint="next" oninput="xSet(this,'n')" style="${XI};min-width:0">
   <input type="text" inputmode="decimal" class="xin" data-k="${k}" data-i="${i}" value="${esc(r.a)}" placeholder="Raqam" aria-label="Raqam" enterkeyhint="next" oninput="xSet(this,'a')" style="${XI}"><input type="text" class="xin" data-k="${k}" data-i="${i}" value="${esc(r.d)}" placeholder="Detail" aria-label="Detail" enterkeyhint="next" oninput="xSet(this,'d')" style="${XI}"></div>`;
  return `<div class="card" id="xs_${k}"${k==='ex'?' data-ex="1"':''}><details ${OPEN[k]?'open':''} ontoggle="OPEN['${k}']=this.open"><summary><span>${title}${L.length?` <span class="muted" style="font-weight:400">(${L.length})</span>`:''}${fl?` <span class="neg" style="font-weight:400">· ${fl} save baqi</span>`:''}</span><b style="margin-left:auto;padding-right:8px">${f(tt)}</b></summary>
  <p class="hint" style="margin-top:4px">${hint} Register jaisi lines: sirf raqam likhein, detail marzi se.</p>
  ${fixed.map(line).join('')}
- <h4 style="margin:14px 0 0">Aur</h4>${(by['']||[]).map(e=>xSaved(e,k)).join('')}${R.X.map(xrow).join('')}
+ <h4 style="margin:14px 0 0">Aur</h4><datalist id="xdl_${k}">${A.map(x=>`<option value="${esc(x.name)}">`).join('')}</datalist>${(by['']||[]).map(e=>xSaved(e,k)).join('')}${R.X.map(xrow).join('')}
  <button class="link" style="padding:6px 0" onclick="drx('${k}').X.push({n:'',a:'',d:''});OPEN['${k}']=true;render()">+ Aur line</button>
  <button class="btn full" style="margin-top:8px" onclick="xSave('${k}')">Save karein${fl?` (${fl})`:''}</button>
  <p class="hint" style="margin-top:6px;font-size:13px">Do raqam hon to: 900+900. ${own()?'':'Koi naya naam ho jo list mein nahi, to owner ko batayein; wo list mein jodega.'}</p>
  ${own()?xnMgr(k):''}</details></div>`}
 function xSave(k='ex'){const R=drx(k),todo=[];
- const take=(nm,a0,d)=>{const raw=String(a0||'').replace(/\s/g,'');if(!raw)return true;const x=xnOf(nm,k);if(!x){alert(`"${nm}" ${SECS[k][0]} ki list mein nahi.`);return false}
+ const take=(nm,a0,d)=>{const raw=String(a0||'').replace(/\s/g,'');if(!raw)return true;const x=xnFind(nm,k);if(!x){alert(`"${nm}" ${SECS[k][0]} ki list mein nahi (ya kai naamon se milta hai). Poora naam likhein ya neeche se chunein.`);return false}
   const parts=raw.split('+').filter(Boolean),a=parts.reduce((s,y)=>s+n(y),0);if(!a||parts.some(y=>isNaN(parseFloat(y)))){alert(`"${x.name}" ki raqam sahi likhein.`);return false}
   todo.push({n:parts.length>1?`${x.name} (${parts.join('+')})`:x.name,a,nt:String(d||'').trim()});return true};
  for(const [nm,v] of Object.entries(R.L))if(!take(nm,v.a,v.d))return;
- for(const r of R.X){if(!r.n&&String(r.a).trim()){alert('"Aur" mein naam chunein.');return}if(r.n&&!take(r.n,r.a,r.d))return}
+ for(const r of R.X){if(!r.n&&String(r.a).trim()){alert('"Aur" mein raqam ke saath naam bhi likhein.');return}if(r.n&&!take(r.n,r.a,r.d))return}
  if(!todo.length){alert('Kisi line mein raqam likhein.');return}
  todo.forEach(t=>{const e={id:nid(),...t,del:false,u:now()};dd(date)[k].push(e);mark('en:'+date+'|'+k+'|'+e.id)});
  delete DRX[date+'|'+k];OPEN[k]=true;const y=scrollY;render();scrollTo(0,y)}
