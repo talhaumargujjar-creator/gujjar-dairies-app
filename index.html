@@ -201,6 +201,13 @@ input[type=tel],input[type=month]{width:100%;min-height:48px;padding:10px 12px;b
 .card,.tile{box-shadow:none;border-radius:14px}
 .tile{border-top:3px solid var(--tc,var(--c1))}.tile:nth-child(4n+2){--tc:var(--c2)}.tile:nth-child(4n+3){--tc:var(--c3)}.tile:nth-child(4n+4){--tc:var(--c4)}
 .tabs button[aria-current=true]{color:var(--bink)}.tabs button[aria-current=true] i{background:var(--soft)}
+/* Hisaab sections as one compact list (owner: "Hisaab chhota karein"): name and total per row, detail opens on tap. */
+.hlist{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.hlist>.card{border:0;border-bottom:1px solid var(--line);border-radius:0;margin:0;box-shadow:none;padding:12px 14px}
+.hlist>.card:last-child{border-bottom:0}
+.hlist>.card>details>summary{font-size:16px;align-items:center}
+.hlist>.card>details[open]{padding-bottom:4px}
+.capbtn{padding:10px 14px!important;font-size:16px}.capbtn span{font-size:22px}
 </style>
 </head>
 <body>
@@ -428,12 +435,20 @@ function hdr(){return `<header class="hdr"><div class="top"><div class="brand"><
 function head(){const e=$('#stats');if(e)e.innerHTML=statsV();status()}
 function shift(k){date=addDay(date,k);render()}
 function setDate(v){date=v||tz();render()}
+// Owner: every long list shows its first rows only, with "Sab dekhein" to open the rest below (a total row in bold stays visible).
+// Bills and printouts are never shortened. TBX keeps the lists the owner opened, until the page is reloaded.
+const TBX=new Set();
+function tbx(k){TBX.has(k)?TBX.delete(k):TBX.add(k);const y=scrollY;render();scrollTo(0,y)}
+function shortLists(){const cut=(rows,key,after,keep)=>{const hide=rows.slice(keep);if(hide.length<3)return;const open=TBX.has(key);if(!open)hide.forEach(r=>r.hidden=true);
+  const b=document.createElement('button');b.className='btn ghost full';b.style.marginTop='8px';b.textContent=open?'Kam dikhayein ▴':`Sab dekhein (${hide.length} aur) ▾`;b.onclick=()=>tbx(key);after.after(b)};
+ document.querySelectorAll('main table').forEach((t,i)=>{if(t.closest('.bill,#prt,#pdfb')||t.querySelector('input,select'))return;let R=[...t.rows].slice(1);const L=R[R.length-1];if(L&&L.querySelector('b')&&!L.onclick)R=R.slice(0,-1);if(R.length>10)cut(R,tab+':t'+i,t,8)});
+ if(!bq)document.querySelectorAll('main .card').forEach((c,i)=>{const R=[...c.children].filter(x=>x.classList.contains('crow'));if(R.length>12)cut(R,tab+':c'+i,R[R.length-1],10)})}
 function render(){const a=$('#app');
  if(recovering){a.innerHTML=recoverV();return}
  if(!S.me||!S.me.email){a.innerHTML=loginV();return}
  if(S.me.role==='pending'){a.innerHTML=pendingV();return}
  if(!tabs().some(t=>t[0]===tab))tab=tabs()[0][0];
- a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank:cashV,cost,report,items,acct,kc,prd,emp})[tab]()}</main>`+navV();status()}
+ a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank:cashV,cost,report,items,acct,kc,prd,emp})[tab]()}</main>`+navV();shortLists();status()}
 
 // Stock
 const isDone=it=>has((day(date).st[it.id]||{}).cl);
@@ -639,7 +654,7 @@ function galla(){const t=tot(date),ci=`<div class="fld" style="margin:12px 0 0">
  ${R('− Kharcha + salary (1)',t.ex+t.sl)}${R('− Ghar aur gari (2)',t.cr)}${R('− Udhaar diya (3)',t.ud)}${R('− Bill ki raqam (4)',t.bl)}${R('− Supplier (5)',t.sp)}${t.bout?R('− Bank mein jama',t.bout):''}
  ${R('Galle mein hona chahiye',t.exp,'tot')}${ci}${b}
  ${t.dsale?`<p class="hint" style="margin-top:10px">Home delivery ka maal (Rs ${f(t.dsale)}) counter sale mein nahi, customers ke bill mein hai. Use "Udhaar diya" mein dobara na likhein.</p>`:''}</div>`}
-function hisaab(){return capBtn()+hazriV()+`<datalist id="custs">${custNames().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`+KINDS.map(sec).join('')+(own()?udhaarV():'')+galla()}
+function hisaab(){return capBtn()+hazriV()+`<datalist id="custs">${custNames().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`+`<div class="hlist">${KINDS.map(sec).join('')}</div>`+(own()?udhaarV():'')+galla()}
 function setC(v){const D=dd(date);D.cash=v===''?null:n(v);D.cu=now();mark('ca:'+date);render()}
 
 // Doodh
@@ -1579,12 +1594,12 @@ function monthRows(m){return keys().filter(d=>d.startsWith(m)&&active(S.days[d])
 function monthSum(m){const R=monthRows(m),S2=k=>R.reduce((a,r)=>a+(r[k]||0),0),last=m===tz().slice(0,7)?+tz().slice(8):dim(m);let fx=0;for(let i=1;i<=last;i++)fx+=fixedDay(m+'-'+String(i).padStart(2,'0'));
  return {R,S2,last,fx,pl:S2('pl0')-fx}}
 function monthV(){const m=date.slice(0,7),{R,S2,last,fx,pl}=monthSum(m),[y,mo]=m.split('-');
- return `<div class="card"><h3>${MONTHS[+mo-1]} ${y} ka hisaab</h3><div style="margin-top:6px"></div>
+ return `<div class="card"><details${OPEN.mv?' open':''} ontoggle="OPEN.mv=this.open"><summary><span>${MONTHS[+mo-1]} ${y} ka hisaab</span><b class="${pl<0?'neg':'pos'}" style="margin-left:auto;padding-right:8px">${f(pl)}</b></summary><div style="margin-top:6px"></div>
  <div class="sum"><span>Din jin ka hisaab hai</span><b>${R.length}</b></div><div class="sum"><span>Kul sale</span><b>${f(S2('sale'))}</b></div>
  <div class="sum"><span>Kharcha (roz wala)</span><b>${f(S2('ex'))}</b></div><div class="sum"><span>Fixed kharcha + salary (${last} din ka hissa)</span><b>${f(fx)}</b></div>
  <div class="sum"><span>Supplier payments</span><b>${f(S2('sp'))}</b></div>
  <div class="sum"><span>Udhaar diya</span><b>${f(S2('ud'))}</b></div><div class="sum tot"><span>Asal munafa</span><b class="${pl<0?'neg':'pos'}">${f(pl)}</b></div>
- <div class="btns" style="margin-top:12px"><button class="btn ghost" onclick="monthCsv()">Excel (CSV) download</button><button class="btn ghost" onclick="shareMonth()">WhatsApp par bhejein</button></div></div>`}
+ <div class="btns" style="margin-top:12px"><button class="btn ghost" onclick="monthCsv()">Excel (CSV) download</button><button class="btn ghost" onclick="shareMonth()">WhatsApp par bhejein</button></div></details></div>`}
 function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click()}
 // CSV opens in Excel; the BOM keeps Excel from mangling the text.
 function monthCsv(){const m=date.slice(0,7),R=monthRows(m),q=v=>`"${String(v).replace(/"/g,'""')}"`;
@@ -1604,11 +1619,11 @@ let ipM=1,ipAll=false;
 // Only the top items show until "Sab items dekhein" is pressed, so the card stays short.
 function ipV(){const m=date.slice(0,7),days=ipM?keys().filter(d=>d.startsWith(m)&&d<=date):[date],L=itemStats(days),tp=L.reduce((a,x)=>a+x.prof,0);
  const chip=(v,l)=>`<button class="chip" aria-pressed="${ipM===v}" onclick="ipM=${v};render()">${l}</button>`;
- return `<h2>Har item ka munafa</h2><div class="card"><div class="chips" style="flex-wrap:wrap;margin-bottom:10px">${chip(0,'Is din')}${chip(1,'Is mahine ('+pk(m+'-01')+' se '+pk(date)+' tak)')}</div>
+ return `<div class="card"><details${OPEN.ip?' open':''} ontoggle="OPEN.ip=this.open"><summary><span>Har item ka munafa</span><b class="${tp<0?'neg':'pos'}" style="margin-left:auto;padding-right:8px">${f(tp)}</b></summary><div style="margin-top:10px"></div><div class="chips" style="flex-wrap:wrap;margin-bottom:10px">${chip(0,'Is din')}${chip(1,'Is mahine ('+pk(m+'-01')+' se '+pk(date)+' tak)')}</div>
  ${L.length?`<table><tr><th>#</th><th style="text-align:left">Item</th><th>Bika</th><th>Sale</th><th>Munafa</th></tr>${(ipAll?L:L.slice(0,5)).map((x,i)=>`<tr><td>${i+1}</td><td style="text-align:left">${esc(x.it.name)}</td><td>${fq(q2(x.q))}</td><td>${f(x.sale)}</td><td class="${x.prof<0?'neg':'pos'}">${f(x.prof)}${tp>0&&x.prof>0?`<br><small>${Math.round(x.prof/tp*100)}%</small>`:''}</td></tr>`).join('')}
  <tr><td></td><td><b>Kul</b></td><td></td><td><b>${f(L.reduce((a,x)=>a+x.sale,0))}</b></td><td><b>${f(tp)}</b></td></tr></table>
 ${L.length>5?`<button class="btn ghost full" style="margin-top:10px" onclick="ipAll=!ipAll;render()">${ipAll?"Kam dikhayein (sirf top 5)":"Sab items dekhein ("+(L.length-5)+" aur)"}</button>`:""}
- <p class="hint">Sab se zyada munafa wala item upar. Counter aur delivery dono jud kar. % = kul items ke munafa mein us ka hissa.</p>`:'<p class="hint">Is waqt ka koi bika hua maal nahi.</p>'}</div>`}
+ <p class="hint">Sab se zyada munafa wala item upar. Counter aur delivery dono jud kar. % = kul items ke munafa mein us ka hissa.</p>`:'<p class="hint">Is waqt ka koi bika hua maal nahi.</p>'}</details></div>`}
 // Kharche ki report (owner): one Hisaab hissa between two dates, all names with totals, or one name day by day with its detail.
 let xrk='ex',xrn='',xrf='',xrt='';
 const XRK=['ex','sl','cr','bl','sp','ud'];
@@ -1631,13 +1646,15 @@ function xrV(){const s=xrState(),sel='width:100%;min-height:48px;padding:10px 12
  <p class="hint">Naam dabayein to us ki har din ki raqam aur detail khulti hai.</p></details></div>`}
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
- return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Delivery ka munafa',f(t.dprof),t.dprof<0?'neg':'pos')}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Kharcha (roz wala)',f(t.exV+t.slV))}${T('Fixed + salary (aaj ka hissa)',f(t.fxd))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Udhaar diya',f(t.ud))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
- <div class="btns" style="margin:12px 0"><button class="btn" onclick="shareDay()">WhatsApp par bhejein</button></div>
+ // Owner: everything summarised first. Four main tiles show; the rest of the day, the month, items, kharche and past days open on tap.
+ return `<h2>${dayName(date)}, ${pk(date)}</h2><div class="tiles">${T('Kul sale',f(t.sale+t.dsale))}${T('Asal munafa',f(t.pl),t.pl<0?'neg':'pos')}${T('Kharcha (roz wala)',f(t.exV+t.slV))}${T('Galla farq',t.diff==null?'—':f(t.diff),t.diff<0?'neg':'')}</div>
+ <div class="card" style="margin-top:10px"><details${OPEN.rd?' open':''} ontoggle="OPEN.rd=this.open"><summary>Aaj ki poori detail</summary><div class="tiles" style="margin-top:10px">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Delivery ka munafa',f(t.dprof),t.dprof<0?'neg':'pos')}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Fixed + salary (aaj ka hissa)',f(t.fxd))}${T('Udhaar diya',f(t.ud))}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
+ <p class="hint" style="margin-top:8px">Munafa = bike maal ka (rate − cost) minus kharcha aur salary. Ghar aur gari kharcha, udhaar, owner ko di raqam aur supplier payment munafa mein nahi ginte.</p></details></div>
+ <div class="btns" style="margin:0 0 12px"><button class="btn full" onclick="shareDay()">WhatsApp par bhejein</button></div>
  ${monthV()}
  ${ipV()}
  ${xrV()}
- <h2>Pichle din</h2><div class="card">${days.length?`<table><tr><th>Tareekh</th><th>Sale</th><th>Kharcha</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr onclick="date='${d}';render();scrollTo(0,0)"><td>${pk(d)}</td><td>${f(x.sale+x.dsale)}</td><td>${f(x.ex+x.sl)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table>`:'<p class="hint">Abhi koi din ka hisaab nahi.</p>'}</div>
- <p class="hint">Munafa = bike maal ka (rate − cost) minus kharcha aur salary. Ghar aur gari kharcha, udhaar, owner ko di raqam aur supplier payment munafa mein nahi ginte.</p>`}
+ <div class="card"><details${OPEN.pd?' open':''} ontoggle="OPEN.pd=this.open"><summary><span>Pichle din</span><span class="muted" style="margin-left:auto;padding-right:8px;font-weight:400">${days.length} din</span></summary>${days.length?`<table style="margin-top:8px"><tr><th>Tareekh</th><th>Sale</th><th>Kharcha</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr onclick="date='${d}';render();scrollTo(0,0)"><td>${pk(d)}</td><td>${f(x.sale+x.dsale)}</td><td>${f(x.ex+x.sl)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table>`:'<p class="hint">Abhi koi din ka hisaab nahi.</p>'}</details></div>`}
 
 // Items
 function items(){const off=S.items.filter(i=>i.off);
