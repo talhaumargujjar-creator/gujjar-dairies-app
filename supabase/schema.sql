@@ -579,3 +579,8 @@ create policy attendance_member_select on public.attendance for select to authen
 create policy attendance_member_insert on public.attendance for insert to authenticated with check (public.is_member());
 create policy attendance_member_update on public.attendance for update to authenticated using (public.is_member()) with check (public.is_member());
 revoke all on public.attendance from anon;
+
+-- Register-style lists for more Hisaab sections (owner): exp_names.kind = the section ('ex' kharcha, 'cr' ghar aur gari,
+-- 'bl' bill ki raqam / owner ko, 'sp' supplier). The cr/bl/sp lists were started from the names already used in those
+-- sections (ids xk_<kind>_NN, inserted on 08/11/2026); old entries were not touched.
+alter table public.exp_names add column if not exists kind text not null default 'ex';
