@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#2e4791">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#171f33" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
@@ -187,6 +187,20 @@ input[type=tel],input[type=month]{width:100%;min-height:48px;padding:10px 12px;b
  #prt .po{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}#prt .po div{border:1px solid #ccc;border-radius:8px;padding:6px;text-align:center;break-inside:avoid}
  #prt .po img{width:100%;height:120px;object-fit:contain;border-radius:6px}#prt .po p{font-weight:bold;margin-top:4px}
  #prt .pof{break-inside:avoid;page-break-inside:avoid}#prt td,#prt th{padding:3px 4px}}
+/* Look A + C (owner's choice): a clean white header and cards with thin borders; colour only on the numbers and a thin top line per tile. */
+:root{--c1:#185fa5;--c2:#0f6e56;--c3:#854f0b;--c4:#534ab7}
+@media(prefers-color-scheme:dark){:root{--c1:#85b7eb;--c2:#5dcaa5;--c3:#ef9f27;--c4:#afa9ec}}
+.hdr{background:var(--card);color:var(--ink);border-radius:0 0 18px 18px;border-bottom:1px solid var(--line);box-shadow:0 2px 10px rgba(20,35,80,.06)}
+.brand small{opacity:1;color:var(--mut);font-size:12.5px}.brand small b{color:var(--bink);font-size:15px}
+.pill{background:var(--grnbg);color:var(--grn);font-weight:600}
+.dbar{background:var(--soft)}.dbar button{color:var(--bink)}
+.dmid input{color:var(--bink);color-scheme:light dark}.dmid small{color:var(--mut);opacity:1}.dmid .dpk>.dtx{color:var(--bink)}
+.stat{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--sc,var(--c1));padding:8px 10px}
+.stat span{color:var(--mut);opacity:1}.stat b,.stat b.y{color:var(--sc,var(--ink));font-size:19px}
+.stat:nth-child(3n+1){--sc:var(--c1)}.stat:nth-child(3n+2){--sc:var(--c2)}.stat:nth-child(3n+3){--sc:var(--c3)}
+.card,.tile{box-shadow:none;border-radius:14px}
+.tile{border-top:3px solid var(--tc,var(--c1))}.tile:nth-child(4n+2){--tc:var(--c2)}.tile:nth-child(4n+3){--tc:var(--c3)}.tile:nth-child(4n+4){--tc:var(--c4)}
+.tabs button[aria-current=true]{color:var(--bink)}.tabs button[aria-current=true] i{background:var(--soft)}
 </style>
 </head>
 <body>
@@ -407,8 +421,8 @@ const tabs=()=>TABS.filter(t=>t[2].includes(role()[0]));
 const ROLE={owner:'Owner',staff:'Staff',delivery:'Delivery',pending:'Manzoori baqi'};
 function navV(){return `<nav class="tabs">${tabs().filter(t=>t[3]).map(([k,l])=>`<button data-k="${k}" aria-current="${tab==k||((tab==='items'||tab==='cost'||tab==='emp')&&k==='acct')}" onclick="go('${k}')"><i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg></i>${l}</button>`).join('')}</nav>`}
 function go(t){tab=t;render();scrollTo(0,0);if(t==='acct')loadMembers()}
-function statsV(){if(tab==='doodh')return mstatsV();if(tab==='bank')return cbStatsV();if(tab==='dlv')return dstatsV();const t=tot(date);return `<div class="stat"><span>Sale</span><b>${f(t.sale+t.dsale)}</b></div><div class="stat"><span>Munafa</span><b class="y">${f(t.pl)}</b></div><div class="stat"><span>Galla farq</span><b>${t.diff==null?'—':f(t.diff)}</b></div>`}
-function hdr(){return `<header class="hdr"><div class="top"><div class="brand"><img src="/img/logo.png" alt="Gujjar Dairies"><small><b>${ROLE[role()]}</b><br>Hisaab</small></div><button class="pill" id="sy" onclick="go('acct')"></button></div>
+function statsV(){if(tab==='doodh')return mstatsV();if(tab==='bank')return cbStatsV();if(tab==='dlv')return dstatsV();const t=tot(date);return `<div class="stat"><span>Sale</span><b>${f(t.sale+t.dsale)}</b></div><div class="stat"><span>Munafa</span><b class="y${t.pl<0?' neg':''}">${f(t.pl)}</b></div><div class="stat"><span>Galla farq</span><b class="${t.diff!=null&&Math.round(t.diff)<0?'neg':''}">${t.diff==null?'—':f(t.diff)}</b></div>`}
+function hdr(){return `<header class="hdr"><div class="top"><div class="brand"><img src="/img/logo.png" alt="Gujjar Dairies"><small><b>Assalam o Alaikum</b><br>${ROLE[role()]} · Hisaab</small></div><button class="pill" id="sy" onclick="go('acct')"></button></div>
  <div class="dbar"><button onclick="shift(-1)" aria-label="Pichla din">‹</button><div class="dmid"><input type="date" id="dt" value="${date}" onchange="setDate(this.value)" aria-label="Tareekh"><small>${dayName(date)}${date===tz()?' · Aaj':''}</small></div><button onclick="shift(1)" aria-label="Agla din">›</button></div>
  ${own()||tab==='doodh'||tab==='dlv'?`<div class="stats" id="stats">${statsV()}</div>`:''}</header>`}
 function head(){const e=$('#stats');if(e)e.innerHTML=statsV();status()}
