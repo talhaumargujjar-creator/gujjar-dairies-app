@@ -345,7 +345,10 @@ function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q
 const LPM=38;
 function milkIn(it,d){let q=0,a=0;for(const p of S.mk.ps)if(p.si===it.id&&S.mk.d[d]&&S.mk.d[d][p.id]){q+=mtot(d,p.id)/40*LPM;a+=mamt(d,p.id).t}return {q:q2(q),a}}
 // A day can carry its own rate (eggs change daily); otherwise the item's rate.
-const rateOf=(it,d)=>{const s=day(d).st[it.id];return s&&has(s.rt)?n(s.rt):n(it.rate)};
+// A day rate (owner, "Rate âœŽ") stays from that day onward until another day rate (owner): the latest day rate on or before d, else the item rate.
+const rtList=id=>{const M=MEMO.rt||(MEMO.rt={});if(!M[id]){const L=[];for(const k of keys()){const s=(S.days[k].st||{})[id];if(s&&has(s.rt))L.push([k,n(s.rt)])}M[id]=L}return M[id]};
+const rtFrom=(id,d)=>{const L=rtList(id);let r=null;for(const x of L){if(x[0]>d)break;r=x}return r};
+const rateOf=(it,d)=>{const r=rtFrom(it.id,d);return r?r[1]:n(it.rate)};
 // Cost on a day = the latest cost change on or before it (Cost tab), otherwise the item's starting cost.
 // A day with milk from a linked Doodh party is a cost change too (its bill ÷ litres); a Cost tab entry on the same day wins.
 // So is a day the item was made in Production (owner's wish, no button): cost = that day's laagat fi unit, averaged
@@ -467,14 +470,14 @@ function line(it){if(it.ai&&!own()){const s=day(date).st[it.id]||{};return `<spa
  return pl+`<span>Total ${fq(tin)} · Bika <b>${fq(sd)}</b>${dq?` (delivery ${fq(dq)}, counter ${fq(cs)})`:''}</span>`+(own()?`<span><b>Rs ${f(cs*rateOf(it,date))}</b></span>`:'')}
 function card(it){const s=day(date).st[it.id]||{};
  const inp=(k,l)=>`<div class="f"><label for="${k}${it.id}">${l}</label><input type="number" inputmode="decimal" enterkeyhint="next" id="${k}${it.id}" value="${s[k]??''}" onchange="setS('${it.id}','${k}',this)"></div>`;
- return `<div class="card item${isDone(it)?' done':''}"><div class="ih"><b>${esc(it.name)}</b>${own()?`<button class="tag rt" onclick="setRt('${it.id}')" aria-label="${esc(it.name)}: aaj ka rate">${has(s.rt)?'Aaj ka rate '+fq(s.rt):'Rate '+fq(it.rate)} ✎</button>`:''}</div>
+ return `<div class="card item${isDone(it)?' done':''}"><div class="ih"><b>${esc(it.name)}</b>${own()?`<button class="tag rt" onclick="setRt('${it.id}')" aria-label="${esc(it.name)}: aaj ka rate">${has(s.rt)?'Aaj ka rate '+fq(s.rt):'Rate '+fq(rateOf(it,date))} ✎</button>`:''}</div>
  <div class="g4"><div class="f"><span class="l">Opening</span><div class="v">${fq(opening(it,date))}</div></div>${it.ai&&!own()?'<div class="f"><span class="l">Purchase</span><div class="v">Doodh se</div></div>':inp('pu','Purchase')}${inp('us','Istemal')}${inp('cl','Closing')}</div>
  <div class="res">${line(it)}</div></div>`}
 // Items in register order; ones without an order keep their place at the end.
 const ordered=()=>S.items.map((it,i)=>[it,i]).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
 const act=()=>ordered().filter(i=>!i.off);
 // Rate for this day only (eggs). Empty means the normal rate from Items.
-function setRt(id){const it=itm(id),s0=day(date).st[id]||{},v=prompt(`${it.name}: aaj ka rate likhein.\nKhali chhorein to normal rate (${fq(it.rate)}) lagega.`,has(s0.rt)?s0.rt:'');
+function setRt(id){const it=itm(id),s0=day(date).st[id]||{},v=prompt(`${it.name}: ${pk(date)} ka rate likhein.\nYe rate is din se aage har din lagega jab tak dobara na badlein.\nKhali chhorein to pichla rate (${fq(rateOf(it,addDay(date,-1)))}) lagega.`,has(s0.rt)?s0.rt:'');
  if(v===null)return;const D=dd(date),s=D.st[id]=D.st[id]||{pu:'',us:'',cl:'',u:0};s.rt=v.trim()===''?'':n(v);s.u=now();mark('st:'+date+'|'+id);render()}
 function listV(){const L=act().filter(i=>i.name.toLowerCase().includes(q.toLowerCase())&&(flt==='all'||(flt==='done')===isDone(i)));
  return L.map(card).join('')||`<p class="hint" style="text-align:center;padding:20px">${flt==='left'?'Sab items ho gaye ✓':'Koi item nahi mila.'}</p>`}
@@ -1707,7 +1710,8 @@ function items(){const off=S.items.filter(i=>i.off);
  <div class="f"><label>Cost</label><input type="number" inputmode="decimal" value="${it.cost}" onchange="upI('${it.id}','cost',this.value)"></div>
  <div class="f"><label>Shuru stock</label><input type="number" inputmode="decimal" value="${it.op}" onchange="upI('${it.id}','op',this.value)"></div></div></div>`).join('')}
  ${off.length?`<h2>Hataye gaye items</h2><div class="card">${off.map(it=>`<div class="row"><span>${esc(it.name)}</span><button class="btn ghost" onclick="offI('${it.id}',false)">Wapas layein</button></div>`).join('')}</div>`:''}`}
-function upI(id,k,v){const it=itm(id);it[k]=k==='drate'&&v===''?null:n(v);if(k==='op')it.u=now();else it.pru=now();mark('it:'+id);mark('pr:'+id);head()}
+// A new item rate on the Items page starts today; if the item already has day rates, today's day rate is set too so it wins from today on.
+function upI(id,k,v){const it=itm(id);if(k==='rate'&&rtList(id).length){const d=tz(),D=dd(d),s=D.st[id]=D.st[id]||{pu:'',us:'',cl:'',u:0};s.rt=n(v);s.u=now();mark('st:'+d+'|'+id);MEMO={}}it[k]=k==='drate'&&v===''?null:n(v);if(k==='op')it.u=now();else it.pru=now();mark('it:'+id);mark('pr:'+id);head()}
 function upN(id,v){v=v.trim();if(!v)return;const it=itm(id);it.name=v;it.u=now();mark('it:'+id)}
 function addI(){const nm=$('#ni').value.trim();if(!nm){alert('Item ka naam likhein.');return}const id='i'+Date.now(),ord=S.items.reduce((m,x)=>Math.max(m,x.ord??0),0)+1;
  S.items.push({id,name:nm,rate:n($('#nr').value),cost:0,op:0,off:false,ord,u:now(),pru:now()});mark('it:'+id);mark('pr:'+id);render()}
