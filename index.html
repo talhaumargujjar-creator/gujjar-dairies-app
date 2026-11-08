@@ -345,7 +345,7 @@ function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q
 const LPM=38;
 function milkIn(it,d){let q=0,a=0;for(const p of S.mk.ps)if(p.si===it.id&&S.mk.d[d]&&S.mk.d[d][p.id]){q+=mtot(d,p.id)/40*LPM;a+=mamt(d,p.id).t}return {q:q2(q),a}}
 // A day can carry its own rate (eggs change daily); otherwise the item's rate.
-// A day rate (owner, "Rate âœŽ") stays from that day onward until another day rate (owner): the latest day rate on or before d, else the item rate.
+// A day rate (owner, "Rate ✎") stays from that day onward until another day rate (owner): the latest day rate on or before d, else the item rate.
 const rtList=id=>{const M=MEMO.rt||(MEMO.rt={});if(!M[id]){const L=[];for(const k of keys()){const s=(S.days[k].st||{})[id];if(s&&has(s.rt))L.push([k,n(s.rt)])}M[id]=L}return M[id]};
 const rtFrom=(id,d)=>{const L=rtList(id);let r=null;for(const x of L){if(x[0]>d)break;r=x}return r};
 const rateOf=(it,d)=>{const r=rtFrom(it.id,d);return r?r[1]:n(it.rate)};
@@ -1610,14 +1610,23 @@ const PDFL=['https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min
 const loadJs=u=>new Promise((ok,no)=>{if(document.querySelector(`script[src="${u}"]`)&&(u.includes('jspdf')?window.jspdf:window.html2canvas))return ok();const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>{s.remove();no(new Error('load'))};document.head.appendChild(s)});
 // PDFR = {key, file, done} of the bill made last; key tells which bill page shows its "PDF tayyar hai" button.
 let PDFR=null,pdfBusy=null;
-async function pdfMake(key,html,name,done){if(pdfBusy)return;pdfBusy=key;PDFR=null;render();
+async function pdfMake(key,html,name,done,multi){if(pdfBusy)return;pdfBusy=key;PDFR=null;render();
  try{await Promise.all(PDFL.map(loadJs))}catch(e){pdfBusy=null;render();alert('PDF banane ke liye pehli dafa internet chahiye. Internet chala kar dobara dabayein.');return}
  const el=document.createElement('div');el.id='pdfb';el.innerHTML=html;document.body.appendChild(el);
  try{await Promise.all([...el.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));
-  const cv=await html2canvas(el,{scale:2,backgroundColor:'#fff'}),{jsPDF}=window.jspdf,pdf=new jsPDF({unit:'pt',format:'a4'}),W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight(),mg=16;
+  const sc=multi?1.5:2,cv=await html2canvas(el,{scale:sc,backgroundColor:'#fff'}),{jsPDF}=window.jspdf,pdf=new jsPDF({unit:'pt',format:'a4'}),W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight(),mg=16;
+  if(multi){
+   // Poora hisaab: as many A4 pages as needed, each break just above a table row or heading so no line is cut in half.
+   const r0=el.getBoundingClientRect(),k=cv.width/el.offsetWidth,ph=(H-2*mg)/(W-2*mg)*el.offsetWidth,tot=el.offsetHeight;
+   const B=[...new Set([...el.querySelectorAll('tr,h2,.k,p,.two>div')].filter(x=>!(x.tagName==='TR'&&x.rowIndex<2)).map(x=>Math.round(x.getBoundingClientRect().top-r0.top)))].sort((a,b)=>a-b);
+   for(let s=0,pg=0;s<tot-2;pg++){let e=s+ph;if(e<tot){const c=B.filter(y=>y>s+ph*0.4&&y<=e);if(c.length)e=c[c.length-1]}else e=tot;
+    const h=Math.round((e-s)*k),pc=document.createElement('canvas');pc.width=cv.width;pc.height=h;const g=pc.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,pc.width,h);g.drawImage(cv,0,Math.round(s*k),cv.width,h,0,0,cv.width,h);
+    if(pg)pdf.addPage();const iw=W-2*mg;pdf.addImage(pc.toDataURL('image/jpeg',0.9),'JPEG',mg,mg,iw,h*iw/cv.width);pdf.setFontSize(8);pdf.text(String(pg+1),W/2,H-6,{align:'center'});s=e}
+  }else{
   // Always one page (owner): a long bill is shrunk to fit the page height and centred.
   let iw=W-2*mg,ih=cv.height*iw/cv.width;if(ih>H-2*mg){ih=H-2*mg;iw=cv.width*ih/cv.height}
   pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',(W-iw)/2,mg,iw,ih);
+  }
   PDFR={key,done,file:new File([pdf.output('blob')],(name+'.pdf').replace(/[\\/:*?"<>|]/g,''),{type:'application/pdf'})}}
  catch(e){alert('PDF nahi ban saka. Dobara koshish karein.')}finally{el.remove();pdfBusy=null}
  if(PDFR)await pdfSend();render()}
@@ -1697,11 +1706,77 @@ function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</sp
  <div class="card" style="margin-top:10px"><details${OPEN.rd?' open':''} ontoggle="OPEN.rd=this.open"><summary>Aaj ki poori detail</summary><div class="tiles" style="margin-top:10px">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Delivery ka munafa',f(t.dprof),t.dprof<0?'neg':'pos')}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Fixed + salary (aaj ka hissa)',f(t.fxd))}${T('Udhaar diya',f(t.ud))}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
  <p class="hint" style="margin-top:8px">Munafa = bike maal ka (rate − cost) minus kharcha aur salary. Ghar aur gari kharcha, udhaar, owner ko di raqam aur supplier payment munafa mein nahi ginte.</p></details></div>
  <div class="btns" style="margin:0 0 12px"><button class="btn full" onclick="shareDay()">WhatsApp par bhejein</button></div>
+ ${rgV()}
  ${monthV()}
  ${ipV()}
  ${xrV()}
  <div class="card"><details${OPEN.pd?' open':''} ontoggle="OPEN.pd=this.open"><summary><span>Pichle din</span><span class="muted" style="margin-left:auto;padding-right:8px;font-weight:400">${days.length} din</span></summary>${days.length?`<table style="margin-top:8px"><tr><th>Tareekh</th><th>Sale</th><th>Kharcha</th><th>Munafa</th></tr>${days.map(d=>{const x=tot(d);return `<tr onclick="date='${d}';render();scrollTo(0,0)"><td>${pk(d)}</td><td>${f(x.sale+x.dsale)}</td><td>${f(x.ex+x.sl)}</td><td class="${x.pl<0?'neg':'pos'}">${f(x.pl)}</td></tr>`}).join('')}</table>`:'<p class="hint">Abhi koi din ka hisaab nahi.</p>'}</details></div>`}
 
+// ---- Poora hisaab (owner): the whole day or month on paper, like the register, as a multi-page PDF or a print.
+// Everything comes from the same functions the app uses (tot, sold, csold, dday, ledger, monthSum, itemStats), so the paper always agrees with the screen.
+const RGCSS=`.rg{color:#111;font:12px/1.35 Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}.rg *{box-sizing:border-box}
+.rg .rh{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1f4fa8;padding-bottom:8px}.rg .rh h1{margin:0;font-size:20px;color:#1f4fa8}.rg .rh p{margin:0;font-size:13px;text-align:right}
+.rg h2{font-size:14px;margin:14px 0 4px;color:#1f4fa8;border-bottom:1px solid #cdd8ee;padding-bottom:2px}.rg table{width:100%;border-collapse:collapse;font-size:11.5px}
+.rg th{background:#e9eef8;font-weight:bold}.rg th,.rg td{border:1px solid #c9d1e0;padding:3px 4px;text-align:right;vertical-align:top}.rg .l{text-align:left}.rg tr.t td{font-weight:bold;background:#f3f5fa}
+.rg .neg{color:#c71c2b}.rg .k{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}.rg .k div{border:1px solid #c9d1e0;border-radius:6px;padding:5px 7px}.rg .k span{display:block;font-size:11px;color:#555}.rg .k b{font-size:15px}
+.rg .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.rg .m{color:#666}.rg .ft{margin-top:14px;font-size:10.5px;color:#666;text-align:center}`;
+const rgN=v=>`<span class="${v<0?'neg':''}">${f(v)}</span>`,rgQ=v=>v?fq(q2(v)):'';
+const rgHead=(t,s)=>`<style>${RGCSS}</style><div class="rg"><div class="rh"><div><h1>${esc((S.dl.bp&&S.dl.bp.shop)||'Gujjar Dairies')}</h1><b>${t}</b></div><p>${s}<br><span class="m">Bana: ${pk(tz())}</span></p></div>`;
+const rgK=L=>`<div class="k">${L.map(([l,v])=>`<div><span>${l}</span><b>${typeof v==='number'?rgN(v):v}</b></div>`).join('')}</div>`;
+// One item's day like the register line: kal ka (opening), aaya (purchase + doodh party + bana), total, istemal, closing, bika, and its sale and munafa (counter + delivery).
+function rgItem(it,d){const s=day(d).st[it.id]||{},op=opening(it,d),pu=n(s.pu)+milkIn(it,d).q,mk=made(it,d),us=n(s.us)+usedP(it,d),cl=has(s.cl),dq=dday(d).q[it.id]||0;
+ let sale=0,prof=0;const c=csold(it,d),r=rateOf(it,d),k=costOf(it,d);sale+=c*r;prof+=c*(r-k);
+ for(const [cu,L] of Object.entries(S.dl.d[d]||{})){const e=L[it.id];if(e&&!e.del){const a=damt(it.id,e,cu,d);sale+=a;prof+=a-n(e.q)*k}}
+ return {it,op,pu,mk,tin:op+pu+mk,us,cl:cl?n(s.cl):null,sd:cl?sold(it,d):null,dq,r,k,sale,prof,any:op||pu||mk||us||cl||dq}}
+function rgStock(d){const L=act().map(it=>rgItem(it,d)).filter(x=>x.any),ts=L.reduce((a,x)=>a+x.sale,0),tp=L.reduce((a,x)=>a+x.prof,0);
+ return `<h2>Stock (register jaisa)</h2><table><tr><th>#</th><th class="l">Item</th><th>Kal ka</th><th>Aaya</th><th>Total</th><th>Istemal</th><th>Closing</th><th>Bika</th><th>Delivery</th><th>Rate</th><th>Sale</th><th>Munafa</th></tr>
+ ${L.map((x,i)=>`<tr><td>${i+1}</td><td class="l">${esc(x.it.name)}</td><td>${rgQ(x.op)}</td><td>${rgQ(x.pu+x.mk)}</td><td>${rgQ(x.tin)}</td><td>${rgQ(x.us)}</td><td>${x.cl==null?'<span class="m">—</span>':fq(x.cl)}</td><td>${x.sd==null?'':rgQ(x.sd)}</td><td>${rgQ(x.dq)}</td><td>${fq(x.r)}</td><td>${x.sale?f(x.sale):''}</td><td>${x.sale?rgN(x.prof):''}</td></tr>`).join('')}
+ <tr class="t"><td></td><td class="l">Kul</td><td colspan="8"></td><td>${f(ts)}</td><td>${rgN(tp)}</td></tr></table>
+ <p class="m">Aaya = purchase + doodh party se aaya + production mein bana. Istemal = dukaan mein istemal + production mein laga. Bika = Total − Istemal − Closing (delivery bhi is mein). "—" = closing nahi likha, item ginti mein nahi. Stock ki raqam (closing × cost): Rs ${f(stockVal(d))}.</p>`}
+function rgSecs(d){const D=norm(day(d));return KINDS.map(k=>{const L=live(D,k);if(!L.length)return '';const t=L.reduce((a,e)=>a+n(e.a),0);
+ return `<h2>${esc(SECS[k][0])} <span class="m">(${L.length})</span></h2><table><tr><th class="l">Naam</th><th class="l">Detail</th><th>Raqam</th></tr>${L.map(e=>`<tr><td class="l">${esc(e.n)}</td><td class="l">${esc(e.nt||'')}</td><td>${f(n(e.a))}</td></tr>`).join('')}<tr class="t"><td class="l" colspan="2">Kul</td><td>${f(t)}</td></tr></table>`}).join('')||'<h2>Hisaab</h2><p class="m">Is din koi kharcha ya payment nahi likhi.</p>'}
+function rgGalla(t){const R=(l,v,c)=>`<tr${c?' class="t"':''}><td class="l">${l}</td><td>${rgN(v)}</td></tr>`;
+ return `<h2>Galla (total hisaab)</h2><table>${R('Galla opening',t.op)}${R('+ Counter sale',t.sale)}${R('+ Cash wasool',t.rc)}${t.dcash?R('+ Delivery wasooli (cash)',t.dcash):''}${t.bin?R('+ Bank se nikala',t.bin):''}${R('Total cash in (A)',t.cin,1)}
+ ${KINDS.filter(k=>k!=='rc'&&t[k]).map(k=>R('− '+esc(SECS[k][0]),t[k])).join('')}${t.bout?R('− Bank mein jama',t.bout):''}${R('Galle mein hona chahiye',t.exp,1)}
+ ${t.cash!=null?R('Asal cash (gina hua)',n(t.cash))+R('Galla farq',t.diff,1):'<tr><td class="l" colspan="2"><span class="m">Asal cash nahi likha</span></td></tr>'}</table>`}
+function rgProf(t){const R=(l,v,c)=>`<tr${c?' class="t"':''}><td class="l">${l}</td><td>${rgN(v)}</td></tr>`;
+ return `<h2>Munafa</h2><table>${R('Counter items ka munafa',t.prof-t.dprof)}${R('Delivery ka munafa',t.dprof)}${R('− Kharcha',t.exV)}${R('− Salary',t.slV)}${R('− Fixed kharcha + salary (aaj ka hissa)',t.fxd)}${R('Asal munafa',t.pl,1)}</table>`}
+function rgDlv(d){const C=Object.entries(S.dl.d[d]||{}).map(([c,L])=>{const cu=cst(c);const P=Object.entries(L).filter(([i,e])=>!e.del&&i[0]!=='_'&&n(e.q));return cu&&P.length?{cu,P,a:P.reduce((s,[i,e])=>s+damt(i,e,c,d),0)}:null}).filter(Boolean).sort((a,b)=>(a.cu.ord??1e6)-(b.cu.ord??1e6));
+ const py=S.dl.py.filter(p=>!p.del&&p.day===d);if(!C.length&&!py.length)return '';const V=dday(d);
+ return `<h2>Delivery <span class="m">(${C.length} customer)</span></h2><table><tr><th>#</th><th class="l">Customer</th><th class="l">Saman</th><th>Raqam</th></tr>${C.map((x,i)=>`<tr><td>${i+1}</td><td class="l">${esc(x.cu.name)}</td><td class="l">${x.P.map(([i,e])=>esc(iname(i))+' '+fq(n(e.q))).join(', ')}</td><td>${f(x.a)}</td></tr>`).join('')}
+ <tr class="t"><td></td><td class="l" colspan="2">Kul delivery sale · munafa ${f(V.prof)}</td><td>${f(V.sale)}</td></tr></table>
+ ${py.length?`<table style="margin-top:6px"><tr><th class="l">Wasooli</th><th class="l">Tareeqa</th><th>Raqam</th></tr>${py.map(p=>`<tr><td class="l">${esc((cst(p.c)||{name:'?'}).name)}</td><td class="l">${p.m==='online'?'Online':'Cash'}</td><td>${f(n(p.a))}</td></tr>`).join('')}<tr class="t"><td class="l" colspan="2">Kul wasooli</td><td>${f(py.reduce((s,p)=>s+n(p.a),0))}</td></tr></table>`:''}`}
+function rgMilk(d){const P=S.mk.ps.filter(p=>S.mk.d[d]&&S.mk.d[d][p.id]&&mtot(d,p.id));if(!P.length)return '';const M=mpnl(d);
+ return `<h2>Doodh</h2><table><tr><th class="l">Party</th><th class="l">Qism</th><th>Kg</th><th>Mann</th><th>Raqam</th></tr>${P.map(p=>{const kg=mtot(d,p.id);return `<tr><td class="l">${esc(p.name)}</td><td class="l">${p.kind==='sup'?'Dene wali':'Lene wali'}</td><td>${fq(kg)}</td><td>${fq(q2(kg/40))}</td><td>${f(mamt(d,p.id).t)}</td></tr>`}).join('')}
+ <tr class="t"><td class="l" colspan="4">Doodh ka munafa (− Suzuki ${f(M.sz)})</td><td>${rgN(M.dm)}</td></tr></table>`}
+function rgUdh(d){const L=ledger(d);if(!L.length)return '';return `<h2>Udhaar khata (${pk(d)} tak baqaya)</h2><table><tr><th class="l">Naam</th><th>Baqaya</th></tr>${L.map(([k,v])=>`<tr><td class="l">${esc(k)}</td><td>${rgN(v)}</td></tr>`).join('')}<tr class="t"><td class="l">Kul</td><td>${f(L.reduce((a,[,v])=>a+v,0))}</td></tr></table>`}
+function rgHazri(d){const N=emNames();if(!N.length)return '';const R=N.map(nm=>[nm,atOf(d,nm),khOf(nm,d)]);if(!R.some(([,x])=>x))return '';
+ return `<h2>Hazri aur kharchi</h2><table><tr><th class="l">Employee</th><th>Aaya</th><th>Late</th><th>Kharchi</th></tr>${R.map(([nm,x,k])=>`<tr><td class="l">${esc(nm)}</td><td>${x&&x.c?'Chhutti':x&&x.t?t12(x.t):'—'}</td><td>${k&&k.late?k.late+' min':''}</td><td>${k&&!k.nod?f(k.give):''}</td></tr>`).join('')}</table>`}
+function rgDay(d){const t=tot(d);
+ return rgHead('Roz ka poora hisaab',`${dayName(d)}, <b>${pk(d)}</b>`)+rgK([['Kul sale',t.sale+t.dsale],['Counter sale',t.sale],['Delivery sale',t.dsale],['Kharcha + salary',t.exV+t.slV],['Asal munafa',t.pl],['Galla farq',t.diff==null?'—':t.diff]])
+  +rgStock(d)+rgSecs(d)+`<div class="two"><div>${rgGalla(t)}</div><div>${rgProf(t)}</div></div>`+rgMilk(d)+rgDlv(d)+rgHazri(d)+rgUdh(d)+`<p class="ft">Gujjar Dairies Hisaab app se bana · ${pk(d)}</p></div>`}
+// The month: summary, every day in one line, each item's month, every name's month total per hissa, and the udhaar at the end.
+function rgMonth(m){const last=m===date.slice(0,7)?date:m+'-'+String(dim(m)).padStart(2,'0'),{R,S2,fx,pl}=monthSum(m),days=keys().filter(d=>d.startsWith(m)&&d<=last),IS=itemStats(days),[y,mo]=m.split('-');
+ const Rw=R.filter(r=>r.d<=last),DM=dmonth(last),sec=k=>{const M={};days.forEach(d=>live(norm(S.days[d]),k).forEach(e=>{const b=ubase(e.n||'');if(b)M[b]=(M[b]||0)+n(e.a)}));const L=Object.entries(M).sort((a,b)=>b[1]-a[1]);
+  return L.length?`<div><h2>${esc(SECS[k][0])}</h2><table><tr><th class="l">Naam</th><th>Raqam</th></tr>${L.map(([k2,v])=>`<tr><td class="l">${esc(k2)}</td><td>${f(v)}</td></tr>`).join('')}<tr class="t"><td class="l">Kul</td><td>${f(L.reduce((a,x)=>a+x[1],0))}</td></tr></table></div>`:''};
+ const tt=k=>Rw.reduce((a,r)=>a+(r[k]||0),0);
+ return rgHead(`${MONTHS[+mo-1]} ${y} ka poora hisaab`,`${pk(m+'-01')} se <b>${pk(last)}</b> tak`)
+  +rgK([['Din jin ka hisaab hai',String(Rw.length)],['Kul sale',S2('sale')],['Kharcha (roz wala)',S2('ex')],['Fixed + salary hissa',fx],['Supplier payments',S2('sp')],['Asal munafa',pl]])
+  +`<h2>Har din</h2><table><tr><th class="l">Tareekh</th><th class="l">Din</th><th>Sale</th><th>Kharcha</th><th>Supplier</th><th>Udhaar</th><th>Munafa</th><th>Galla farq</th></tr>
+  ${Rw.map(r=>`<tr><td class="l">${pk(r.d)}</td><td class="l">${dayName(r.d)}</td><td>${f(r.sale)}</td><td>${f(r.ex)}</td><td>${f(r.sp)}</td><td>${f(r.ud)}</td><td>${rgN(r.pl)}</td><td>${r.diff==null?'—':rgN(r.diff)}</td></tr>`).join('')}
+  <tr class="t"><td class="l" colspan="2">Kul</td><td>${f(tt('sale'))}</td><td>${f(tt('ex'))}</td><td>${f(tt('sp'))}</td><td>${f(tt('ud'))}</td><td>${rgN(tt('pl'))}</td><td></td></tr></table>
+  <p class="m">Har din ka munafa us din ka fixed hissa kat kar. Mahine ka asal munafa = ${rgN(pl)} (guzre har din ka fixed hissa kat kar, chahe us din hisaab na likha ho).</p>
+  <h2>Har item (counter + delivery)</h2><table><tr><th>#</th><th class="l">Item</th><th>Bika</th><th>Sale</th><th>Munafa</th></tr>${IS.map((x,i)=>`<tr><td>${i+1}</td><td class="l">${esc(x.it.name)}</td><td>${fq(q2(x.q))}</td><td>${f(x.sale)}</td><td>${rgN(x.prof)}</td></tr>`).join('')}
+  <tr class="t"><td></td><td class="l">Kul</td><td></td><td>${f(IS.reduce((a,x)=>a+x.sale,0))}</td><td>${rgN(IS.reduce((a,x)=>a+x.prof,0))}</td></tr></table>
+  <h2>Delivery</h2><table><tr><td class="l">Delivery sale</td><td>${f(DM.sale)}</td></tr><tr><td class="l">Laagat</td><td>${f(DM.cost)}</td></tr><tr class="t"><td class="l">Delivery ka munafa</td><td>${rgN(DM.prof)}</td></tr></table>
+  <div class="two">${['ex','sl','cr','bl','sp','ud','rc'].map(sec).join('')}</div>${rgUdh(last)}<p class="ft">Gujjar Dairies Hisaab app se bana · ${MONTHS[+mo-1]} ${y}</p></div>`}
+const rgDayPdf=()=>pdfMake('rg:d',rgDay(date),`Hisaab ${pk(date).replace(/\//g,'-')}`,null,1),
+ rgMonPdf=()=>{const m=date.slice(0,7),[y,mo]=m.split('-');return pdfMake('rg:m',rgMonth(m),`Hisaab ${MONTHS[+mo-1]} ${y}`,null,1)};
+function rgV(){const [y,mo]=date.slice(0,7).split('-');
+ return `<div class="card"><h3>📄 Poora hisaab (PDF)</h3><p class="hint" style="margin:4px 0 8px">Register jaisa poora hisaab: har item (kal ka, aaya, istemal, closing, bika, sale, munafa), har kharcha, galla, munafa, doodh, delivery, hazri aur udhaar. Jitne page banein.</p>
+ ${pdfBtn('rg:d','rgDayPdf()').replace('📄 PDF WhatsApp par bhejein',`📄 ${pk(date)} ka poora hisaab`)}
+ ${pdfBtn('rg:m','rgMonPdf()').replace('📄 PDF WhatsApp par bhejein',`📄 ${MONTHS[+mo-1]} ${y} ka poora hisaab`)}
+ <div class="btns" style="margin-top:8px"><button class="btn ghost" onclick="printHTML(rgDay(date))">🖨 Din print</button><button class="btn ghost" onclick="printHTML(rgMonth(date.slice(0,7)))">🖨 Mahina print</button></div></div>`}
 // Items
 function items(){const off=S.items.filter(i=>i.off);
  return `<button class="link" onclick="go('acct')">← Account par wapas</button><div class="card"><h3>Naya item</h3><div class="addr"><input type="text" id="ni" placeholder="Item ka naam" aria-label="Item ka naam"><input type="number" inputmode="decimal" id="nr" placeholder="Rate" aria-label="Rate"><button class="btn" onclick="addI()">+ Item add karein</button></div></div>
