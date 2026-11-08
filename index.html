@@ -1206,14 +1206,14 @@ function hazriV(){const N=emNames();if(!N.length)return '';const A=N.map(nm=>[nm
  ${A.map(([nm,x])=>`<div class="row" style="gap:6px;flex-wrap:wrap"><b style="flex:1;min-width:110px">${esc(nm)}</b>${x&&x.c?`<span class="tag" style="background:#fde8ea;color:#c71c2b">Chhutti</span><button class="btn ghost" style="padding:8px 12px" data-n="${esc(nm)}" onclick="atPut(this.dataset.n,{})">Hatayein</button>`
   :`<input type="time" style="width:130px" value="${x?x.t:''}" aria-label="${esc(nm)} kis time aaya" data-n="${esc(nm)}" onchange="atPut(this.dataset.n,{t:this.value})">${x&&x.t?'':`<button class="btn" style="padding:8px 12px" data-n="${esc(nm)}" onclick="atNow(this.dataset.n)">Abhi aaya</button>`}<button class="btn ghost" style="padding:8px 12px" data-n="${esc(nm)}" onclick="atPut(this.dataset.n,{c:true})">Chhutti</button>`}${khLine(nm)}</div>`).join('')}
  ${(()=>{const T=N.map(nm=>khOf(nm,date)).filter(r=>r&&!r.nod&&!r.chh);return T.length?`<div class="row" style="margin-top:6px"><b>Aaj ki kharchi (${T.length} log)</b><b>${f(T.reduce((a,r)=>a+r.give,0))}</b></div>${T.some(r=>r.cut)?`<div class="row"><span>Late ki katoti</span><span class="neg">${f(T.reduce((a,r)=>a+r.cut,0))}</span></div>`:''}`:''})()}
- <p class="hint" style="margin-top:8px">Employee aaye to "Abhi aaya" dabayein, time khud likh jayega. Der se likh rahe hain to time khud badal dein. Kharchi duty time ke hisaab se khud banti hai (10 min tak late kuch nahi, phir 20, 40, 80, 30 min par 100, aur 45 min se zyada par poori kat).</p>${own()?duV(N):''}</details></div>`}
+ <p class="hint" style="margin-top:8px">Employee aaye to "Abhi aaya" dabayein, time khud likh jayega. Der se likh rahe hain to time khud badal dein. Kharchi duty time ke hisaab se khud banti hai (10 min tak late kuch nahi, phir 20, 40, 80, 31-45 min par 100, aur 45 min se zyada par poori kat).</p>${own()?duV(N):''}</details></div>`}
 // ---- Kharchi (owner): each employee's daily kharchi (default 160) and duty time, set from a day onward (S.du[NAME][day] = {t, k, u},
 // table duty, owner writes, staff read). Late cut by minutes after duty time: up to 10 nothing, up to 15 −20, up to 20 −40,
-// 21-29 −80, 30 to 45 −100 (owner), more than 45 the whole kharchi. Chhutti = no kharchi. Only shown; the salary and the Hisaab are not touched.
+// 21-30 −80, 31 to 45 −100 (owner), more than 45 the whole kharchi. Chhutti = no kharchi. Only shown; the salary and the Hisaab are not touched.
 const KH0=160;
 const duOf=(nm,d)=>{const H=S.du[nkey(nm)]||{},ks=Object.keys(H).filter(x=>x<=d).sort(),o={t:'',k:KH0};ks.forEach(x=>{const v=H[x];if(v.t)o.t=v.t;if(v.k!=null&&v.k!=='')o.k=n(v.k)});return o};
 const mins=t=>{const [h,m]=String(t).split(':').map(Number);return h*60+m};
-const khCut=(late,k)=>late<=10?0:late<=15?20:late<=20?40:late<30?80:late<=45?100:k;
+const khCut=(late,k)=>late<=10?0:late<=15?20:late<=20?40:late<=30?80:late<=45?100:k;
 // {k, duty, late, cut, give} for one employee on a day, or null when nothing can be worked out yet.
 function khOf(nm,d){const x=atOf(d,nm),D=duOf(nm,d);if(x&&x.c)return {chh:1,k:D.k,give:0};if(!x||!x.t||!D.t)return D.t?null:{nod:1};
  const late=Math.max(0,mins(x.t)-mins(D.t)),cut=Math.min(D.k,khCut(late,D.k));return {k:D.k,duty:D.t,late,cut,give:D.k-cut}}
@@ -1226,7 +1226,7 @@ function duV(N){return `<details style="margin-top:12px;border-top:1px solid var
  ${N.map(nm=>{const D=duOf(nm,date);return `<div class="row" style="gap:6px;flex-wrap:wrap"><b style="flex:1;min-width:110px">${esc(nm)}</b>
  <span class="hint">Duty</span><input type="time" style="width:120px" value="${D.t}" aria-label="${esc(nm)} duty time" data-n="${esc(nm)}" onchange="duPut(this.dataset.n,'t',this.value)">
  <span class="hint">Kharchi</span><input type="text" inputmode="numeric" style="width:80px" value="${D.k}" aria-label="${esc(nm)} kharchi" data-n="${esc(nm)}" onchange="duPut(this.dataset.n,'k',this.value)"></div>`}).join('')}
- <div class="hint" style="margin-top:8px;font-size:13px"><b>Katoti ka qaida:</b> 10 min tak late kuch nahi · 11-15 min −20 · 16-20 min −40 · 21-29 min −80 · 30-45 min −100 · 45 min se zyada poori kharchi kat · chhutti par kharchi nahi.<br>
+ <div class="hint" style="margin-top:8px;font-size:13px"><b>Katoti ka qaida:</b> 10 min tak late kuch nahi · 11-15 min −20 · 16-20 min −40 · 21-30 min −80 · 31-45 min −100 · 45 min se zyada poori kharchi kat · chhutti par kharchi nahi.<br>
  <b>Misaal</b> (duty 9:00, kharchi 160): 9:08 aaya = 160 · 9:13 = 140 · 9:18 = 120 · 9:25 = 80 · 9:35 = 60 · 9:50 = 0.</div></details>`}
 // One employee's month of hazri for the owner: days came, chhutti, and each day's time.
 function atMonth(nm,m){const L=Object.keys(S.at).filter(d=>d.startsWith(m)).sort().map(d=>[d,atOf(d,nm)]).filter(([,x])=>x);return {L,came:L.filter(([,x])=>x.t).length,off:L.filter(([,x])=>x.c).length}}
