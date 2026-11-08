@@ -525,7 +525,9 @@ function drafts(k){const key=date+'|'+k;
  const R=DR[key];if(!R.length||R[R.length-1].n||R[R.length-1].a)R.push({n:'',a:''});return R}
 const drFilled=k=>(DR[date+'|'+k]||[]).filter(r=>r.n.trim()&&String(r.a).trim()).length;
 function drRow(k,r,i){const nmIn=k==='sl'&&slOnly()?`<select class="dn" id="dn${k}${i}" data-k="${k}" data-i="${i}" aria-label="Employee" onchange="drSet('${k}',${i},'n',this.value)" style="min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font-size:17px;color:inherit"><option value="">Employee chunein</option>${emNames().map(x=>`<option${nkey(x)===nkey(r.n)?' selected':''}>${esc(x)}</option>`).join('')}</select>`:null;
- return `<div class="addr" style="grid-template-columns:1fr 110px;margin-top:6px">${nmIn||`<input type="text" class="dn" id="dn${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.n)}" placeholder="Naam" list="dl${k}" autocomplete="off" enterkeyhint="next" aria-label="Naam" oninput="drSet('${k}',${i},'n',this.value)">`}<input type="text" inputmode="decimal" class="da" id="da${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.a)}" placeholder="${r.ph?'Kal '+f(r.ph):'Raqam'}" enterkeyhint="next" aria-label="Raqam" oninput="drSet('${k}',${i},'a',this.value)"></div>`}
+ return `<div class="addr" style="grid-template-columns:1fr 110px;margin-top:6px">${nmIn||`<input type="text" class="dn" id="dn${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.n)}" placeholder="Naam" list="dl${k}" autocomplete="off" enterkeyhint="next" aria-label="Naam" oninput="drSet('${k}',${i},'n',this.value)">`}<input type="text" inputmode="decimal" class="da" id="da${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.a)}" placeholder="${r.ph?'Kal '+f(r.ph):'Raqam'}" enterkeyhint="next" aria-label="Raqam" oninput="drSet('${k}',${i},'a',this.value)">${DTK.includes(k)?`<input type="text" class="dx" id="dx${k}${i}" data-k="${k}" data-i="${i}" value="${esc(r.d||'')}" placeholder="Detail (kya diya / kyun, marzi se)" enterkeyhint="next" aria-label="Detail" oninput="drSet('${k}',${i},'d',this.value)" style="grid-column:1/-1;min-height:44px;font-size:16px">`:''}</div>`}
+// Udhaar diya and Cash wasool lines carry a detail box (owner): what was given or why; saved as the entry note (nt).
+const DTK=['ud','rc'];
 // Register-style sections like the paper khata (owner's wish): Kharcha, and on the owner's later wish also Ghar aur gari kharcha,
 // Bill ki raqam / owner ko and Supplier ko payment. Each list name (exp_names.kind = the section) is a fixed line every day, in order;
 // only the amount and an optional detail are written. Other list names are picked under "Aur"; a name not on the list cannot be
@@ -588,7 +590,7 @@ function sec(k){if(XK.includes(k)&&xOnly(k))return exSec(k);const D=day(date),[t
  const names=k==='sl'&&emNames().length?emNames():names0;
  return `<div class="card"><details ${OPEN[k]?'open':''} ontoggle="OPEN['${k}']=this.open"><summary><span>${title}${L.length?` <span class="muted" style="font-weight:400">(${L.length})</span>`:''}${fl?` <span class="neg" style="font-weight:400">· ${fl} save baqi</span>`:''}</span><b style="margin-left:auto;padding-right:8px">${f(tt)}</b></summary>
  <p class="hint" style="margin-top:4px">${hint}</p>${k==='sl'&&own()?`<button class="link" style="padding:4px 0" onclick="go('emp')">Employees ki salary aur baqaya dekhein ›</button>`:''}
- ${L.length?`<div style="margin-top:8px">${L.map(r=>`<div class="row"><span>${esc(r.n)}${fxTag(k,r.n)}</span><span>${f(n(r.a))}<button class="x" style="color:var(--bink)" aria-label="${esc(r.n)} badlein" onclick="edE('${k}','${r.id}')">✎</button><button class="x" aria-label="${esc(r.n)} hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')}</div>`:''}
+ ${L.length?`<div style="margin-top:8px">${L.map(r=>`<div class="row"><span>${esc(r.n)}${r.nt?`<br><span class="hint" style="font-size:13px">${esc(r.nt)}</span>`:''}${fxTag(k,r.n)}</span><span>${f(n(r.a))}<button class="x" style="color:var(--bink)" aria-label="${esc(r.n)} badlein" onclick="edE('${k}','${r.id}')">✎</button><button class="x" aria-label="${esc(r.n)} hatayen" onclick="del('${k}','${r.id}')">✕</button></span></div>`).join('')}</div>`:''}
  <datalist id="dl${k}">${secNames(k).map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
  <div style="margin-top:6px">${R.map((r,i)=>drRow(k,r,i)).join('')}</div>
  <button class="btn full" style="margin-top:10px" onclick="drSave('${k}')">Save karein${fl?` (${fl})`:''}</button>
@@ -599,8 +601,8 @@ function drFocus(id){const y=scrollY;render();scrollTo(0,y);const e=$('#'+id);if
 // A quick-name chip fills the first empty line.
 function drPick(k,v){const R=drafts(k);let i=R.findIndex(r=>!r.n.trim());if(i<0){R.push({n:'',a:''});i=R.length-1}R[i].n=v;OPEN[k]=true;drFocus('da'+k+i)}
 // Enter on a name goes to its amount; Enter on an amount goes to the next line, making a new one at the end.
-document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const t=e.target,k=t.dataset&&t.dataset.k;if(!k||!(t.classList.contains('dn')||t.classList.contains('da')))return;
- e.preventDefault();const i=+t.dataset.i;if(t.classList.contains('dn')){$('#da'+k+i).focus();return}
+document.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const t=e.target,k=t.dataset&&t.dataset.k;if(!k||!(t.classList.contains('dn')||t.classList.contains('da')||t.classList.contains('dx')))return;
+ e.preventDefault();const i=+t.dataset.i;if(t.classList.contains('dn')){$('#da'+k+i).focus();return}if(t.classList.contains('da')&&$('#dx'+k+i)){$('#dx'+k+i).focus();return}
  const R=drafts(k);if(i+1>=R.length)R.push({n:'',a:''});const nx=R[i+1];if(!R[i].n&&!R[i].a&&!nx.n)return;
  if(i+1===R.length-1&&!$('#dn'+k+(i+1))){drFocus((nx.n?'da':'dn')+k+(i+1));return}
  const el=$('#'+(nx.n?'da':'dn')+k+(i+1));if(el)el.focus();else drFocus((nx.n?'da':'dn')+k+(i+1))});
@@ -611,9 +613,9 @@ function drSave(k){const key=date+'|'+k,R=drafts(k),keep=[],todo=[];
   if(!a||parts.some(x=>isNaN(parseFloat(x)))){alert(`"${nm}" ki raqam sahi likhein.`);return}
   if(k==='sl'&&slOnly()&&!isEmp(nm)){alert(`"${nm}" employee nahi hai. Salary sirf Employees page par bane logon ki likh sakte hain.`);return}
   if(k==='rc'){const c=rcName(nm);if(!c)return;r.n=c}
-  todo.push([k==='rc'?r.n:k==='ud'?nkey(nm):k==='sl'&&slOnly()?emNames().find(x=>nkey(x)===nkey(baseN(nm))):nm,a,parts])}
+  todo.push([k==='rc'?r.n:k==='ud'?nkey(nm):k==='sl'&&slOnly()?emNames().find(x=>nkey(x)===nkey(baseN(nm))):nm,a,parts,String(r.d||'').trim()])}
  if(!todo.length){alert('Kisi line mein naam aur raqam dono likhein.');return}
- for(const [nm0,a,parts] of todo){const e={id:nid(),n:parts.length>1?`${nm0} (${parts.join('+')})`:nm0,a,del:false,u:now()};dd(date)[k].push(e);mark('en:'+date+'|'+k+'|'+e.id)}
+ for(const [nm0,a,parts,nt] of todo){const e={id:nid(),n:parts.length>1?`${nm0} (${parts.join('+')})`:nm0,a,...(nt?{nt}:{}),del:false,u:now()};dd(date)[k].push(e);mark('en:'+date+'|'+k+'|'+e.id)}
  DR[key]=keep.filter(r=>r.ph);OPEN[k]=true;const y=scrollY;render();scrollTo(0,y)}
 // Fix a name or amount later (entries read from the paper khata may need correcting).
 function edE(k,id){const e=dd(date)[k].find(x=>x.id===id);if(!e)return;
@@ -623,6 +625,7 @@ function edE(k,id){const e=dd(date)[k].find(x=>x.id===id);if(!e)return;
  if(k==='sl'&&slOnly()&&!isEmp(nm)){alert(`Salary sirf in employees ki: ${emNames().join(', ')}`);return}
  if(XK.includes(k)&&xOnly(k)){const x=xnOf(nm,k);if(!x){alert(`Ye naam ${SECS[k][0]} ki list mein nahi. Owner list mein jode, phir likhein.`);return}
   const dt=prompt('Detail (marzi se):',e.nt||'');if(dt!==null){e.nt=dt.trim()}e.n=parts.length>1?`${x.name} (${parts.join('+')})`:x.name;e.a=a;e.u=now();mark('en:'+date+'|'+k+'|'+id);render();return}
+ if(DTK.includes(k)){const dt=prompt('Detail (marzi se):',e.nt||'');if(dt!==null)e.nt=dt.trim()}
  if(k==='rc'){const c=rcName(nm);if(!c)return;e.n=parts.length>1?`${c} (${parts.join('+')})`:c;e.a=a;e.u=now();mark('en:'+date+'|'+k+'|'+id);render();return}
  e.n=k==='ud'?nkey(nm):nm.trim();e.a=a;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
 function del(k,id){if(!confirm('Ye entry hatani hai?'))return;const e=dd(date)[k].find(x=>x.id===id);if(!e)return;e.del=true;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
@@ -646,7 +649,7 @@ function ustate(nm,fr,to){let op=0;const rows=[];
  return {op,rows,ta:rows.reduce((s,r)=>s+r.a,0),tb:rows.reduce((s,r)=>s+r.b,0),bal}}
 function ubOpen(nm){ubn=nm;ubf=date.slice(0,8)+'01';ubt=date;OPEN.led=true;render();const c=$('#ubill');if(c)c.scrollIntoView({behavior:'smooth'})}
 // An entry written as "HAJI HOTEL (375+375)" keeps its bracket on the bill line so the parts stay visible.
-const ubDet=L=>L.map(e=>{const m=String(e.n).match(/\(([^)]*)\)\s*$/);return m?m[1]:''}).filter(Boolean).join(', ');
+const ubDet=L=>L.map(e=>{const m=String(e.n).match(/\(([^)]*)\)\s*$/);return [m?m[1]:'',e.nt||''].filter(Boolean).join(' ')}).filter(Boolean).join(', ');
 function ubV(){if(!ubn)return '';const s=ustate(ubn,ubf,ubt);
  return `<div class="card" id="ubill"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3>Udhaar ka bill</h3><button class="link" onclick="ubn='';render()">Band karein ✕</button></div>
  <div class="fld" style="margin-top:10px"><label for="ubn">Naam</label><select id="ubn" onchange="ubn=this.value;render()" style="width:100%;min-height:48px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);font-size:17px;color:inherit">${ubNames().map(x=>`<option${x===ubn?' selected':''}>${esc(x)}</option>`).join('')}</select></div>
