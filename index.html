@@ -222,7 +222,7 @@ const SECS={ex:['Kharcha',['TALHA BHAI BC','SHOPPER WALA','BARF','SURF','LABOUR 
  ud:['Udhaar diya',['MUNAWWAR ALI','JHANZAIB COW','DILPASAND','RAHEEL','IMRAN','MOMIN','SAAD UMER','HAJI HOTEL','DELIVERY'],0,'Total paid (3). Maal diya, paise baad mein aayenge.'],
  bl:['Bill ki raqam / owner ko',['SUZUKI PETROL','WU GHAR KHARCHA','WU GHAR DOODH NASHTA','TALHA CASH SHOP','ROZ RAQAM','TALHA ACCOUNT'],0,'Total paid (4)'],
  sp:['Supplier ko payment',['BRADY\'S BILL','DAWN BILL','EGG BILL','NEW EGG BILL','CUP CAKE','BAKERY BILL','PLAIN CAKE','BISCUIT WALA','CH. TAHIR BUTTER','RAZZAQ PAPAY','GOAT MILK','JAZIB GHEE','SUNSHINE'],0,'Total paid (5). Maal ki kharidari, kharcha nahi.'],
- rc:['Cash wasool (udhaar wapas)',['HAJI HOTEL','DELIVERY'],0,'Udhaar ke paise jo aaj galle mein aaye.']};
+ rc:['Cash wasool (udhaar wapas)',['HAJI HOTEL','DELIVERY'],0,'Udhaar ke paise jo aaj galle mein aaye. Owner ne dukaan ko paise diye hon to naam OWNER SE WASOOL likhein: galla barhega aur Doodh mein Johar ka baqaya bhi khud barh jayega.']};
 const KINDS=Object.keys(SECS);
 // Bank transaction types: [label, effect on bank balance, effect on galla].
 const BT={jama:['Galle se bank mein jama',1,-1],nikala:['Bank se nikala (galle mein)',-1,1],chq_diya:['Cheque diya',-1,0],chq_mila:['Cheque mila',1,0],online_aaya:['Online paise aaye',1,0],online_gaya:['Online payment ki',-1,0]};
@@ -512,11 +512,14 @@ const slOnly=()=>emNames().length>0,isEmp=nm=>emNames().some(x=>nkey(x)===nkey(b
 const fxTag=(k,nm)=>{const b=nkey(baseN(nm));return (k==='ex'&&fixNames().has(b))||(k==='sl'&&S.em.some(e=>nkey(e.name)===b))?'<br><span class="hint" style="font-size:12px">Munafa mein roz ka hissa, yahan sirf galla</span>':''};
 // Cash wasool only from someone who has udhaar (owner): the name is matched to an udhaar name, and a new name is written only after a yes.
 const udNames=()=>{const N=new Set();for(const D of Object.values(S.days))(D.ud||[]).forEach(e=>{if(!e.del&&e.n)N.add(ubase(e.n))});return [...N]};
-function rcName(nm){const t=ubase(nm),N=udNames();if(N.includes(t))return t;const s=N.filter(x=>x.startsWith(t));if(t&&s.length===1)return s[0];
+// Money the owner gives back to the shop is written in Cash wasool as OWNR (owner): galla goes up, it is no one's udhaar, and in the Doodh
+// hisaab it undoes a "Bill ki raqam / owner ko" payment for every party that counts that section (Johar), so that baqaya goes back up.
+const OWNR='OWNER SE WASOOL';
+function rcName(nm){const t=ubase(nm),N=[...udNames(),OWNR];if(N.includes(t))return t;const s=N.filter(x=>x.startsWith(t));if(t&&s.length===1)return s[0];
  return confirm(`"${t}" ke naam koi udhaar nahi gaya. Cash wasool sirf usi se likhte hain jis ko udhaar diya ho.
 
 Kya "${t}" ko naya customer bana kar ye wasooli likhni hai?`)?t:null}
-function secNames(k){if(k==='rc')return udNames().sort();if(k==='ud')return custNames();const s=new Set([...SECS[k][1],...(k==='sl'?emNames():[])]);for(const D of Object.values(S.days))(D[k]||[]).forEach(e=>{if(!e.del)s.add(baseN(e.n))});return [...s].sort()}
+function secNames(k){if(k==='rc')return [OWNR,...udNames().sort()];if(k==='ud')return custNames();const s=new Set([...SECS[k][1],...(k==='sl'?emNames():[])]);for(const D of Object.values(S.days))(D[k]||[]).forEach(e=>{if(!e.del)s.add(baseN(e.n))});return [...s].sort()}
 function drafts(k){const key=date+'|'+k;
  if(!DR[key]){const have=new Set(live(day(date),k).map(e=>nkey(baseN(e.n))));DR[key]=prevRows(k,date).filter(e=>!have.has(nkey(baseN(e.n)))&&(k!=='sl'||!slOnly()||isEmp(e.n))).map(e=>({n:baseN(e.n),a:'',ph:n(e.a)}))}
  const R=DR[key];if(!R.length||R[R.length-1].n||R[R.length-1].a)R.push({n:'',a:''});return R}
@@ -625,7 +628,7 @@ function edE(k,id){const e=dd(date)[k].find(x=>x.id===id);if(!e)return;
 function del(k,id){if(!confirm('Ye entry hatani hai?'))return;const e=dd(date)[k].find(x=>x.id===id);if(!e)return;e.del=true;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
 // Udhaar khata: per customer, everything given on credit minus everything received back, up to this day.
 function ledger(d){const B={};const base=s=>nkey(s).replace(/\s*\([\d+.\s]*\)$/,'');
- for(const x of keys()){if(x>d)break;const D=norm(S.days[x]);live(D,'ud').forEach(r=>{const k=base(r.n);B[k]=(B[k]||0)+n(r.a)});live(D,'rc').forEach(r=>{const k=base(r.n);B[k]=(B[k]||0)-n(r.a)})}
+ for(const x of keys()){if(x>d)break;const D=norm(S.days[x]);live(D,'ud').forEach(r=>{const k=base(r.n);B[k]=(B[k]||0)+n(r.a)});live(D,'rc').forEach(r=>{const k=base(r.n);if(k===OWNR)return;B[k]=(B[k]||0)-n(r.a)})}
  return Object.entries(B).filter(([,v])=>Math.round(v)!==0).sort((a,b)=>b[1]-a[1])}
 function udhaarV(){const L=ledger(date),T=L.reduce((a,[,v])=>a+v,0);
  return `<div class="card"><details ${OPEN.led?'open':''} ontoggle="OPEN.led=this.open"><summary><span>Udhaar khata (kis se kitna lena hai)</span><b style="margin-left:auto;padding-right:8px">${f(T)}</b></summary>
@@ -634,7 +637,7 @@ function udhaarV(){const L=ledger(date),T=L.reduce((a,[,v])=>a+v,0);
 // Udhaar bill: one name's "Udhaar diya" and "Cash wasool" day by day between two dates, with the baqaya from before.
 let ubn='',ubf='',ubt='';
 const ubase=s=>nkey(s).replace(/\s*\([\d+.\s]*\)$/,'');
-function ubNames(){const N=new Set();for(const D of Object.values(S.days))['ud','rc'].forEach(k=>(D[k]||[]).forEach(e=>{if(!e.del&&e.n)N.add(ubase(e.n))}));return [...N].filter(Boolean).sort()}
+function ubNames(){const N=new Set();for(const D of Object.values(S.days))['ud','rc'].forEach(k=>(D[k]||[]).forEach(e=>{if(!e.del&&e.n)N.add(ubase(e.n))}));N.delete(OWNR);return [...N].filter(Boolean).sort()}
 function ustate(nm,fr,to){let op=0;const rows=[];
  for(const x of keys()){if(x>to)break;const D=norm(S.days[x]),u=live(D,'ud').filter(e=>ubase(e.n)===nm),w=live(D,'rc').filter(e=>ubase(e.n)===nm);
   const a=u.reduce((s,e)=>s+n(e.a),0),b=w.reduce((s,e)=>s+n(e.a),0);if(!u.length&&!w.length)continue;
@@ -712,7 +715,8 @@ const hkBase=s=>nkey(s).replace(/\s*\([\d+.\s]*\)$/,'');
 // A link like "@bl" takes a whole Hisaab section (e.g. every "Bill ki raqam / owner ko" entry); other links match one name.
 function hkPays(d,id){const p=S.mk.ps.find(x=>x.id===id),hk=p&&p.hk||[];if(!hk.length||!S.days[d])return [];const D=day(d);
  const sec=hk.filter(x=>x[0]==='@').map(x=>x.slice(1)),H=hk.filter(x=>x[0]!=='@').map(hkBase);
- return KINDS.flatMap(k=>live(D,k).filter(e=>sec.includes(k)||H.includes(hkBase(e.n))).map(e=>({...e,k})))}
+ const own=sec.includes('bl')?live(D,'rc').filter(e=>hkBase(e.n)===OWNR).map(e=>({...e,k:'rc',a:-n(e.a)})):[];
+ return KINDS.flatMap(k=>live(D,k).filter(e=>sec.includes(k)||H.includes(hkBase(e.n))).map(e=>({...e,k}))).concat(own)}
 const hkLabel=x=>x[0]==='@'?`"${SECS[x.slice(1)][0]}" ki har entry`:x;
 // A party's amount for the day, like the sheet: bandhi + cow + taken from mandi - sold to mandi,
 // mandi milk at that slot's mandi rate less the party's commission.
