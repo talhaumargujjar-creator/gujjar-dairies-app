@@ -510,7 +510,13 @@ const emNames=()=>own()?S.em.filter(e=>!e.off).map(e=>e.name):(S.emn||[]);
 const slOnly=()=>emNames().length>0,isEmp=nm=>emNames().some(x=>nkey(x)===nkey(baseN(nm)));
 // Marks payments that only move the galla because their monthly amount is already shared over the days.
 const fxTag=(k,nm)=>{const b=nkey(baseN(nm));return (k==='ex'&&fixNames().has(b))||(k==='sl'&&S.em.some(e=>nkey(e.name)===b))?'<br><span class="hint" style="font-size:12px">Munafa mein roz ka hissa, yahan sirf galla</span>':''};
-function secNames(k){if(k==='ud'||k==='rc')return custNames();const s=new Set([...SECS[k][1],...(k==='sl'?emNames():[])]);for(const D of Object.values(S.days))(D[k]||[]).forEach(e=>{if(!e.del)s.add(baseN(e.n))});return [...s].sort()}
+// Cash wasool only from someone who has udhaar (owner): the name is matched to an udhaar name, and a new name is written only after a yes.
+const udNames=()=>{const N=new Set();for(const D of Object.values(S.days))(D.ud||[]).forEach(e=>{if(!e.del&&e.n)N.add(ubase(e.n))});return [...N]};
+function rcName(nm){const t=ubase(nm),N=udNames();if(N.includes(t))return t;const s=N.filter(x=>x.startsWith(t));if(t&&s.length===1)return s[0];
+ return confirm(`"${t}" ke naam koi udhaar nahi gaya. Cash wasool sirf usi se likhte hain jis ko udhaar diya ho.
+
+Kya "${t}" ko naya customer bana kar ye wasooli likhni hai?`)?t:null}
+function secNames(k){if(k==='rc')return udNames().sort();if(k==='ud')return custNames();const s=new Set([...SECS[k][1],...(k==='sl'?emNames():[])]);for(const D of Object.values(S.days))(D[k]||[]).forEach(e=>{if(!e.del)s.add(baseN(e.n))});return [...s].sort()}
 function drafts(k){const key=date+'|'+k;
  if(!DR[key]){const have=new Set(live(day(date),k).map(e=>nkey(baseN(e.n))));DR[key]=prevRows(k,date).filter(e=>!have.has(nkey(baseN(e.n)))&&(k!=='sl'||!slOnly()||isEmp(e.n))).map(e=>({n:baseN(e.n),a:'',ph:n(e.a)}))}
  const R=DR[key];if(!R.length||R[R.length-1].n||R[R.length-1].a)R.push({n:'',a:''});return R}
@@ -601,7 +607,8 @@ function drSave(k){const key=date+'|'+k,R=drafts(k),keep=[],todo=[];
   const parts=raw.split('+').filter(Boolean),a=parts.reduce((s,x)=>s+n(x),0);
   if(!a||parts.some(x=>isNaN(parseFloat(x)))){alert(`"${nm}" ki raqam sahi likhein.`);return}
   if(k==='sl'&&slOnly()&&!isEmp(nm)){alert(`"${nm}" employee nahi hai. Salary sirf Employees page par bane logon ki likh sakte hain.`);return}
-  todo.push([k==='ud'||k==='rc'?nkey(nm):k==='sl'&&slOnly()?emNames().find(x=>nkey(x)===nkey(baseN(nm))):nm,a,parts])}
+  if(k==='rc'){const c=rcName(nm);if(!c)return;r.n=c}
+  todo.push([k==='rc'?r.n:k==='ud'?nkey(nm):k==='sl'&&slOnly()?emNames().find(x=>nkey(x)===nkey(baseN(nm))):nm,a,parts])}
  if(!todo.length){alert('Kisi line mein naam aur raqam dono likhein.');return}
  for(const [nm0,a,parts] of todo){const e={id:nid(),n:parts.length>1?`${nm0} (${parts.join('+')})`:nm0,a,del:false,u:now()};dd(date)[k].push(e);mark('en:'+date+'|'+k+'|'+e.id)}
  DR[key]=keep.filter(r=>r.ph);OPEN[k]=true;const y=scrollY;render();scrollTo(0,y)}
@@ -613,7 +620,8 @@ function edE(k,id){const e=dd(date)[k].find(x=>x.id===id);if(!e)return;
  if(k==='sl'&&slOnly()&&!isEmp(nm)){alert(`Salary sirf in employees ki: ${emNames().join(', ')}`);return}
  if(XK.includes(k)&&xOnly(k)){const x=xnOf(nm,k);if(!x){alert(`Ye naam ${SECS[k][0]} ki list mein nahi. Owner list mein jode, phir likhein.`);return}
   const dt=prompt('Detail (marzi se):',e.nt||'');if(dt!==null){e.nt=dt.trim()}e.n=parts.length>1?`${x.name} (${parts.join('+')})`:x.name;e.a=a;e.u=now();mark('en:'+date+'|'+k+'|'+id);render();return}
- e.n=k==='ud'||k==='rc'?nkey(nm):nm.trim();e.a=a;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
+ if(k==='rc'){const c=rcName(nm);if(!c)return;e.n=parts.length>1?`${c} (${parts.join('+')})`:c;e.a=a;e.u=now();mark('en:'+date+'|'+k+'|'+id);render();return}
+ e.n=k==='ud'?nkey(nm):nm.trim();e.a=a;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
 function del(k,id){if(!confirm('Ye entry hatani hai?'))return;const e=dd(date)[k].find(x=>x.id===id);if(!e)return;e.del=true;e.u=now();mark('en:'+date+'|'+k+'|'+id);render()}
 // Udhaar khata: per customer, everything given on credit minus everything received back, up to this day.
 function ledger(d){const B={};const base=s=>nkey(s).replace(/\s*\([\d+.\s]*\)$/,'');
