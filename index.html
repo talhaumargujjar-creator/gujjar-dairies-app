@@ -297,7 +297,7 @@ const PR_SEED=[['r_dahi','i2',[{t:'it',id:'i0',q:0}]],['r_lassi','i10',[{t:'it',
 function prInit(s){if(s.pr)return;s.pr={rc:{},d:{}};PR_SEED.forEach(([id,out,ins])=>{s.pr.rc[id]={id,out,ins,off:false,u:1};s.q['rp:'+id]=s.q['rp:'+id]||1})}
 // Employees: em = [{id,name,phone,start:'YYYY-MM',sal:{'YYYY-MM':salary from that month},off,u}].
 // Salary paid = Hisaab "Salary" entries written with the employee's name.
-function emInit(s){if(!s.at)s.at={};if(!s.em)s.em=[];if(!s.fx)s.fx=[];if(!s.xn)s.xn=[];if(!s.cb)s.cb=[]}
+function emInit(s){if(!s.at)s.at={};if(!s.du)s.du={};if(!s.em)s.em=[];if(!s.fx)s.fx=[];if(!s.xn)s.xn=[];if(!s.cb)s.cb=[]}
 // Fixed costs: fx = [{id,name,amt:{'YYYY-MM':monthly amount from that month},off,u}] (rent, bijli). Their monthly amount,
 // and every employee's salary, is shared over the days of the month in the daily munafa; paying them only moves the galla.
 let S=load(),MEMO={};mkInit(S);bkInit(S);dlInit(S);prInit(S);emInit(S);
@@ -1204,8 +1204,30 @@ const atNow=nm=>{const x=new Date();atPut(nm,{t:String(x.getHours()).padStart(2,
 function hazriV(){const N=emNames();if(!N.length)return '';const A=N.map(nm=>[nm,atOf(date,nm)]),came=A.filter(([,x])=>x&&x.t).length,off=A.filter(([,x])=>x&&x.c).length;
  return `<div class="card"><details${OPEN.hz?' open':''} ontoggle="OPEN.hz=this.open"><summary>Hazri (kaam par aane ka time) · ${came} aaye${off?` · ${off} chhutti`:''}${N.length-came-off?` · ${N.length-came-off} baqi`:''}</summary>
  ${A.map(([nm,x])=>`<div class="row" style="gap:6px;flex-wrap:wrap"><b style="flex:1;min-width:110px">${esc(nm)}</b>${x&&x.c?`<span class="tag" style="background:#fde8ea;color:#c71c2b">Chhutti</span><button class="btn ghost" style="padding:8px 12px" data-n="${esc(nm)}" onclick="atPut(this.dataset.n,{})">Hatayein</button>`
-  :`<input type="time" style="width:130px" value="${x?x.t:''}" aria-label="${esc(nm)} kis time aaya" data-n="${esc(nm)}" onchange="atPut(this.dataset.n,{t:this.value})">${x&&x.t?'':`<button class="btn" style="padding:8px 12px" data-n="${esc(nm)}" onclick="atNow(this.dataset.n)">Abhi aaya</button>`}<button class="btn ghost" style="padding:8px 12px" data-n="${esc(nm)}" onclick="atPut(this.dataset.n,{c:true})">Chhutti</button>`}</div>`).join('')}
- <p class="hint" style="margin-top:8px">Employee aaye to "Abhi aaya" dabayein, time khud likh jayega. Der se likh rahe hain to time khud badal dein.</p></details></div>`}
+  :`<input type="time" style="width:130px" value="${x?x.t:''}" aria-label="${esc(nm)} kis time aaya" data-n="${esc(nm)}" onchange="atPut(this.dataset.n,{t:this.value})">${x&&x.t?'':`<button class="btn" style="padding:8px 12px" data-n="${esc(nm)}" onclick="atNow(this.dataset.n)">Abhi aaya</button>`}<button class="btn ghost" style="padding:8px 12px" data-n="${esc(nm)}" onclick="atPut(this.dataset.n,{c:true})">Chhutti</button>`}${khLine(nm)}</div>`).join('')}
+ ${(()=>{const T=N.map(nm=>khOf(nm,date)).filter(r=>r&&!r.nod&&!r.chh);return T.length?`<div class="row" style="margin-top:6px"><b>Aaj ki kharchi (${T.length} log)</b><b>${f(T.reduce((a,r)=>a+r.give,0))}</b></div>${T.some(r=>r.cut)?`<div class="row"><span>Late ki katoti</span><span class="neg">${f(T.reduce((a,r)=>a+r.cut,0))}</span></div>`:''}`:''})()}
+ <p class="hint" style="margin-top:8px">Employee aaye to "Abhi aaya" dabayein, time khud likh jayega. Der se likh rahe hain to time khud badal dein. Kharchi duty time ke hisaab se khud banti hai (10 min tak late kuch nahi, phir 20, 40, 80, aur 30 min se zyada par poori kat).</p>${own()?duV(N):''}</details></div>`}
+// ---- Kharchi (owner): each employee's daily kharchi (default 160) and duty time, set from a day onward (S.du[NAME][day] = {t, k, u},
+// table duty, owner writes, staff read). Late cut by minutes after duty time: up to 10 nothing, up to 15 −20, up to 20 −40,
+// up to 30 −80, more than 30 the whole kharchi. Chhutti = no kharchi. Only shown; the salary and the Hisaab are not touched.
+const KH0=160;
+const duOf=(nm,d)=>{const H=S.du[nkey(nm)]||{},ks=Object.keys(H).filter(x=>x<=d).sort(),o={t:'',k:KH0};ks.forEach(x=>{const v=H[x];if(v.t)o.t=v.t;if(v.k!=null&&v.k!=='')o.k=n(v.k)});return o};
+const mins=t=>{const [h,m]=String(t).split(':').map(Number);return h*60+m};
+const khCut=(late,k)=>late<=10?0:late<=15?20:late<=20?40:late<=30?80:k;
+// {k, duty, late, cut, give} for one employee on a day, or null when nothing can be worked out yet.
+function khOf(nm,d){const x=atOf(d,nm),D=duOf(nm,d);if(x&&x.c)return {chh:1,k:D.k,give:0};if(!x||!x.t||!D.t)return D.t?null:{nod:1};
+ const late=Math.max(0,mins(x.t)-mins(D.t)),cut=Math.min(D.k,khCut(late,D.k));return {k:D.k,duty:D.t,late,cut,give:D.k-cut}}
+function khLine(nm){const r=khOf(nm,date);if(!r)return '';if(r.nod)return own()?`<div class="hint" style="width:100%;font-size:13px">Duty time nahi likha (neeche "Duty time aur kharchi" mein likhein)</div>`:'';
+ if(r.chh)return `<div class="hint" style="width:100%;font-size:13px">Chhutti: kharchi nahi</div>`;
+ return `<div style="width:100%;font-size:14px">Duty ${t12(r.duty)} · ${r.late?`${r.late} min late`:'waqt par'}${r.cut?` · <span class="neg">kati ${f(r.cut)}</span>`:''} · Kharchi dein: <b>${f(r.give)}</b></div>`}
+function duPut(nm,f0,v){const k=nkey(nm),H=S.du[k]=S.du[k]||{},o=H[date]||{t:'',k:''};o[f0]=f0==='k'?(String(v).trim()===''?'':n(v)):v;o.u=now();H[date]=o;mark('du:'+k+'|'+date);OPEN.hz=OPEN.du=true;render()}
+function duV(N){return `<details style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px"${OPEN.du?' open':''} ontoggle="OPEN.du=this.open"><summary>Duty time aur kharchi (sirf owner)</summary>
+ <p class="hint" style="margin:6px 0">Jo likhenge wo <b>${pk(date)}</b> se aage har din chalega, roz likhna nahi. Kisi din badalna ho to upar wo tareekh chun kar yahan badlein; us din se naya hisaab, pichle din waise hi. Kharchi khaali ho to ${KH0}.</p>
+ ${N.map(nm=>{const D=duOf(nm,date);return `<div class="row" style="gap:6px;flex-wrap:wrap"><b style="flex:1;min-width:110px">${esc(nm)}</b>
+ <span class="hint">Duty</span><input type="time" style="width:120px" value="${D.t}" aria-label="${esc(nm)} duty time" data-n="${esc(nm)}" onchange="duPut(this.dataset.n,'t',this.value)">
+ <span class="hint">Kharchi</span><input type="text" inputmode="numeric" style="width:80px" value="${D.k}" aria-label="${esc(nm)} kharchi" data-n="${esc(nm)}" onchange="duPut(this.dataset.n,'k',this.value)"></div>`}).join('')}
+ <div class="hint" style="margin-top:8px;font-size:13px"><b>Katoti ka qaida:</b> 10 min tak late kuch nahi · 11-15 min −20 · 16-20 min −40 · 21-30 min −80 · 30 min se zyada poori kharchi kat · chhutti par kharchi nahi.<br>
+ <b>Misaal</b> (duty 9:00, kharchi 160): 9:08 aaya = 160 · 9:13 = 140 · 9:18 = 120 · 9:25 = 80 · 9:45 = 0.</div></details>`}
 // One employee's month of hazri for the owner: days came, chhutti, and each day's time.
 function atMonth(nm,m){const L=Object.keys(S.at).filter(d=>d.startsWith(m)).sort().map(d=>[d,atOf(d,nm)]).filter(([,x])=>x);return {L,came:L.filter(([,x])=>x.t).length,off:L.filter(([,x])=>x.c).length}}
 function atV(e){const a=atMonth(e.name,emM);if(!a.L.length)return '<p class="hint" style="margin:6px 0">Is mahine abhi koi hazri nahi likhi.</p>';
@@ -1749,6 +1771,8 @@ Object.assign(PK,{recipes:'id',production:'day,recipe_id'});OWNER_ONLY.rp=1;
 Object.assign(PK,{employees:'id'});OWNER_ONLY.em=1;OWNER_TABLES.employees=1;
 // Hazri: owner and staff both write the time an employee came, or chhutti.
 Object.assign(PK,{attendance:'day,name'});
+// Duty time and kharchi: owner writes, staff read.
+Object.assign(PK,{duty:'name,day'});OWNER_ONLY.du=1;
 // The kharcha names everyone may write (owner keeps the list); staff read it.
 Object.assign(PK,{exp_names:'id'});OWNER_ONLY.xn=1;
 Object.assign(PK,{cash_book:'id'});OWNER_ONLY.cb=1;OWNER_TABLES.cash_book=1;
@@ -1781,6 +1805,7 @@ function toRow(t,r){
  if(t==='xn'){const x=S.xn.find(y=>y.id===r);return x?['exp_names',{id:x.id,kind:x.kd||'ex',name:x.name,ord:x.ord??null,ln:x.ln!==false,off:!!x.off,u:x.u}]:null}
  if(t==='em'){const e=S.em.find(x=>x.id===r);return e?['employees',{id:e.id,name:e.name,phone:e.phone||null,start:e.start||null,jd:e.jd||null,ob:n(e.ob),sal:e.sal||{},off:!!e.off,u:e.u}]:null}
  if(t==='rp'){const x=S.pr.rc[r];return x?['recipes',{id:x.id,item_id:x.out,ins:x.ins,y:x.y??null,kd:x.kd||null,off:!!x.off,u:x.u}]:null}
+ if(t==='du'){const [nm,d]=r.split('|'),x=(S.du[nm]||{})[d];return x?['duty',{name:nm,day:d,t:x.t||null,k:x.k===''||x.k==null?null:n(x.k),u:x.u}]:null}
  if(t==='at'){const [d,nm]=r.split('|'),x=(S.at[d]||{})[nm];return x?['attendance',{day:d,name:nm,t:x.t||null,chhutti:!!x.c,deleted:!!x.del,u:x.u}]:null}
  if(t==='pd'){const [d,rid]=r.split('|'),x=(S.pr.d[d]||{})[rid];return x?['production',{day:d,recipe_id:rid,qty:num(x.q),k:x.k||null,u:x.u}]:null}
  if(t==='ba'){const a=S.bk.ac.find(x=>x.id===r);return a?['bank_accounts',{id:a.id,name:a.name,op:n(a.op),off:!!a.off,u:a.u}]:null}
@@ -1811,6 +1836,7 @@ function merge(tb,r){
  if(tb==='employees'){const i=S.em.findIndex(x=>x.id===r.id),o={id:r.id,name:r.name,phone:r.phone||'',start:r.start||'',jd:r.jd||'',ob:num(r.ob),sal:r.sal||{},off:r.off,u:r.u};
   if(i<0){S.em.push(o);return true}if(r.u>S.em[i].u){S.em[i]=o;return true}return false}
  if(tb==='recipes'){const x=S.pr.rc[r.id];if(x&&r.u<=(x.u||0))return false;S.pr.rc[r.id]={id:r.id,out:r.item_id,ins:r.ins||[],y:r.y??undefined,kd:r.kd||undefined,off:r.off,u:r.u};return true}
+ if(tb==='duty'){const H=S.du[r.name]=S.du[r.name]||{},x=H[r.day];if(x&&r.u<=(x.u||0))return false;H[r.day]={t:r.t||'',k:r.k==null?'':n(r.k),u:r.u};return true}
  if(tb==='attendance'){const A=S.at[r.day]=S.at[r.day]||{},x=A[r.name];if(x&&r.u<=(x.u||0))return false;A[r.name]={t:r.t||'',c:!!r.chhutti,del:!!r.deleted,u:r.u};return true}
  if(tb==='production'){const P=S.pr.d[r.day]=S.pr.d[r.day]||{},x=P[r.recipe_id];if(x&&r.u<=(x.u||0))return false;P[r.recipe_id]={q:r.qty??'',k:r.k||undefined,u:r.u};return true}
  if(tb==='costs'){const C=S.cs[r.item_id]=S.cs[r.item_id]||{},c=C[r.day];if(c&&r.u<=(c.u||0))return false;C[r.day]={c:r.cost??'',u:r.u};return true}

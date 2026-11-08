@@ -584,3 +584,19 @@ revoke all on public.attendance from anon;
 -- 'bl' bill ki raqam / owner ko, 'sp' supplier). The cr/bl/sp lists were started from the names already used in those
 -- sections (ids xk_<kind>_NN, inserted on 08/11/2026); old entries were not touched.
 alter table public.exp_names add column if not exists kind text not null default 'ex';
+
+-- Duty time and daily kharchi per employee (owner writes, everyone reads): a row applies from its day until the next row.
+-- The Hazri card works out each day's kharchi from how late the employee came (only shown, not booked in the Hisaab).
+create table if not exists public.duty (
+  name text not null, day date not null, t text, k numeric,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid,
+  primary key (name, day)
+);
+drop trigger if exists duty_lww on public.duty;
+create trigger duty_lww before insert or update on public.duty for each row execute function public.lww();
+create index if not exists duty_sa_idx on public.duty (sa);
+alter table public.duty enable row level security;
+create policy duty_member_select on public.duty for select to authenticated using (public.is_member());
+create policy duty_owner_insert on public.duty for insert to authenticated with check (public.is_owner());
+create policy duty_owner_update on public.duty for update to authenticated using (public.is_owner()) with check (public.is_owner());
+revoke all on public.duty from anon;
