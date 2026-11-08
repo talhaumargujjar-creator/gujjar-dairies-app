@@ -600,3 +600,23 @@ create policy duty_member_select on public.duty for select to authenticated usin
 create policy duty_owner_insert on public.duty for insert to authenticated with check (public.is_owner());
 create policy duty_owner_update on public.duty for update to authenticated using (public.is_owner()) with check (public.is_owner());
 revoke all on public.duty from anon;
+
+-- Delivery rate follows the counter day rate (owner): customer rate, else the item's own delivery rate (only FULL FAT MILK),
+-- else the latest day rate on or before the delivery day, else the item rate.
+create or replace function public.delivery_rate() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.rate is null and new.item_id not like '\_%' then
+    if tg_op = 'UPDATE' and old.rate is not null and not old.deleted and coalesce(old.qty,0) <> 0 then
+      new.rate := old.rate;
+    else
+      select coalesce((c.rates->>new.item_id)::numeric, p.drate,
+          (select s.rt from public.day_stock s where s.item_id = new.item_id and s.day <= new.day and s.rt is not null order by s.day desc limit 1),
+          p.rate) into new.rate
+        from public.prices p left join public.customers c on c.id = new.cust_id
+        where p.item_id = new.item_id;
+    end if;
+  end if;
+  return new;
+end $$;
+revoke execute on function public.delivery_rate() from public, anon, authenticated;

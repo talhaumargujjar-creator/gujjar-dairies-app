@@ -367,16 +367,17 @@ function gOpen(d){for(const x of before(d)){const D=S.days[x];if(!active(D))cont
 // Galla like the khata's TOTAL HISAAB: opening + counter sale + wasool (+ bank se nikala) = cash in (A);
 // minus total paid (1) to (5) and cash put in the bank = what should be in the galla.
 // Delivery rate: the item's own delivery rate, else its counter rate. A saved delivery keeps the rate it was saved with.
-const drOf=it=>it&&has(it.drate)?n(it.drate):n(it&&it.rate);
+// Delivery rate (owner): an item with its own delivery rate (only FULL FAT MILK) uses it; every other item follows the counter rate of that day, day rates included.
+const drOf=(it,d=date)=>it&&has(it.drate)?n(it.drate):it?rateOf(it,d):0;
 // A customer can have its own rate for an item (cs.rates, e.g. milk 250 instead of 270).
-const rateFor=(c,iid)=>{const cu=S.dl.cs.find(x=>x.id===c),r=cu&&cu.rates&&cu.rates[iid];return has(r)?n(r):drOf(itm(iid))};
-const damt=(iid,e,c)=>iid==='_amt'?n(e.a):n(e.q)*(has(e.r)?n(e.r):rateFor(c,iid));
+const rateFor=(c,iid,d=date)=>{const cu=S.dl.cs.find(x=>x.id===c),r=cu&&cu.rates&&cu.rates[iid];return has(r)?n(r):drOf(itm(iid),d)};
+const damt=(iid,e,c,d=date)=>iid==='_amt'?n(e.a):n(e.q)*(has(e.r)?n(e.r):rateFor(c,iid,d));
 // One day's home delivery: quantity per item (it left the shop's stock), sale at delivery rates and its munafa.
 // Old sheet amounts ('_amt') only count in customer bills, not in the shop's daily hisaab.
 // cost = laagat of what went out; extra = what delivery earned above the counter rate (e.g. 270 vs 250).
 function dday(d){if(MEMO['d'+d])return MEMO['d'+d];const q={};let sale=0,prof=0,cost=0,extra=0;
  for(const [c,L] of Object.entries(S.dl.d[d]||{}))for(const [iid,e] of Object.entries(L)){if(e.del||iid[0]==='_')continue;
-  const a=damt(iid,e,c),it=itm(iid),k=n(e.q)*(it?costOf(it,d):0);q[iid]=(q[iid]||0)+n(e.q);sale+=a;cost+=k;prof+=a-k;if(it)extra+=a-n(e.q)*rateOf(it,d)}
+  const a=damt(iid,e,c,d),it=itm(iid),k=n(e.q)*(it?costOf(it,d):0);q[iid]=(q[iid]||0)+n(e.q);sale+=a;cost+=k;prof+=a-k;if(it)extra+=a-n(e.q)*rateOf(it,d)}
  const cash=S.dl.py.filter(p=>!p.del&&p.day===d&&p.m==='cash').reduce((s,p)=>s+n(p.a),0);
  return MEMO['d'+d]={q,sale,prof,cost,extra,cash}}
 // Delivery totals from the 1st of d's month up to d.
@@ -1415,12 +1416,12 @@ function dlv(){const top=own()?`<div class="chips">${[['day','Roz ki entry'],['b
  <div class="ftot" id="ftot">${ftotV()}</div>`}
 // Customer's baqaya before day d: old baqaya + everything delivered - everything received.
 function cbal(c,d){const cu=cst(c);let b=n(cu&&cu.op);
- for(const [x,C] of Object.entries(S.dl.d)){if(x>=d||!C[c])continue;for(const [i,e] of Object.entries(C[c]))if(!e.del)b+=damt(i,e,c)}
+ for(const [x,C] of Object.entries(S.dl.d)){if(x>=d||!C[c])continue;for(const [i,e] of Object.entries(C[c]))if(!e.del)b+=damt(i,e,c,x)}
  S.dl.py.forEach(p=>{if(!p.del&&p.c===c&&p.day<d)b-=n(p.a)});return b}
 // One customer's month: items grouped by rate, old sheet amounts, day-wise list, wasooli and what is still due.
 function cmon(c,ym){const it={},days=[];let amt=0,old=0;
  for(const x of Object.keys(S.dl.d).filter(x=>x.startsWith(ym)).sort()){const L=S.dl.d[x][c];if(!L)continue;let ds=0;const parts=[];
-  for(const [i,e] of Object.entries(L)){if(e.del||i==='_note')continue;const a=damt(i,e,c);ds+=a;
+  for(const [i,e] of Object.entries(L)){if(e.del||i==='_note')continue;const a=damt(i,e,c,x);ds+=a;
    if(i==='_amt'){old+=a;continue}const r=has(e.r)?n(e.r):rateFor(c,i),k=i+'@'+r,o=it[k]||(it[k]={i,r,q:0,a:0});o.q+=n(e.q);o.a+=a;parts.push(iname(i)+' '+fq(n(e.q)))}
   const nt=dnote(x,c);if(ds||nt)days.push([x,parts,ds,nt]);amt+=ds}
  const pays=S.dl.py.filter(p=>!p.del&&p.c===c&&p.day.startsWith(ym)).sort((a,b)=>a.day<b.day?-1:1),paid=pays.reduce((s,p)=>s+n(p.a),0),prev=cbal(c,ym+'-01');
@@ -1658,7 +1659,7 @@ function shareMonth(){const m=date.slice(0,7),{R,S2,last,fx,pl}=monthSum(m),[y,m
 function itemStats(days){const M={};const g=id=>M[id]||(M[id]={q:0,sale:0,prof:0});
  for(const d of days){S.items.forEach(it=>{const s=csold(it,d);if(!s)return;const r=rateOf(it,d),x=g(it.id);x.q+=s;x.sale+=s*r;x.prof+=s*(r-costOf(it,d))});
   for(const [c,L] of Object.entries(S.dl.d[d]||{}))for(const [iid,e] of Object.entries(L)){if(e.del||iid[0]==='_')continue;const it=itm(iid);if(!it)continue;
-   const a=damt(iid,e,c),x=g(iid);x.q+=n(e.q);x.sale+=a;x.prof+=a-n(e.q)*costOf(it,d)}}
+   const a=damt(iid,e,c,d),x=g(iid);x.q+=n(e.q);x.sale+=a;x.prof+=a-n(e.q)*costOf(it,d)}}
  return Object.entries(M).map(([id,x])=>({it:itm(id),...x})).filter(x=>x.it&&(x.q||x.sale)).sort((a,b)=>b.prof-a.prof)}
 let ipM=1,ipAll=false;
 // Only the top items show until "Sab items dekhein" is pressed, so the card stays short.
