@@ -1432,10 +1432,10 @@ const rmap=a=>'https://www.google.com/maps/search/?api=1&query='+encodeURICompon
 const rtel=p=>String(p||'').replace(/[^\d+]/g,'');
 const rgive=x=>x?x.P.map(([i,e])=>`${isMilk(i)?'Doodh':iname(i)} ${fq(n(e.q))}${isMilk(i)?' L':''}`).join(', '):'';
 function riderV(){const C=custs(),M=rlast();let no=0;
- return `<div class="card"><h3>Rider ki list</h3><p class="hint" style="margin:4px 0 8px">Har customer usi tarteeb mein jaise register mein: pehle roz wale, phir ek din chhor kar, phir do din chhor kar, phir kabhi kabhi. 📍 pata dabayein to Google Maps khulega, 📞 dabayein to call. "Dena" = pichli dafa jitna diya.</p>
+ return `<div class="card"><h3>Rider ki list</h3><p class="hint" style="margin:4px 0 8px">Har customer usi tarteeb mein jaise register mein: pehle roz wale, phir ek din chhor kar, phir do din chhor kar, phir kabhi kabhi. 📞 phone dabayein to call. "Dena" = pichli dafa jitna diya.</p>
  ${pdfBtn('rl','riderPdf()').replace('📄 PDF WhatsApp par bhejein','📄 Rider ki list PDF')}<button class="btn ghost full" style="margin-top:8px" onclick="printHTML(riderHTML())">🖨 Print</button></div>
  <div class="card" style="padding:4px 12px">${frGroup(C,c=>{no++;const x=M[c.id],t=rtel(c.phone);
-  return `<div class="rrow"><div><b>${no}. ${esc(c.name)}</b></div>${c.addr?`<a class="rl" href="${esc(rmap(c.addr))}" target="_blank" rel="noopener">📍 ${esc(c.addr)}</a>`:''}${t?`<a class="rl" href="tel:${esc(t)}">📞 ${esc(c.phone)}</a>`:''}
+  return `<div class="rrow"><div><b>${no}. ${esc(c.name)}</b></div>${c.addr?`<div style="font-size:15px">📍 ${esc(c.addr)}</div>`:''}${t?`<a class="rl" href="tel:${esc(t)}">📞 ${esc(c.phone)}</a>`:''}
   <div style="font-size:15px">${x?`Dena: <b>${esc(rgive(x))}</b> <span class="hint">(pichli dafa ${pk(x.d)})</span>`:'<span class="hint">Abhi tak kuch nahi gaya</span>'}</div></div>`})}</div>`}
 // Paper copy: one table, group headings as rows, with empty boxes to tick.
 function riderHTML(){const C=custs(),M=rlast();let no=0,g=null;
