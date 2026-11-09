@@ -1471,6 +1471,7 @@ function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCas
  return `<div class="card"><div class="fld"><label for="bmo">Mahina</label><input type="month" id="bmo" value="${ym}" onchange="bm=this.value||null;render()"></div>
  <div class="sum"><span>${monName(ym)} ka maal</span><b>${f(M)}</b></div><div class="sum tot"><span>Sab customers ka kul baqi</span><b>${f(T)}</b></div>
  <p class="hint" style="margin-top:8px">Customer par tap karein: bill dekhein, WhatsApp par bhejein ya wasooli likhein.</p></div>
+ ${nbV()}
  ${blV()}
  <input type="search" placeholder="Customer dhoondein" value="${esc(bq)}" oninput="bq=this.value;render();const e=$('input[type=search]');e.focus();e.setSelectionRange(e.value.length,e.value.length)" aria-label="Customer dhoondein">
  <div class="card" style="margin-top:12px">${V.map(([c,m])=>`<button class="crow" onclick="bc='${c.id}';render();scrollTo(0,0)"><span style="min-width:0"><b>${esc(c.name)}</b><br><span class="hint">Maal ${f(m.amt)}${m.paid?' · Wasool '+f(m.paid):''}${sent[c.id]?' · ✓ bheja':''}${c.phone?'':' · number nahi'}</span></span><b class="${m.due<0?'pos':''}">${f(m.due)}</b></button>`).join('')||'<p class="hint">Koi customer nahi mila.</p>'}</div>
@@ -1503,6 +1504,29 @@ function blHTML(){const {d,R,t}=blRows(),B=S.dl.bp||{};
  <table style="margin-top:10px"><tr><th style="width:28px">#</th><th>Customer</th><th>Address / Phone</th><th class="r">Baqaya (Rs)</th><th style="width:150px">Wasool / Remarks</th></tr>${R.map(([c,b],i)=>`<tr><td>${i+1}</td><td><b>${esc(c.name)}</b></td><td>${esc([c.addr,c.phone].filter(Boolean).join(' · '))}</td><td class="r"><b>${f(b)}</b></td><td style="border-left:1px solid #e5e5e5"></td></tr>`).join('')}</table>
  <div class="bf"><div class="tt"><div><span>Customers</span><span>${R.length}</span></div><div class="due"><span>Kul baqaya</span><span>Rs ${f(t)}</span></div></div></div></div>`}
 function blPdf(){const {d}=blRows();return pdfMake('bl',blHTML(),`Delivery baqaya ${pk(d).replace(/\//g,'-')}`)}
+// Bill nahi aaya (owner): who has not cleared the bill made up to the last day of the previous month, counting wasooli
+// from the 1st of this month up to the chosen day. It is worked out afresh every time, so a bill paid on the 12th or 13th
+// drops off at once and a new list can go to the rider. Order = the rider's route (roz wale first).
+let nbd=null;
+function nbRows(){const d=nbd||date,m0=d.slice(0,8)+'01',E=addDay(m0,-1);let paidN=0;
+ const R=S.dl.cs.map(c=>{const bill=cbal(c.id,m0);if(Math.round(bill)<=0)return null;const paid=S.dl.py.filter(p=>!p.del&&p.c===c.id&&p.day>=m0&&p.day<=d).reduce((s,p)=>s+n(p.a),0),left=bill-paid;
+  if(Math.round(left)<=0){paidN++;return null}return {c,bill,paid,left}}).filter(Boolean).sort((a,b)=>byDl(a.c,b.c));
+ return {d,E,R,paidN,t:R.reduce((s,x)=>s+x.left,0)}}
+function nbText(){const {d,E,R,t}=nbRows();return `*Gujjar Dairies — bill nahi aaya, doodh band*\n${pk(E)} tak ka bill, ${pk(d)} tak wasool nahi hua (${R.length} customers):\n\n`+R.map((x,i)=>`${i+1}. ${x.c.name}${x.c.addr?' — '+x.c.addr:''}${x.c.phone?' — '+x.c.phone:''} — Rs ${f(x.left)}`).join('\n')+`\n\n*Kul baqi: Rs ${f(t)}*`}
+function nbHTML(){const {d,E,R,t}=nbRows();
+ return rgHead('Bill nahi aaya — doodh band',`${pk(E)} tak ka bill · <b>${pk(d)}</b> tak wasool nahi`)+`<p class="m" style="margin-top:4px">In customers ka pichle mahine ka bill abhi tak nahi aaya. Remarks mein jo customer ne kaha wo likhein.</p>
+ <table class="rdt" style="margin-top:8px"><tr><th style="width:30px">#</th><th class="l" style="width:128px">Customer</th><th class="l">Pata</th><th class="l" style="width:112px">Phone</th><th style="width:78px">Baqi (Rs)</th><th class="l" style="width:110px">Remarks</th></tr>
+ ${R.map((x,i)=>`<tr><td>${i+1}</td><td class="l"><b>${esc(x.c.name)}</b></td><td class="l">${esc(x.c.addr||'')}</td><td class="l">${esc(x.c.phone||'')}</td><td><b>${f(x.left)}</b></td><td></td></tr>`).join('')}
+ <tr class="t"><td></td><td class="l" colspan="3">Kul (${R.length} customers)</td><td>${f(t)}</td><td></td></tr></table></div>`}
+const nbPdf=()=>{const {d}=nbRows();return pdfMake('nb',nbHTML(),`Bill nahi aaya ${pk(d).replace(/\//g,'-')}`,null,1)};
+function nbV(){const {d,E,R,paidN,t}=nbRows(),due=n(S.dl.bp&&S.dl.bp.due);
+ return `<div class="card"><details${OPEN.nb?' open':''} ontoggle="OPEN.nb=this.open"><summary>Bill nahi aaya (doodh band list) · ${R.length} customers · ${f(t)}</summary><div style="margin-top:10px">
+ <div class="fld"><label for="nbd">Kis tareekh tak wasooli dekhein</label><input type="date" id="nbd" value="${d}" onchange="nbd=this.value||null;render()"></div>
+ <p class="hint" style="margin:0 0 8px">${pk(E)} tak jo bill bana, us mein se ${pk(d.slice(0,8)+'01')} se ${pk(d)} tak jin ka poora nahi aaya.${due?` Due date: ${due} tareekh.`:''} ${paidN} customers ka bill aa gaya.</p>
+ ${R.length?`<table><tr><th>#</th><th style="text-align:left">Customer</th><th>Bill</th><th>Aaya</th><th>Baqi</th></tr>${R.map((x,i)=>`<tr onclick="bc='${x.c.id}';render();scrollTo(0,0)" style="cursor:pointer"><td>${i+1}</td><td style="text-align:left">${esc(x.c.name)}${x.c.addr?`<br><small class="muted">${esc(x.c.addr)}</small>`:''}</td><td>${f(x.bill)}</td><td>${x.paid?f(x.paid):''}</td><td><b>${f(x.left)}</b></td></tr>`).join('')}
+ <tr><td></td><td style="text-align:left"><b>Kul</b></td><td></td><td></td><td><b>${f(t)}</b></td></tr></table>`:'<p class="msg ok">✓ Sab ka bill aa gaya</p>'}
+ ${R.length?`<button class="btn full" style="margin-top:10px" onclick="wa(nbText())">WhatsApp par rider ko bhejein</button>${pdfBtn('nb','nbPdf()').replace('📄 PDF WhatsApp par bhejein','📄 PDF banayein')}<button class="btn ghost full" style="margin-top:8px" onclick="printHTML(nbHTML())">🖨 Print</button>`:''}
+ <p class="hint" style="margin-top:8px">Jab kisi ka bill aaye to us ke Bill page par "Wasooli likhein" se likh dein; wo is list se khud hat jayega. Naam dabayein to us ka bill khulta hai.</p></div></details></div>`}
 // Bill header and offers, set once by the owner and printed on every bill.
 function bpV(){const B=S.dl.bp,inp=(k,l,t)=>`<div class="fld"><label for="bp_${k}">${l}</label><input type="${t||'text'}" id="bp_${k}" value="${esc(B[k]||'')}" onchange="upBP('${k}',this.value)"></div>`;
  return `<div class="card"><details ${OPEN.bp?'open':''} ontoggle="OPEN.bp=this.open"><summary>Bill par kya chhapega (naam, number, offers)</summary><div style="margin-top:12px">
