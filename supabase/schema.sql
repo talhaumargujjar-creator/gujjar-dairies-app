@@ -620,3 +620,7 @@ begin
   return new;
 end $$;
 revoke execute on function public.delivery_rate() from public, anon, authenticated;
+
+-- How often a customer takes delivery (owner): 'd' roz, 'a' ek din chhor kar, 't' do din chhor kar, 'k' kabhi kabhi; null = the app guesses
+-- from the last 14 days. Delivery lists and the register show roz first, then the others.
+alter table public.customers add column if not exists fr text;

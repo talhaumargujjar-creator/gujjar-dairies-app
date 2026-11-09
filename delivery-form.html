@@ -26,6 +26,7 @@ html,body{margin:0;background:#e9ecf2;color:var(--ink);font:12px/1.25 Arial,Helv
 table{width:100%;border-collapse:collapse;table-layout:fixed}
 th{font-size:9.5px;background:#ddd;border:1.5px solid var(--line);padding:3px 2px;line-height:1.1}
 td{border:1.5px solid var(--line);height:7.3mm;padding:0 3px;font-size:11px}
+td.gh{font-weight:900;font-size:11px;letter-spacing:.5px;background:#e8e8e8;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:2px 6px;text-align:left}
 td.no{text-align:center;font-weight:900;font-size:11.5px}
 td.nm{line-height:1.05;overflow:hidden}
 td.nm b{display:block;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -46,7 +47,13 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 // Data comes from the app on this phone; a copy made for printing can pass window.FORM_DATA instead.
 let S=null;try{S=JSON.parse(localStorage.getItem('gd_hisaab_v2'))}catch(e){}
 const FD=window.FORM_DATA||null;
-const custs=(FD?FD.cs:S&&S.dl&&S.dl.cs?S.dl.cs:[]).map((c,i)=>[c,i]).filter(x=>!x[0].off).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
+// Same order as the app (owner): roz first, then ek din chhor kar, do din chhor kar, kabhi kabhi; the customer's own setting (fr) or the
+// app's guess from the last 14 days (10+ roz, 6-9 alternate, 4-5 do din chhor, less kabhi kabhi). Without delivery data everyone counts as roz.
+const FR={d:'ROZ WALE',a:'EK DIN CHHOR KAR',t:'DO DIN CHHOR KAR',k:'KABHI KABHI'},FRK=['d','a','t','k'],DDL=S&&S.dl&&S.dl.d||null;
+const FCNT={};if(DDL){const t=new Date(Date.now()-new Date().getTimezoneOffset()*6e4);for(let i=1;i<=14;i++){const x=new Date(t);x.setUTCDate(x.getUTCDate()-i);const C=DDL[x.toISOString().slice(0,10)]||{};
+ for(const [c,L] of Object.entries(C))if(Object.entries(L).some(([k,e])=>k[0]!=='_'&&!e.del&&Number(e.q)>0))FCNT[c]=(FCNT[c]||0)+1}}
+const frOf=c=>FR[c.fr]?c.fr:!DDL?'d':(x=>x>=10?'d':x>=6?'a':x>=4?'t':'k')(FCNT[c.id]||0);
+const custs=(FD?FD.cs:S&&S.dl&&S.dl.cs?S.dl.cs:[]).map((c,i)=>[c,i]).filter(x=>!x[0].off).sort((a,b)=>(FRK.indexOf(frOf(a[0]))-FRK.indexOf(frOf(b[0])))||((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
 const marks='<div class="mk tl"></div><div class="mk tr"></div><div class="mk bl"></div><div class="mk br"></div>';
 const dateBoxes='<div class="dt">TAREEKH: <i></i><i></i> / <i></i><i></i> / <i></i><i></i><i></i><i></i><b>DELIVERY WALA:</b><u></u></div>';
 const RULE='<div class="rule"><b>Qaide:</b> Doodh <b>litre</b> mein (1.5 = dairh litre). Aur saman: naam aur ginti, jaise <b>Bread 1, Dahi 1 kg</b>. Customer ne paise diye to <b>Wasooli</b> mein raqam aur <b>C</b> (cash) ya <b>O</b> (online) par gol daira. Delivery nahi hui to line khaali chhor dein. Naya customer neeche khaali line mein.</div>';
@@ -55,15 +62,16 @@ const row=(no,c)=>`<tr><td class="no">${no}</td><td class="nm">${c?`<b>${esc(c.n
 function build(){
  if(!custs.length){document.getElementById('out').innerHTML='<div class="page"><h2>Pehle app mein login karein</h2><p>Form aap ki customers list se banta hai. Isi phone par app khol kar login karein, phir ye page dobara kholein.</p></div>';return}
  // 31 lines a page; the last page also gets blank lines for new customers and the day's totals.
- const per=31,blank=6,L=custs.map(c=>c).concat(Array(blank).fill(null)),pages=[];
+ // A heading line before each group takes one line of the page.
+ const per=31,blank=6,L=[];let g=null,no=0;custs.forEach(c=>{const k=frOf(c);if(k!==g){L.push({h:FR[k]});g=k}L.push({c,no:++no})});for(let i=0;i<blank;i++)L.push({c:null,no:++no});const pages=[];
  for(let i=0;i<L.length;i+=per)pages.push(L.slice(i,i+per));
  const last=pages[pages.length-1];if(last.length>per-6)pages.push([]);
  const N=pages.length;
  document.getElementById('out').innerHTML=pages.map((P,pi)=>{const start=pi*per;
   const tots=pi===N-1?`<div class="box"><div class="r"><span>KUL DOODH (litre)</span><span></span></div><div class="r"><span>KUL WASOOLI CASH (Rs)</span><span></span></div><div class="r"><span>DUKAAN SE LIYA DOODH (litre)</span><span></span></div><div class="r"><span>KUL WASOOLI ONLINE (Rs)</span><span></span></div><div class="r"><span>WAPAS AAYA DOODH (litre)</span><span></span></div><div class="r"><span>CASH DUKAAN PAR DIYA (Rs)</span><span></span></div></div>`:'';
   return `<div class="page">${marks}<div class="hd"><div><h1>GUJJAR DAIRIES — DELIVERY KA REGISTER</h1><div style="font-size:11px;font-weight:700">PAGE ${pi+1} / ${N}</div>${dateBoxes}</div><div class="code">D${pi+1}</div></div>
-   ${pi===0?RULE:''}${P.length?`<table>${HEAD}${P.map((c,i)=>row(start+i+1,c)).join('')}</table>`:''}${tots}
-   <div class="ft"><span>D${pi+1} · Gujjar Dairies</span><span>Tarteeb wahi jo app ki Delivery list mein hai</span></div></div>`}).join('')}
+   ${pi===0?RULE:''}${P.length?`<table>${HEAD}${P.map(x=>x.h?`<tr><td colspan="7" class="gh">${x.h}</td></tr>`:row(x.no,x.c)).join('')}</table>`:''}${tots}
+   <div class="ft"><span>D${pi+1} · Gujjar Dairies</span><span>Tarteeb: roz wale, ek din chhor kar, do din chhor kar, kabhi kabhi (app jaisi)</span></div></div>`}).join('')}
 build();
 </script>
 </body>
