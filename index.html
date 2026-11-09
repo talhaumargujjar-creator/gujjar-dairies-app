@@ -1445,11 +1445,11 @@ function riderV(){const C=custs(),M=rlast();let no=0;
 // Paper copy (owner): roz wale on the first sheets, then a new sheet for ek din chhor kar, do din chhor kar and kabhi kabhi.
 // Group headings are rows; the ✓ box is ticked when the saman is given.
 function riderHTML(){const C=custs(),M=rlast();let no=0;
- const TH='<tr><th>#</th><th class="l">Customer</th><th class="l">Pata</th><th class="l">Phone</th><th class="l">Dena (pichli dafa)</th><th>✓</th></tr>';
+ const TH='<tr><th style="width:30px">#</th><th class="l" style="width:150px">Customer</th><th class="l">Pata</th><th class="l" style="width:100px">Phone</th><th class="l" style="width:132px">Dena</th><th style="width:40px">✓</th></tr>';
  const tbl=L=>{let g=null;return `<table class="rdt" style="margin-top:8px">${TH}${L.map(c=>{no++;const x=M[c.id],k=frOf(c),h=k!==g?`<tr><td colspan="6" class="l" style="background:#e9eef8;font-weight:bold">${FR[k]} (${L.filter(y=>frOf(y)===k).length})</td></tr>`:'';g=k;
-  return h+`<tr><td>${no}</td><td class="l"><b>${esc(c.name)}</b></td><td class="l">${esc(c.addr||'')}</td><td class="l">${esc(c.phone||'')}</td><td class="l">${esc(rgive(x))}${x?` <span class="m">· ${pk(x.d).slice(0,5)}</span>`:''}</td><td style="width:14mm"></td></tr>`}).join('')}</table>`};
+  return h+`<tr><td>${no}</td><td class="l"><b>${esc(c.name)}</b></td><td class="l">${esc(c.addr||'')}</td><td class="l">${esc(c.phone||'')}</td><td class="l">${esc(rgive(x))}</td><td style="width:14mm"></td></tr>`}).join('')}</table>`};
  const A=C.filter(c=>frOf(c)==='d'),B=C.filter(c=>frOf(c)!=='d');
- return rgHead('Rider ki list',`${dayName(date)}, <b>${pk(date)}</b>`)+`<p class="m" style="margin-top:4px">✓ khaane mein saman de kar nishan lagayein. Dena = pichli dafa jitna diya aur us ki tareekh.</p>`+(A.length?tbl(A):'')
+ return rgHead('Rider ki list',`${dayName(date)}, <b>${pk(date)}</b>`)+`<p class="m" style="margin-top:4px">✓ khaane mein saman de kar nishan lagayein. Dena = pichli dafa jitna diya.</p>`+(A.length?tbl(A):'')
   +(B.length?`<div class="pbk"><h2>Rider ki list — ek din chhor kar, do din chhor kar, kabhi kabhi · ${pk(date)}</h2>${tbl(B)}</div>`:'')
   +`</div>`}
 const riderPdf=()=>pdfMake('rl',riderHTML(),`Rider list ${pk(date).replace(/\//g,'-')}`,null,1);
@@ -1760,7 +1760,7 @@ const RGCSS=`.rg{color:#111;font:12px/1.35 Arial,Helvetica,sans-serif;-webkit-pr
 .rg h2{font-size:14px;margin:14px 0 4px;color:#1f4fa8;border-bottom:1px solid #cdd8ee;padding-bottom:2px}.rg table{width:100%;border-collapse:collapse;font-size:11.5px}
 .rg th{background:#e9eef8;font-weight:bold}.rg th,.rg td{border:1px solid #c9d1e0;padding:3px 4px;text-align:right;vertical-align:top}.rg .l{text-align:left}.rg tr.t td{font-weight:bold;background:#f3f5fa}
 .rg .neg{color:#c71c2b}.rg .k{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}.rg .k div{border:1px solid #c9d1e0;border-radius:6px;padding:5px 7px}.rg .k span{display:block;font-size:11px;color:#555}.rg .k b{font-size:15px}
-.rg .pbk{break-before:page;page-break-before:always}.rg .rdt td{padding:7px 5px;font-size:12.5px}.rg .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.rg .m{color:#666}.rg .ft{margin-top:14px;font-size:10.5px;color:#666;text-align:center}`;
+.rg .pbk{break-before:page;page-break-before:always}.rg .rdt{table-layout:fixed}.rg .rdt td,.rg .rdt th{padding:8px 5px;font-size:13.5px}.rg .rdt td:nth-child(2),.rg .rdt td:nth-child(4){white-space:nowrap;overflow:hidden}.rg .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.rg .m{color:#666}.rg .ft{margin-top:14px;font-size:10.5px;color:#666;text-align:center}`;
 const rgN=v=>`<span class="${v<0?'neg':''}">${f(v)}</span>`,rgQ=v=>v?fq(q2(v)):'';
 const rgHead=(t,s)=>`<style>${RGCSS}</style><div class="rg"><div class="rh"><div><h1>${esc((S.dl.bp&&S.dl.bp.shop)||'Gujjar Dairies')}</h1><b>${t}</b></div><p>${s}<br><span class="m">Bana: ${pk(tz())}</span></p></div>`;
 const rgK=L=>`<div class="k">${L.map(([l,v])=>`<div><span>${l}</span><b>${typeof v==='number'?rgN(v):v}</b></div>`).join('')}</div>`;
