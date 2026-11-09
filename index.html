@@ -1487,7 +1487,9 @@ function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCas
 // Baqaya list (owner): every customer's baqaya at the end of a chosen day, to print or send and give the rider.
 // Removed customers who still owe are in it too. Order: biggest baqaya first, or the line order of the delivery register.
 // bln: in "zyada baqaya upar" only the first bln customers (owner), so small baqayas, often next month's bill paid early, stay out.
-let bld=null,blo='amt',bln='';
+// "Rider ko bhejni hai" tick (owner): the copy for the rider has no money column or total. blR for the baqaya list, nbR for bill nahi aaya.
+let bld=null,blo='amt',bln='',blR=false,nbR=false;
+const rdrTick=(v,set)=>`<label style="display:flex;align-items:center;gap:10px;margin-top:12px;font-size:17px"><input type="checkbox" style="width:24px;height:24px" ${v?'checked':''} onchange="${set}=this.checked;render()"> Rider ko bhejni hai (raqam wala khaana na aaye)</label>`;
 function blRows(){const d=bld||date,R=S.dl.cs.map(c=>[c,cbal(c.id,addDay(d,1))]).filter(([,b])=>Math.round(b)>0);
  R.sort(blo==='amt'?(x,y)=>y[1]-x[1]:(x,y)=>byDl(x[0],y[0]));const all=R.length;if(blo==='amt'&&n(bln)>0)R.splice(Math.floor(n(bln)));return {d,R,all,t:R.reduce((a,[,b])=>a+b,0)}}
 function blV(){const {d,R,t,all}=blRows(),chip=(v,l)=>`<button class="chip" aria-pressed="${blo===v}" onclick="blo='${v}';render()">${l}</button>`;
@@ -1497,13 +1499,13 @@ function blV(){const {d,R,t,all}=blRows(),chip=(v,l)=>`<button class="chip" aria
  ${blo==='amt'?`<div class="fld"><label for="bln">Kitne serial number tak (khaali = sab ${all})</label><input type="number" inputmode="numeric" id="bln" value="${esc(bln)}" placeholder="Jaise 65" onchange="bln=this.value.trim();render()"></div>`:''}
  <table><tr><th>#</th><th style="text-align:left">Customer</th><th>Baqaya</th></tr>${R.map(([c,b],i)=>`<tr><td>${i+1}</td><td style="text-align:left">${esc(c.name)}${c.off?' <small class="muted">(hataya)</small>':''}</td><td>${f(b)}</td></tr>`).join('')}
  <tr><td></td><td style="text-align:left"><b>Kul baqaya</b></td><td><b>${f(t)}</b></td></tr></table>
- ${pdfBtn('bl','blPdf()')}<button class="btn ghost full" style="margin-top:8px" onclick="printHTML(blHTML())">🖨 Print karein</button>
+ ${rdrTick(blR,'blR')}${pdfBtn('bl','blPdf()')}<button class="btn ghost full" style="margin-top:8px" onclick="printHTML(blHTML())">🖨 Print karein</button>
  <p class="hint" style="margin-top:8px">${pk(d)} ke aakhir tak jin ka baqaya hai. Print mein har customer ke saath pata, number aur "Wasool / Remarks" ka khaali khaana hota hai, rider wahan likh sakta hai.</p></div></details></div>`}
 function blHTML(){const {d,R,t}=blRows(),B=S.dl.bp||{};
  return `<style>${BILLCSS}</style><div class="bill"><div class="bh"><div class="bs"><img src="/img/logo.png" alt=""><div><h1>${esc(B.shop||'Gujjar Dairies')}</h1>${B.owner?`<p>${esc(B.owner)}</p>`:''}${B.phone?`<p>Phone / WhatsApp: ${esc(B.phone)}</p>`:''}</div></div>
  <div class="bt"><h2>BAQAYA LIST</h2><p><b>${pk(d)} tak</b></p><p>${R.length} customers</p></div></div>
- <table style="margin-top:10px"><tr><th style="width:28px">#</th><th>Customer</th><th>Address / Phone</th><th class="r">Baqaya (Rs)</th><th style="width:150px">Wasool / Remarks</th></tr>${R.map(([c,b],i)=>`<tr><td>${i+1}</td><td><b>${esc(c.name)}</b></td><td>${esc([c.addr,c.phone].filter(Boolean).join(' · '))}</td><td class="r"><b>${f(b)}</b></td><td style="border-left:1px solid #e5e5e5"></td></tr>`).join('')}</table>
- <div class="bf"><div class="tt"><div><span>Customers</span><span>${R.length}</span></div><div class="due"><span>Kul baqaya</span><span>Rs ${f(t)}</span></div></div></div></div>`}
+ <table style="margin-top:10px"><tr><th style="width:28px">#</th><th>Customer</th><th>Address / Phone</th>${blR?'':'<th class="r">Baqaya (Rs)</th>'}<th style="width:150px">Wasool / Remarks</th></tr>${R.map(([c,b],i)=>`<tr><td>${i+1}</td><td><b>${esc(c.name)}</b></td><td>${esc([c.addr,c.phone].filter(Boolean).join(' · '))}</td>${blR?'':`<td class="r"><b>${f(b)}</b></td>`}<td style="border-left:1px solid #e5e5e5"></td></tr>`).join('')}</table>
+ <div class="bf"><div class="tt"><div><span>Customers</span><span>${R.length}</span></div>${blR?'':`<div class="due"><span>Kul baqaya</span><span>Rs ${f(t)}</span></div>`}</div></div></div>`}
 function blPdf(){const {d}=blRows();return pdfMake('bl',blHTML(),`Delivery baqaya ${pk(d).replace(/\//g,'-')}`)}
 // Bill nahi aaya (owner): who has not cleared the bill made up to the last day of the previous month, counting wasooli
 // from the 1st of this month up to the chosen day. It is worked out afresh every time, so a bill paid on the 12th or 13th
@@ -1513,12 +1515,12 @@ function nbRows(){const d=nbd||date,m0=d.slice(0,8)+'01',E=addDay(m0,-1);let pai
  const R=S.dl.cs.map(c=>{const bill=cbal(c.id,m0);if(Math.round(bill)<=0)return null;const paid=S.dl.py.filter(p=>!p.del&&p.c===c.id&&p.day>=m0&&p.day<=d).reduce((s,p)=>s+n(p.a),0),left=bill-paid;
   if(Math.round(left)<=0){paidN++;return null}return {c,bill,paid,left}}).filter(Boolean).sort((a,b)=>byDl(a.c,b.c));
  return {d,E,R,paidN,t:R.reduce((s,x)=>s+x.left,0)}}
-function nbText(){const {d,E,R,t}=nbRows();return `*Gujjar Dairies — bill nahi aaya, doodh band*\n${pk(E)} tak ka bill, ${pk(d)} tak wasool nahi hua (${R.length} customers):\n\n`+R.map((x,i)=>`${i+1}. ${x.c.name}${x.c.addr?' — '+x.c.addr:''}${x.c.phone?' — '+x.c.phone:''} — Rs ${f(x.left)}`).join('\n')+`\n\n*Kul baqi: Rs ${f(t)}*`}
+function nbText(){const {d,E,R,t}=nbRows();return `*Gujjar Dairies — bill nahi aaya, doodh band*\n${pk(E)} tak ka bill, ${pk(d)} tak wasool nahi hua (${R.length} customers):\n\n`+R.map((x,i)=>`${i+1}. ${x.c.name}${x.c.addr?' — '+x.c.addr:''}${x.c.phone?' — '+x.c.phone:''}${nbR?'':' — Rs '+f(x.left)}`).join('\n')+(nbR?'':`\n\n*Kul baqi: Rs ${f(t)}*`)}
 function nbHTML(){const {d,E,R,t}=nbRows();
  return rgHead('Bill nahi aaya — doodh band',`${pk(E)} tak ka bill · <b>${pk(d)}</b> tak wasool nahi`)+`<p class="m" style="margin-top:4px">In customers ka pichle mahine ka bill abhi tak nahi aaya. Remarks mein jo customer ne kaha wo likhein.</p>
- <table class="rdt" style="margin-top:8px"><tr><th style="width:30px">#</th><th class="l" style="width:128px">Customer</th><th class="l">Pata</th><th class="l" style="width:112px">Phone</th><th style="width:78px">Baqi (Rs)</th><th class="l" style="width:110px">Remarks</th></tr>
- ${R.map((x,i)=>`<tr><td>${i+1}</td><td class="l"><b>${esc(x.c.name)}</b></td><td class="l">${esc(x.c.addr||'')}</td><td class="l">${esc(x.c.phone||'')}</td><td><b>${f(x.left)}</b></td><td></td></tr>`).join('')}
- <tr class="t"><td></td><td class="l" colspan="3">Kul (${R.length} customers)</td><td>${f(t)}</td><td></td></tr></table></div>`}
+ <table class="rdt" style="margin-top:8px"><tr><th style="width:30px">#</th><th class="l" style="width:128px">Customer</th><th class="l">Pata</th><th class="l" style="width:112px">Phone</th>${nbR?'':'<th style="width:78px">Baqi (Rs)</th>'}<th class="l" style="width:110px">Remarks</th></tr>
+ ${R.map((x,i)=>`<tr><td>${i+1}</td><td class="l"><b>${esc(x.c.name)}</b></td><td class="l">${esc(x.c.addr||'')}</td><td class="l">${esc(x.c.phone||'')}</td>${nbR?'':`<td><b>${f(x.left)}</b></td>`}<td></td></tr>`).join('')}
+ <tr class="t"><td></td><td class="l" colspan="3">Kul (${R.length} customers)</td>${nbR?'':`<td>${f(t)}</td>`}<td></td></tr></table></div>`}
 const nbPdf=()=>{const {d}=nbRows();return pdfMake('nb',nbHTML(),`Bill nahi aaya ${pk(d).replace(/\//g,'-')}`,null,1)};
 function nbV(){const {d,E,R,paidN,t}=nbRows(),due=n(S.dl.bp&&S.dl.bp.due);
  return `<div class="card"><details${OPEN.nb?' open':''} ontoggle="OPEN.nb=this.open"><summary>Bill nahi aaya (doodh band list) · ${R.length} customers · ${f(t)}</summary><div style="margin-top:10px">
@@ -1526,7 +1528,7 @@ function nbV(){const {d,E,R,paidN,t}=nbRows(),due=n(S.dl.bp&&S.dl.bp.due);
  <p class="hint" style="margin:0 0 8px">${pk(E)} tak jo bill bana, us mein se ${pk(d.slice(0,8)+'01')} se ${pk(d)} tak jin ka poora nahi aaya.${due?` Due date: ${due} tareekh.`:''} ${paidN} customers ka bill aa gaya.</p>
  ${R.length?`<table><tr><th>#</th><th style="text-align:left">Customer</th><th>Bill</th><th>Aaya</th><th>Baqi</th></tr>${R.map((x,i)=>`<tr onclick="bc='${x.c.id}';render();scrollTo(0,0)" style="cursor:pointer"><td>${i+1}</td><td style="text-align:left">${esc(x.c.name)}${x.c.addr?`<br><small class="muted">${esc(x.c.addr)}</small>`:''}</td><td>${f(x.bill)}</td><td>${x.paid?f(x.paid):''}</td><td><b>${f(x.left)}</b></td></tr>`).join('')}
  <tr><td></td><td style="text-align:left"><b>Kul</b></td><td></td><td></td><td><b>${f(t)}</b></td></tr></table>`:'<p class="msg ok">✓ Sab ka bill aa gaya</p>'}
- ${R.length?`<button class="btn full" style="margin-top:10px" onclick="wa(nbText())">WhatsApp par rider ko bhejein</button>${pdfBtn('nb','nbPdf()').replace('📄 PDF WhatsApp par bhejein','📄 PDF banayein')}<button class="btn ghost full" style="margin-top:8px" onclick="printHTML(nbHTML())">🖨 Print</button>`:''}
+ ${R.length?`${rdrTick(nbR,'nbR')}<button class="btn full" style="margin-top:10px" onclick="wa(nbText())">WhatsApp par rider ko bhejein</button>${pdfBtn('nb','nbPdf()').replace('📄 PDF WhatsApp par bhejein','📄 PDF banayein')}<button class="btn ghost full" style="margin-top:8px" onclick="printHTML(nbHTML())">🖨 Print</button>`:''}
  <p class="hint" style="margin-top:8px">Jab kisi ka bill aaye to us ke Bill page par "Wasooli likhein" se likh dein; wo is list se khud hat jayega. Naam dabayein to us ka bill khulta hai.</p></div></details></div>`}
 // Bill header and offers, set once by the owner and printed on every bill.
 function bpV(){const B=S.dl.bp,inp=(k,l,t)=>`<div class="fld"><label for="bp_${k}">${l}</label><input type="${t||'text'}" id="bp_${k}" value="${esc(B[k]||'')}" onchange="upBP('${k}',this.value)"></div>`;
