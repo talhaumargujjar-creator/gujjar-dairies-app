@@ -1510,11 +1510,12 @@ function blPdf(){const {d}=blRows();return pdfMake('bl',blHTML(),`Delivery baqay
 // Bill nahi aaya (owner): who has not cleared the bill made up to the last day of the previous month, counting wasooli
 // from the 1st of this month up to the chosen day. It is worked out afresh every time, so a bill paid on the 12th or 13th
 // drops off at once and a new list can go to the rider. Order = the rider's route (roz wale first).
-let nbd=null;
-function nbRows(){const d=nbd||date,m0=d.slice(0,8)+'01',E=addDay(m0,-1);let paidN=0;
+// nbMin (owner): a baqi below this (default 1,000) is left out; such customers are counted as small.
+let nbd=null,nbMin=1000;
+function nbRows(){const d=nbd||date,m0=d.slice(0,8)+'01',E=addDay(m0,-1);let paidN=0,smallN=0;
  const R=S.dl.cs.map(c=>{const bill=cbal(c.id,m0);if(Math.round(bill)<=0)return null;const paid=S.dl.py.filter(p=>!p.del&&p.c===c.id&&p.day>=m0&&p.day<=d).reduce((s,p)=>s+n(p.a),0),left=bill-paid;
-  if(Math.round(left)<=0){paidN++;return null}return {c,bill,paid,left}}).filter(Boolean).sort((a,b)=>byDl(a.c,b.c));
- return {d,E,R,paidN,t:R.reduce((s,x)=>s+x.left,0)}}
+  if(Math.round(left)<=0){paidN++;return null}if(left<n(nbMin)){smallN++;return null}return {c,bill,paid,left}}).filter(Boolean).sort((a,b)=>byDl(a.c,b.c));
+ return {d,E,R,paidN,smallN,t:R.reduce((s,x)=>s+x.left,0)}}
 function nbText(){const {d,E,R,t}=nbRows();return `*Gujjar Dairies — bill nahi aaya, doodh band*\n${pk(E)} tak ka bill, ${pk(d)} tak wasool nahi hua (${R.length} customers):\n\n`+R.map((x,i)=>`${i+1}. ${x.c.name}${x.c.addr?' — '+x.c.addr:''}${x.c.phone?' — '+x.c.phone:''}${nbR?'':' — Rs '+f(x.left)}`).join('\n')+(nbR?'':`\n\n*Kul baqi: Rs ${f(t)}*`)}
 function nbHTML(){const {d,E,R,t}=nbRows();
  return rgHead('Bill nahi aaya — doodh band',`${pk(E)} tak ka bill · <b>${pk(d)}</b> tak wasool nahi`)+`<p class="m" style="margin-top:4px">In customers ka pichle mahine ka bill abhi tak nahi aaya. Remarks mein jo customer ne kaha wo likhein.</p>
@@ -1522,10 +1523,11 @@ function nbHTML(){const {d,E,R,t}=nbRows();
  ${R.map((x,i)=>`<tr><td>${i+1}</td><td class="l"><b>${esc(x.c.name)}</b></td><td class="l">${esc(x.c.addr||'')}</td><td class="l">${esc(x.c.phone||'')}</td>${nbR?'':`<td><b>${f(x.left)}</b></td>`}<td></td></tr>`).join('')}
  <tr class="t"><td></td><td class="l" colspan="3">Kul (${R.length} customers)</td>${nbR?'':`<td>${f(t)}</td>`}<td></td></tr></table></div>`}
 const nbPdf=()=>{const {d}=nbRows();return pdfMake('nb',nbHTML(),`Bill nahi aaya ${pk(d).replace(/\//g,'-')}`,null,1)};
-function nbV(){const {d,E,R,paidN,t}=nbRows(),due=n(S.dl.bp&&S.dl.bp.due);
+function nbV(){const {d,E,R,paidN,smallN,t}=nbRows(),due=n(S.dl.bp&&S.dl.bp.due);
  return `<div class="card"><details${OPEN.nb?' open':''} ontoggle="OPEN.nb=this.open"><summary>Bill nahi aaya (doodh band list) · ${R.length} customers · ${f(t)}</summary><div style="margin-top:10px">
  <div class="fld"><label for="nbd">Kis tareekh tak wasooli dekhein</label><input type="date" id="nbd" value="${d}" onchange="nbd=this.value||null;render()"></div>
- <p class="hint" style="margin:0 0 8px">${pk(E)} tak jo bill bana, us mein se ${pk(d.slice(0,8)+'01')} se ${pk(d)} tak jin ka poora nahi aaya.${due?` Due date: ${due} tareekh.`:''} ${paidN} customers ka bill aa gaya.</p>
+ <div class="fld"><label for="nbm">Is se kam baqi ho to list mein na aaye (Rs)</label><input type="number" inputmode="numeric" id="nbm" value="${esc(nbMin)}" onchange="nbMin=this.value.trim()===''?0:n(this.value);render()"></div>
+ <p class="hint" style="margin:0 0 8px">${pk(E)} tak jo bill bana, us mein se ${pk(d.slice(0,8)+'01')} se ${pk(d)} tak jin ka poora nahi aaya.${due?` Due date: ${due} tareekh.`:''} ${paidN} customers ka bill aa gaya.${smallN?` ${smallN} customers ka baqi ${f(n(nbMin))} se kam hai, wo list mein nahi.`:''}</p>
  ${R.length?`<table><tr><th>#</th><th style="text-align:left">Customer</th><th>Bill</th><th>Aaya</th><th>Baqi</th></tr>${R.map((x,i)=>`<tr onclick="bc='${x.c.id}';render();scrollTo(0,0)" style="cursor:pointer"><td>${i+1}</td><td style="text-align:left">${esc(x.c.name)}${x.c.addr?`<br><small class="muted">${esc(x.c.addr)}</small>`:''}</td><td>${f(x.bill)}</td><td>${x.paid?f(x.paid):''}</td><td><b>${f(x.left)}</b></td></tr>`).join('')}
  <tr><td></td><td style="text-align:left"><b>Kul</b></td><td></td><td></td><td><b>${f(t)}</b></td></tr></table>`:'<p class="msg ok">✓ Sab ka bill aa gaya</p>'}
  ${R.length?`${rdrTick(nbR,'nbR')}<button class="btn full" style="margin-top:10px" onclick="wa(nbText())">WhatsApp par rider ko bhejein</button>${pdfBtn('nb','nbPdf()').replace('📄 PDF WhatsApp par bhejein','📄 PDF banayein')}<button class="btn ghost full" style="margin-top:8px" onclick="printHTML(nbHTML())">🖨 Print</button>`:''}
