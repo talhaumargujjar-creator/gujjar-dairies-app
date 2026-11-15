@@ -344,8 +344,8 @@ function usedP(it,d){return Object.values(S.pr.rc).reduce((a,r)=>{const m=prq(d,
 // Delivered quantity is part of sold; csold() splits it off.
 function sold(it,d){const s=day(d).st[it.id];if(!s||!has(s.cl))return 0;return q2(opening(it,d)+n(s.pu)+milkIn(it,d).q+made(it,d)-n(s.us)-usedP(it,d)-n(s.cl))}
 // Milk a Doodh party (Johar) brings into the shop counts as this item's purchase without typing it:
-// mun × 38 = litres (buffalo and cow together), and the day's cost per litre = that party's bill ÷ litres.
-const LPM=38;
+// mun × 37.5 = litres (owner: 37.5, not 38, from the first day of the app, because the galla kept coming out short) (buffalo and cow together), and the day's cost per litre = that party's bill ÷ litres.
+const LPM=37.5;
 function milkIn(it,d){let q=0,a=0;for(const p of S.mk.ps)if(p.si===it.id&&S.mk.d[d]&&S.mk.d[d][p.id]){q+=mtot(d,p.id)/40*LPM;a+=mamt(d,p.id).t}return {q:q2(q),a}}
 // A day can carry its own rate (eggs change daily); otherwise the item's rate.
 // A day rate (owner, "Rate ✎") stays from that day onward until another day rate (owner): the latest day rate on or before d, else the item rate.
