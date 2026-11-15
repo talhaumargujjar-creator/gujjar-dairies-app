@@ -1769,6 +1769,25 @@ function xrV(){const s=xrState(),sel='width:100%;min-height:48px;padding:10px 12
  <div class="sum tot"><span>Kul ${xrn?esc(xrn):esc(SECS[xrk][0])}</span><b class="y">${f(s.t)}</b></div>
  <div class="btns" style="margin-top:10px">${xrn?`<button class="btn ghost" onclick="xrn='';render()">← Sab naam</button>`:''}<button class="btn" onclick="wa(xrText())">WhatsApp par bhejein</button></div>
  <p class="hint">Naam dabayein to us ki har din ki raqam aur detail khulti hai.</p></details></div>`}
+// Camera card (owner): the shop PC's camera programs push one summary row per day to camera_daily
+// (numbers only). Read straight from Supabase when the Report opens; last copies kept on this phone for offline.
+let CAMC=null,CAMQ={};
+function camLoad(d){if(CAMQ[d]||!sb||!navigator.onLine||!S.me||!own())return;CAMQ[d]=1;
+ sb.from('camera_daily').select('day,data,u').eq('day',d).maybeSingle().then(({data,error})=>{if(error){delete CAMQ[d];return}
+  const had=JSON.stringify(CAMC[d]||null);CAMC[d]=data?{...data.data,u:data.u}:{none:1};const o={};Object.keys(CAMC).sort().slice(-40).forEach(k=>o[k]=CAMC[k]);CAMC=o;
+  try{localStorage.setItem('gd_cam',JSON.stringify(CAMC))}catch(e){}
+  setTimeout(()=>{delete CAMQ[d]},300000);if(tab==='report'&&had!==JSON.stringify(CAMC[d]))render()})}
+function camV(){if(!S.me||!own())return '';
+ if(!CAMC){try{CAMC=JSON.parse(localStorage.getItem('gd_cam')||'{}')}catch(e){CAMC={}}}
+ camLoad(date);const c=CAMC[date],mn=s=>s>=60?Math.round(s/60)+' min':(s||0)+' s',R=(l,v,r)=>`<div class="sum"><span>${l}</span><b${r?' class="neg"':''}>${v}</b></div>`;
+ if(!c||c.none)return `<div class="card"><details${OPEN.cam?' open':''} ontoggle="OPEN.cam=this.open"><summary>📷 Camera</summary><p class="hint">${c?'Is din ka camera record nahi hai.':(navigator.onLine?'La raha hai...':'Internet nahi, camera ka record baad mein aayega.')}</p></details></div>`;
+ const hs=Object.keys(c.ch||{}).sort(),mx=Math.max(1,...hs.map(h=>c.ch[h]));
+ return `<div class="card"><details${OPEN.cam?' open':''} ontoggle="OPEN.cam=this.open"><summary>📷 Camera: ${f(c.c)} customer, galla ${f(c.g)} dafa khula</summary>
+ ${R('Customer (andaza, camera 2)',f(c.c))}${R('Customer kitni der ruka (beech ka)',mn(c.cw))}
+ ${R('Galla khula',f(c.g)+' dafa')}${R('Galla khula, khirki par customer nahi',f(c.gs)+' dafa',c.gs>0)}${R('Haath galle se jeb ki taraf (ishara)',f(c.gj)+' dafa',c.gj>0)}
+ ${R('Employee farigh / ek jagah',f(c.idn)+' dafa, '+mn(c.ids))}${R('Phone istemal',f(c.phn)+' dafa, '+mn(c.phs))}${R('Ikatthe farigh',f(c.grn)+' dafa, '+mn(c.grs))}${R('Washroom',f(c.wcn)+' chakkar, '+mn(c.wcs))}
+ ${hs.length?`<table style="margin-top:8px">${hs.map(h=>`<tr><td style="text-align:left;width:60px">${h}:00</td><td style="width:44px">${c.ch[h]}</td><td><div style="background:#1769e0;height:12px;border-radius:3px;width:${Math.round(c.ch[h]/mx*100)}%"></div></td></tr>`).join('')}</table>`:''}
+ <p class="hint">Dukaan ke PC se ${c.t||''} baje ka record. Ye sab andaze aur ishare hain, pakka saboot nahi; tasveerein dukaan ke PC par "Camera Ginti" mein hain.</p></details></div>`}
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
  // Owner: everything summarised first. Four main tiles show; the rest of the day, the month, items, kharche and past days open on tap.
@@ -1776,6 +1795,7 @@ function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</sp
  <div class="card" style="margin-top:10px"><details${OPEN.rd?' open':''} ontoggle="OPEN.rd=this.open"><summary>Aaj ki poori detail</summary><div class="tiles" style="margin-top:10px">${T('Counter sale',f(t.sale))}${T('Delivery sale',f(t.dsale))}${T('Delivery ka munafa',f(t.dprof),t.dprof<0?'neg':'pos')}${T('Items ka munafa',f(t.prof))}${T('Delivery wasooli (cash)',f(t.dcash))}${T('Fixed + salary (aaj ka hissa)',f(t.fxd))}${T('Udhaar diya',f(t.ud))}${T('Stock ki raqam (closing × cost)',f(stockVal(date)))}</div>
  <p class="hint" style="margin-top:8px">Munafa = bike maal ka (rate − cost) minus kharcha aur salary. Ghar aur gari kharcha, udhaar, owner ko di raqam aur supplier payment munafa mein nahi ginte.</p></details></div>
  <div class="btns" style="margin:0 0 12px"><button class="btn full" onclick="shareDay()">WhatsApp par bhejein</button></div>
+ ${camV()}
  ${rgV()}
  ${monthV()}
  ${ipV()}

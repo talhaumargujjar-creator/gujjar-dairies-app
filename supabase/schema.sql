@@ -624,3 +624,32 @@ revoke execute on function public.delivery_rate() from public, anon, authenticat
 -- How often a customer takes delivery (owner): 'd' roz, 'a' ek din chhor kar, 't' do din chhor kar, 'k' kabhi kabhi; null = the app guesses
 -- from the last 14 days. Delivery lists and the register show roz first, then the others.
 alter table public.customers add column if not exists fr text;
+
+-- Camera summary (owner, 15/11): the shop PC's camera programs (C:\Users\...\gd-camera, outside this repo) push one row per day
+-- with numbers only (customers, galla opens, staff watch). Owner reads it in Report -> Camera. The PC has no login: it calls
+-- camera_push() with a secret whose sha256 is in camera_key (the row is inserted by hand, never committed).
+create table if not exists public.camera_daily (
+  day date primary key,
+  data jsonb not null default '{}'::jsonb,
+  u bigint not null default 0
+);
+alter table public.camera_daily enable row level security;
+drop policy if exists camera_daily_owner_select on public.camera_daily;
+create policy camera_daily_owner_select on public.camera_daily for select to authenticated using (public.is_owner());
+create table if not exists public.camera_key (id int primary key default 1 check (id = 1), h text not null);
+alter table public.camera_key enable row level security;
+create or replace function public.camera_push(k text, d date, j jsonb) returns boolean
+language plpgsql security definer set search_path = public as $$
+begin
+  if k is null or not exists (select 1 from public.camera_key where h = encode(sha256(convert_to(k, 'UTF8')), 'hex')) then
+    return false;
+  end if;
+  if d < current_date - 3 or d > current_date + 1 or pg_column_size(j) > 20000 then
+    return false;
+  end if;
+  insert into public.camera_daily(day, data, u) values (d, j, (extract(epoch from now()) * 1000)::bigint)
+  on conflict (day) do update set data = excluded.data, u = excluded.u;
+  return true;
+end $$;
+revoke execute on function public.camera_push(text, date, jsonb) from public;
+grant execute on function public.camera_push(text, date, jsonb) to anon, authenticated;
