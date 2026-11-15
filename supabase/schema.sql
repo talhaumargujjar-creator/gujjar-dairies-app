@@ -653,3 +653,37 @@ begin
 end $$;
 revoke execute on function public.camera_push(text, date, jsonb) from public;
 grant execute on function public.camera_push(text, date, jsonb) to anon, authenticated;
+
+-- Camera pictures (owner, 15/11): small JPEGs (base64) of the suspicious moments only, pushed by the shop PC, kept 10 days.
+create table if not exists public.camera_photos (
+  id text primary key,
+  day date not null,
+  t text not null,
+  kind text not null,
+  cam int not null default 0,
+  secs int not null default 0,
+  img text not null,
+  u bigint not null default 0
+);
+create index if not exists camera_photos_day_kind on public.camera_photos(day, kind, t);
+alter table public.camera_photos enable row level security;
+drop policy if exists camera_photos_owner_select on public.camera_photos;
+create policy camera_photos_owner_select on public.camera_photos for select to authenticated using (public.is_owner());
+create or replace function public.camera_photo_push(k text, pid text, d date, tm text, knd text, cm int, sc int, im text) returns boolean
+language plpgsql security definer set search_path = public as $$
+begin
+  if k is null or not exists (select 1 from public.camera_key where h = encode(sha256(convert_to(k, 'UTF8')), 'hex')) then
+    return false;
+  end if;
+  if d < current_date - 3 or d > current_date + 1 or length(im) > 300000 or length(pid) > 80
+     or knd not in ('shak','jeb','phone','idle','group','wc') then
+    return false;
+  end if;
+  insert into public.camera_photos(id, day, t, kind, cam, secs, img, u)
+  values (pid, d, tm, knd, cm, sc, im, (extract(epoch from now()) * 1000)::bigint)
+  on conflict (id) do nothing;
+  delete from public.camera_photos where day < current_date - 10;
+  return true;
+end $$;
+revoke execute on function public.camera_photo_push(text, text, date, text, text, int, int, text) from public;
+grant execute on function public.camera_photo_push(text, text, date, text, text, int, int, text) to anon, authenticated;

@@ -1777,6 +1777,18 @@ function camLoad(d){if(CAMQ[d]||!sb||!navigator.onLine||!S.me||!own())return;CAM
   const had=JSON.stringify(CAMC[d]||null);CAMC[d]=data?{...data.data,u:data.u}:{none:1};const o={};Object.keys(CAMC).sort().slice(-40).forEach(k=>o[k]=CAMC[k]);CAMC=o;
   try{localStorage.setItem('gd_cam',JSON.stringify(CAMC))}catch(e){}
   setTimeout(()=>{delete CAMQ[d]},300000);if(tab==='report'&&had!==JSON.stringify(CAMC[d]))render()})}
+// Camera pictures (owner): the PC also pushes small JPEGs of the suspicious moments to camera_photos (kept 10 days).
+// Loaded 8 at a time only when a kind is tapped; kept in memory only (too big for localStorage).
+const CAMK=[['shak','Galla, customer nahi'],['jeb','Jeb ki taraf'],['phone','Phone'],['idle','Farigh'],['group','Ikatthe'],['wc','Washroom']];
+let camK='',CAMP={};
+function camPics(k){camK=camK===k?'':k;if(camK)camMore();render()}
+function camMore(){const key=date+'|'+camK,P=CAMP[key]||(CAMP[key]={rows:[],done:0,busy:0});if(P.busy||P.done||!sb)return;P.busy=1;
+ sb.from('camera_photos').select('id,t,cam,secs,img').eq('day',date).eq('kind',camK).order('t',{ascending:false}).range(P.rows.length,P.rows.length+7).then(({data,error})=>{P.busy=0;
+  if(error){P.err=1}else{P.err=0;P.rows.push(...data);if(data.length<8)P.done=1}if(tab==='report')render()})}
+function camGal(){if(!camK)return '';if(!CAMP[date+'|'+camK])camMore();const P=CAMP[date+'|'+camK]||{rows:[]},wide=camK==='jeb',mn=s=>s>=60?Math.round(s/60)+' min':s+' s';
+ return `<div style="margin-top:10px">${P.rows.map(r=>`<div style="margin-bottom:12px"><b>${esc(r.t)}</b> <span class="muted">· ${mn(r.secs)} · camera ${r.cam}</span><div style="overflow-x:auto;margin-top:4px"><img src="data:image/jpeg;base64,${r.img}" style="display:block;border-radius:8px;${r.img.length>90000||wide?'min-width:900px;':''}width:100%" alt=""></div></div>`).join('')}
+ ${P.err?'<p class="hint">Tasveerein nahi aa sakin, internet dekh kar dobara dabayein.</p>':''}${P.busy?'<p class="hint">La raha hai...</p>':(!P.rows.length&&P.done?'<p class="hint">Is din is qisam ki koi tasveer nahi.</p>':'')}
+ ${!P.done&&!P.busy?`<button class="btn ghost full" onclick="camMore()">Aur dikhayein</button>`:''}</div>`}
 function camV(){if(!S.me||!own())return '';
  if(!CAMC){try{CAMC=JSON.parse(localStorage.getItem('gd_cam')||'{}')}catch(e){CAMC={}}}
  camLoad(date);const c=CAMC[date],mn=s=>s>=60?Math.round(s/60)+' min':(s||0)+' s',R=(l,v,r)=>`<div class="sum"><span>${l}</span><b${r?' class="neg"':''}>${v}</b></div>`;
@@ -1787,7 +1799,8 @@ function camV(){if(!S.me||!own())return '';
  ${R('Galla khula',f(c.g)+' dafa')}${R('Galla khula, khirki par customer nahi',f(c.gs)+' dafa',c.gs>0)}${R('Haath galle se jeb ki taraf (ishara)',f(c.gj)+' dafa',c.gj>0)}
  ${R('Employee farigh / ek jagah',f(c.idn)+' dafa, '+mn(c.ids))}${R('Phone istemal',f(c.phn)+' dafa, '+mn(c.phs))}${R('Ikatthe farigh',f(c.grn)+' dafa, '+mn(c.grs))}${R('Washroom',f(c.wcn)+' chakkar, '+mn(c.wcs))}
  ${hs.length?`<table style="margin-top:8px">${hs.map(h=>`<tr><td style="text-align:left;width:60px">${h}:00</td><td style="width:44px">${c.ch[h]}</td><td><div style="background:#1769e0;height:12px;border-radius:3px;width:${Math.round(c.ch[h]/mx*100)}%"></div></td></tr>`).join('')}</table>`:''}
- <p class="hint">Dukaan ke PC se ${c.t||''} baje ka record. Ye sab andaze aur ishare hain, pakka saboot nahi; tasveerein dukaan ke PC par "Camera Ginti" mein hain.</p></details></div>`}
+ <p style="font-weight:700;margin:12px 0 6px">Tasveerein</p><div class="chips">${CAMK.map(([k,l])=>`<button class="chip" aria-pressed="${camK===k}" onclick="camPics('${k}')">${l}</button>`).join('')}</div>${camGal()}
+ <p class="hint">Dukaan ke PC se ${c.t||''} baje ka record. Ye sab andaze aur ishare hain, pakka saboot nahi. Yahan sirf shak wali tasveerein aati hain (10 din tak); baqi dukaan ke PC par "Camera Ginti" mein hain.</p></details></div>`}
 function report(){const t=tot(date),T=(l,v,c)=>`<div class="tile"><span>${l}</span><b class="${c||''}">${v}</b></div>`;
  const days=keys().filter(d=>active(S.days[d])).reverse().slice(0,14);
  // Owner: everything summarised first. Four main tiles show; the rest of the day, the month, items, kharche and past days open on tap.
