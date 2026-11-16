@@ -52,7 +52,7 @@ const FD=window.FORM_DATA||null;
 const FR={d:'ROZ WALE',a:'EK DIN CHHOR KAR',t:'DO DIN CHHOR KAR',k:'KABHI KABHI'},FRK=['d','a','t','k'],DDL=S&&S.dl&&S.dl.d||null;
 const FCNT={};if(DDL){const t=new Date(Date.now()-new Date().getTimezoneOffset()*6e4);for(let i=1;i<=14;i++){const x=new Date(t);x.setUTCDate(x.getUTCDate()-i);const C=DDL[x.toISOString().slice(0,10)]||{};
  for(const [c,L] of Object.entries(C))if(Object.entries(L).some(([k,e])=>k[0]!=='_'&&!e.del&&Number(e.q)>0))FCNT[c]=(FCNT[c]||0)+1}}
-const frOf=c=>FR[c.fr]?c.fr:!DDL?'d':(x=>x>=10?'d':x>=6?'a':x>=4?'t':'k')(FCNT[c.id]||0);
+const frOf=c=>FR[c.fr]?c.fr:'k';
 const custs=(FD?FD.cs:S&&S.dl&&S.dl.cs?S.dl.cs:[]).map((c,i)=>[c,i]).filter(x=>!x[0].off).sort((a,b)=>(FRK.indexOf(frOf(a[0]))-FRK.indexOf(frOf(b[0])))||((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
 const marks='<div class="mk tl"></div><div class="mk tr"></div><div class="mk bl"></div><div class="mk br"></div>';
 const dateBoxes='<div class="dt">TAREEKH: <i></i><i></i> / <i></i><i></i> / <i></i><i></i><i></i><i></i><b>DELIVERY WALA:</b><u></u></div>';

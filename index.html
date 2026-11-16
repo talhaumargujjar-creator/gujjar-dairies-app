@@ -1331,7 +1331,8 @@ const byOrd=(a,b)=>((a.ord??1e6)-(b.ord??1e6))||a.name.localeCompare(b.name);
 // Set on the customer (cs.fr); when not set the app guesses from the last 14 days before today: 10+ days roz, 6-9 alternate, 4-5 do din chhor, less kabhi kabhi.
 const FR={d:'Roz',a:'Ek din chhor kar',t:'Do din chhor kar',k:'Kabhi kabhi'},FRK=['d','a','t','k'];
 function frAuto(id){const M=MEMO.frA||(MEMO.frA=(()=>{const o={},t=tz();for(let i=1;i<=14;i++){const C=S.dl.d[addDay(t,-i)]||{};for(const [c,L] of Object.entries(C))if(Object.entries(L).some(([k,e])=>k[0]!=='_'&&!e.del&&n(e.q)>0))o[c]=(o[c]||0)+1}return o})());const x=M[id]||0;return x>=10?'d':x>=6?'a':x>=4?'t':'k'}
-const frOf=c=>FR[c.fr]?c.fr:frAuto(c.id);
+// Fixed on 16/11 (owner): every customer keeps the group saved on it (the app's 15/11 guess was written to all), so printed registers stay in order; a customer without one (a new one) goes last, under Kabhi kabhi, until the owner picks.
+const frOf=c=>FR[c.fr]?c.fr:'k';
 const byDl=(a,b)=>(FRK.indexOf(frOf(a))-FRK.indexOf(frOf(b)))||byOrd(a,b);
 const custs=()=>S.dl.cs.filter(c=>!c.off).sort(byDl);
 // A heading above each group in a customer list.
@@ -1559,7 +1560,7 @@ async function addOffer(){const t=$('#oft').value.trim(),fl=$('#ofi').files[0];i
 function delOffer(id){if(!confirm('Ye offer hatana hai?'))return;const B=S.dl.bp;B.offers=B.offers.filter(o=>o.id!==id);B.u=now();mark('bp:bill');render()}
 function billV(id){const c=cst(id),ym=bm||ymOf(date),m=cmon(id,ym),R=(l,v,k)=>`<div class="sum${k?' '+k:''}"><span>${l}</span><b>${v}</b></div>`;
  return `<button class="link" onclick="bc=null;render()">← Sab customers</button>
- <div class="card"><h3>${esc(c.name)}</h3>${c.addr?`<p class="hint">${esc(c.addr)}</p>`:''}<p class="hint">Bill: ${monName(ym)} Â· Saman: ${FR[frOf(c)]}${FR[c.fr]?'':' (app ka andaza)'}</p>
+ <div class="card"><h3>${esc(c.name)}</h3>${c.addr?`<p class="hint">${esc(c.addr)}</p>`:''}<p class="hint">Bill: ${monName(ym)} · Saman: ${FR[frOf(c)]}</p>
  <div style="margin-top:8px">${R('Pichla baqaya',f(m.prev))}
  ${m.items.map(x=>R(`${esc(iname(x.i))}: ${fq(x.q)} × ${fq(x.r)}`,f(x.a))).join('')}${m.old?R('Sheet wala hisaab',f(m.old)):''}
  ${R(monName(ym)+' ka maal',f(m.amt),'tot')}
@@ -1581,7 +1582,7 @@ ${rateV(id)}
  <div class="card"><details><summary>Customer ki maloomat</summary><div style="margin-top:12px">
  <div class="fld"><label for="en">Naam</label><input type="text" id="en" value="${esc(c.name)}" onchange="upC('${id}','name',this.value)"></div>
  <div class="fld"><label for="ea">Pata</label><input type="text" id="ea" value="${esc(c.addr||'')}" onchange="upC('${id}','addr',this.value)"></div>
- <div class="fld"><label for="efr">Saman kab leta hai</label><select id="efr" onchange="upC('${id}','fr',this.value)"><option value="">App khud dekhe (abhi: ${FR[frAuto(id)]})</option>${FRK.map(k=>`<option value="${k}"${c.fr===k?' selected':''}>${FR[k]}</option>`).join('')}</select></div>
+ <div class="fld"><label for="efr">Saman kab leta hai</label><select id="efr" onchange="upC('${id}','fr',this.value)">${FR[c.fr]?'':'<option value="" selected>Chunein (abhi neeche Kabhi kabhi mein)</option>'}${FRK.map(k=>`<option value="${k}"${c.fr===k?' selected':''}>${FR[k]}</option>`).join('')}</select></div>
  <div class="fld"><label for="eo">Purana baqaya (app se pehle ka)</label><input type="number" inputmode="decimal" id="eo" value="${n(c.op)}" onchange="upC('${id}','op',this.value)"></div>
  <button class="btn danger full" onclick="offC('${id}',true)">Customer list se hatayen</button></div></details></div>`}
 // The customer's own rates: milk first, then whatever this customer usually takes. Empty = the item's normal delivery rate.
