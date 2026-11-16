@@ -1794,8 +1794,8 @@ function camV(){if(!S.me||!own())return '';
  camLoad(date);const c=CAMC[date],mn=s=>s>=60?Math.round(s/60)+' min':(s||0)+' s',R=(l,v,r)=>`<div class="sum"><span>${l}</span><b${r?' class="neg"':''}>${v}</b></div>`;
  if(!c||c.none)return `<div class="card"><details${OPEN.cam?' open':''} ontoggle="OPEN.cam=this.open"><summary>📷 Camera</summary><p class="hint">${c?'Is din ka camera record nahi hai.':(navigator.onLine?'La raha hai...':'Internet nahi, camera ka record baad mein aayega.')}</p></details></div>`;
  const hs=Object.keys(c.ch||{}).sort(),mx=Math.max(1,...hs.map(h=>c.ch[h]));
- return `<div class="card"><details${OPEN.cam?' open':''} ontoggle="OPEN.cam=this.open"><summary>📷 Camera: ${f(c.c)} customer, galla ${f(c.g)} dafa khula</summary>
- ${R('Customer (andaza, camera 2)',f(c.c))}${R('Customer kitni der ruka (beech ka)',mn(c.cw))}
+ return `<div class="card"><details${OPEN.cam?' open':''} ontoggle="OPEN.cam=this.open"><summary>📷 Camera: ${c.coff?'':f(c.c)+' customer, '}galla ${f(c.g)} dafa khula</summary>
+ ${c.coff?'<p class="hint">Customer ginti band hai (naye camera lagne tak).</p>':R('Customer (andaza, camera 2)',f(c.c))+R('Customer kitni der ruka (beech ka)',mn(c.cw))}
  ${R('Galla khula',f(c.g)+' dafa')}${R('Galla khula, khirki par customer nahi',f(c.gs)+' dafa',c.gs>0)}${R('Haath galle se jeb ki taraf (ishara)',f(c.gj)+' dafa',c.gj>0)}
  ${R('Employee farigh / ek jagah',f(c.idn)+' dafa, '+mn(c.ids))}${R('Phone istemal',f(c.phn)+' dafa, '+mn(c.phs))}${R('Ikatthe farigh',f(c.grn)+' dafa, '+mn(c.grs))}${R('Washroom',f(c.wcn)+' chakkar, '+mn(c.wcs))}
  ${hs.length?`<table style="margin-top:8px">${hs.map(h=>`<tr><td style="text-align:left;width:60px">${h}:00</td><td style="width:44px">${c.ch[h]}</td><td><div style="background:#1769e0;height:12px;border-radius:3px;width:${Math.round(c.ch[h]/mx*100)}%"></div></td></tr>`).join('')}</table>`:''}
