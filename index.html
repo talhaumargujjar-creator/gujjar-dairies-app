@@ -1482,6 +1482,7 @@ function billsV(){const ym=bm||ymOf(date),sent=S.dl.sent[ym]||{},s=bq.toLowerCas
  <div class="fld"><label for="cp">WhatsApp number</label><input type="tel" id="cp" placeholder="03xx xxxxxxx"></div>
  <div class="fld"><label for="co">Purana baqaya (agar ho)</label><input type="number" inputmode="decimal" id="co"></div>
  <div class="fld"><label for="cmr">Doodh ka rate (khali = aam delivery rate)</label><input type="number" inputmode="decimal" id="cmr"></div>
+ <div class="fld"><label for="cfr">Saman kab leta hai (zaroori)</label><select id="cfr"><option value="">Chunein</option>${FRK.map(k=>`<option value="${k}">${FR[k]}</option>`).join('')}</select></div>
  <button class="btn full" onclick="addC()">+ Customer add karein</button></div></details></div>
  ${off.length?`<div class="card"><details${OPEN.offc?' open':''} ontoggle="OPEN.offc=this.open"><summary>Hataye gaye customers (${off.length}) · baqi ${f(OT)}</summary><p class="hint" style="margin:6px 0">${monName(ym)} ke aakhir tak. Naam par tap karein: bill aur wasooli.</p>${off.map(([c,d])=>`<div class="row"><button class="crow" style="flex:1;min-width:0;padding:6px 0;border:0" onclick="bc='${c.id}';render();scrollTo(0,0)"><span style="min-width:0"><b>${esc(c.name)}</b></span><b class="${d<0?'pos':''}">${f(d)}</b></button><button class="btn ghost" ${sbtn} onclick="offC('${c.id}',false)">Wapas layein</button></div>`).join('')}<div class="sum tot"><span>Hataye gaye ka kul baqi</span><b>${f(OT)}</b></div></details></div>`:''}
  ${bpV()}`}
@@ -1597,8 +1598,10 @@ function setRate(id,i,v){const c=cst(id),R=c.rates=Object.assign({},c.rates);v=S
   old.forEach(([x,e])=>{e.r=r;e.u=now();mark('dv:'+x+'|'+id+'|'+i)});
  render()}
 function addC(){const nm=$('#cn').value.trim();if(!nm){alert('Customer ka naam likhein.');return}
+ // Owner (16/11): a new customer is saved only with its group; it goes last in that group (highest ord).
+ const fr=$('#cfr').value;if(!FR[fr]){alert('Ye customer saman kab leta hai? Roz, ek din chhor kar, do din chhor kar ya kabhi kabhi chunein.');return}
  const id='c'+Date.now().toString(36),ord=S.dl.cs.reduce((m,x)=>Math.max(m,x.ord??0),0)+1;
- const mr=$('#cmr').value.trim(),mi=milkId();S.dl.cs.push({id,name:nm,addr:$('#ca').value.trim(),phone:$('#cp').value.trim(),op:n($('#co').value),ord,off:false,rates:mr&&mi?{[mi]:n(mr)}:{},u:now()});mark('dc:'+id);render()}
+ const mr=$('#cmr').value.trim(),mi=milkId();S.dl.cs.push({id,name:nm,addr:$('#ca').value.trim(),phone:$('#cp').value.trim(),op:n($('#co').value),ord,off:false,fr,rates:mr&&mi?{[mi]:n(mr)}:{},u:now()});mark('dc:'+id);render()}
 function upC(id,k,v){const c=cst(id);v=k==='op'?n(v):v.trim();if(k==='name'&&!v){render();return}c[k]=v;c.u=now();mark('dc:'+id);render()}
 // Customers are never deleted, only hidden, so their bills and baqaya stay.
 function offC(id,v){if(v&&!confirm('Ye customer list se hata dein? Us ka hisaab waisa hi rahega aur wapas laa sakte hain.'))return;const c=cst(id);c.off=v;c.u=now();mark('dc:'+id);bc=null;render()}

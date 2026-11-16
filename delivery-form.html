@@ -63,7 +63,8 @@ function build(){
  if(!custs.length){document.getElementById('out').innerHTML='<div class="page"><h2>Pehle app mein login karein</h2><p>Form aap ki customers list se banta hai. Isi phone par app khol kar login karein, phir ye page dobara kholein.</p></div>';return}
  // 31 lines a page; the last page also gets blank lines for new customers and the day's totals.
  // A heading line before each group takes one line of the page.
- const per=31,blank=6,L=[];let g=null,no=0;custs.forEach(c=>{const k=frOf(c);if(k!==g){L.push({h:FR[k]});g=k}L.push({c,no:++no})});for(let i=0;i<blank;i++)L.push({c:null,no:++no});const pages=[];
+ // Owner (16/11): every group, even an empty one, ends with blank lines for new customers: roz 3, ek din chhor 2, do din chhor 3, kabhi kabhi 2. Blank lines have no number so the numbers stay as in the app.
+ const per=31,BL={d:3,a:2,t:3,k:2},L=[];let no=0;FRK.forEach(k=>{L.push({h:FR[k]});custs.filter(c=>frOf(c)===k).forEach(c=>L.push({c,no:++no}));for(let i=0;i<BL[k];i++)L.push({c:null,no:''})});const pages=[];
  for(let i=0;i<L.length;i+=per)pages.push(L.slice(i,i+per));
  const last=pages[pages.length-1];if(last.length>per-6)pages.push([]);
  const N=pages.length;
