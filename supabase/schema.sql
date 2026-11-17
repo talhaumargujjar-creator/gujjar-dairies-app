@@ -687,3 +687,7 @@ begin
 end $$;
 revoke execute on function public.camera_photo_push(text, text, date, text, text, int, int, text) from public;
 grant execute on function public.camera_photo_push(text, text, date, text, text, int, int, text) to anon, authenticated;
+
+-- Shopper aur bag (owner, 18/11/2026): items.cn = dukaan ka istemal ka saman (never sold, out of sale and munafa),
+-- items.lo = remind when fewer left, items.kg = 'p' printed / 's' sada (each has a khata, settings key 'shk').
+alter table public.items add column if not exists cn boolean not null default false, add column if not exists lo numeric, add column if not exists kg text;
