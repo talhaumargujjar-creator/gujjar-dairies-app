@@ -520,23 +520,24 @@ function shkV(g){const s=shkState(g),K=s.K,hs=S.cb.filter(x=>x.k==='r'&&!x.del),
  <tr><td style="text-align:left"><b>Kul</b></td><td><b>${f(s.tin)}</b></td><td><b>${f(s.tout)}</b></td><td><b>${f(s.bal)}</b></td></tr></table>`:'<p class="hint">Abhi koi maal ya payment nahi.</p>'}</div></details></div>`}
 const shkCards=()=>`<datalist id="shxl">${[...new Set(S.xn.filter(x=>!x.off).map(x=>x.name))].map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`+['p','s'].filter(g=>S.items.some(it=>it.cn&&it.kg===g&&!it.off)).map(shkV).join('');
 // The Shopper tab (owner + staff): their own stock cards, the low-stock warning, and for the owner new sizes, limits and the two khatas.
-function shpAdd(){const nm=$('#shn').value.trim().toUpperCase(),g=$('#shg').value;if(!nm){alert('Naam aur size likhein, jaise PRINTED MILK SHOPPER BHAINS 1 KG.');return}if(!KG[g]){alert('Printed ya Sada chunein.');return}
+function shpAdd(){const nm=$('#shn').value.trim().toUpperCase(),g=$('#shg').value;if(!nm){alert('Naam aur size likhein, jaise PRINTED MILK SHOPPER BHAINS 1 KG.');return}if(!KG[g]&&g!=='o'){alert('Qism chunein.');return}
  const id='i'+Date.now(),ord=S.items.reduce((m,x)=>Math.max(m,x.ord??0),0)+1;S.items.push({id,name:nm,rate:0,cost:0,op:0,off:false,ord,cn:true,kg:g,lo:500,u:now(),pru:now()});mark('it:'+id);mark('pr:'+id);render()}
 function shpLo(id,v){const it=itm(id);it.lo=String(v).trim()===''?null:n(v);it.u=now();mark('it:'+id);render()}
 // Small headings inside a group: bhains shoppers, cow shoppers, bags.
-const shpType=it=>/BAG/i.test(it.name)?'Shopping bag':/COW/i.test(it.name)?'Cow doodh ke shopper':/BHAINS|BUFFALO/i.test(it.name)?'Bhains doodh ke shopper':'';
+const shpType=it=>/LASSI/i.test(it.name)?'Lassi glass':/GHEE/i.test(it.name)?'Ghee packing':/BAG/i.test(it.name)?'Shopping bag':/COW/i.test(it.name)?'Cow doodh ke shopper':/BHAINS|BUFFALO/i.test(it.name)?'Bhains doodh ke shopper':'';
 const shpSub=L=>{let t=null;return L.map(it=>{const x=shpType(it),h=x&&x!==t?`<div class="frh">${x}</div>`:'';t=x;return h+card(it)}).join('')};
-function shp(){const A=act().filter(it=>it.cn),G=g=>A.filter(it=>it.kg===g),other=A.filter(it=>!KG[it.kg]);
+function shp(){const A=act().filter(it=>it.cn),G=g=>A.filter(it=>it.kg===g),other=A.filter(it=>!KG[it.kg]);// kg o: lassi glass and ghee packing, stock only (owner: no khata)
+
  return `<button class="link" onclick="go('stock')">← Stock par wapas</button>${lowV()}
- <div class="card"><h3>🛍 Shopper aur bag</h3><p class="hint" style="margin-top:4px">Har size ki <b>Purchase</b> (jab maal aaye) aur roz shaam ki <b>Closing</b> (kitne bache) likhein. Ye bikri aur munafa mein nahi ginte, sirf stock aur khata.</p></div>
- ${['p','s'].map(g=>G(g).length?`<h2>${KG[g]}</h2><div id="list">${shpSub(G(g))}</div>`:'').join('')}${other.length?`<h2>Aur</h2>${other.map(card).join('')}`:''}
+ <div class="card"><h3>🛍 Shopper, lassi glass, ghee packing</h3><p class="hint" style="margin-top:4px">Har size ki <b>Purchase</b> (jab maal aaye) aur roz shaam ki <b>Closing</b> (kitne bache) likhein. Ye bikri aur munafa mein nahi ginte, sirf stock aur khata.</p></div>
+ ${['p','s'].map(g=>G(g).length?`<h2>${KG[g]}</h2><div id="list">${shpSub(G(g))}</div>`:'').join('')}${other.length?`<h2>Lassi glass aur ghee packing</h2><div id="list">${shpSub(other)}</div>`:''}
  ${own()?`<div class="card"><h3>Naya size jodein</h3><div class="fld"><label for="shn">Naam aur size</label><input type="text" id="shn" placeholder="Jaise PRINTED MILK SHOPPER BHAINS 1 KG"></div>
- <div class="fld"><label for="shg">Qism</label><select id="shg"><option value="">Chunein</option><option value="p">Printed</option><option value="s">Sada</option></select></div><button class="btn full" onclick="shpAdd()">+ Jodein</button>
+ <div class="fld"><label for="shg">Qism</label><select id="shg"><option value="">Chunein</option><option value="p">Printed shopper / bag</option><option value="s">Sada shopper / bag</option><option value="o">Lassi glass / ghee packing (khata nahi)</option></select></div><button class="btn full" onclick="shpAdd()">+ Jodein</button>
  <p class="hint" style="margin-top:8px">Koi size band ho jaye to Account → Items, rate aur cost se hata dein; purana hisaab waisa rahega.</p></div>
  <div class="card"><details${OPEN.shlo?' open':''} ontoggle="OPEN.shlo=this.open"><summary>Kitne se kam ho to yaad dilaye</summary>${A.map(it=>`<div class="row"><label for="shl_${it.id}" style="min-width:0">${esc(it.name)}</label><input type="number" inputmode="numeric" class="qi" id="shl_${it.id}" value="${it.lo??''}" placeholder="Koi nahi" onchange="shpLo('${it.id}',this.value)"></div>`).join('')}</details></div>
  ${shkCards()}`:''}`}
 function stock(){const p=progV();
- return capBtn()+`<button class="card capbtn" onclick="go('shp')"><span>🛍</span>Shopper aur bag${lowItems().length?` <b class="neg">· ⚠ ${lowItems().length} kam</b>`:''}</button><div class="card"><div class="sh"><h3>Stock ki ginti</h3><span class="muted" id="pc">${p.d} / ${p.t} items</span></div><div class="prog"><i id="pb" style="width:${p.p}%"></i></div>
+ return capBtn()+`<button class="card capbtn" onclick="go('shp')"><span>🛍</span>Shopper, glass, ghee packing${lowItems().length?` <b class="neg">· ⚠ ${lowItems().length} kam</b>`:''}</button><div class="card"><div class="sh"><h3>Stock ki ginti</h3><span class="muted" id="pc">${p.d} / ${p.t} items</span></div><div class="prog"><i id="pb" style="width:${p.p}%"></i></div>
  <p class="hint" style="margin-top:10px">Har item ki <b>Purchase</b> aur <b>Closing</b> likhein. <b>Istemal</b> sirf tab likhein jab maal bika nahi balke dukaan mein kaam aaya (jaise doodh se dahi).</p></div>
  <input type="search" placeholder="Item dhoondein" value="${esc(q)}" oninput="q=this.value;$('#list').innerHTML=listV()" aria-label="Item dhoondein">
  <div class="chips">${[['all','Sab'],['left','Baqi'],['done','Ho gaye']].map(([k,l])=>`<button class="chip" aria-pressed="${flt===k}" onclick="flt='${k}';render()">${l}</button>`).join('')}</div>

@@ -32,6 +32,7 @@ td.auto{font-size:8.5px;color:#666;text-align:center;line-height:1.1}
 .sec h2{margin:4px 0 0;font-size:11px;background:#000;color:#fff;padding:3px 5px;display:flex;justify-content:space-between}
 .sec th{font-size:9px;padding:2px}
 .sec td{height:5.6mm;font-size:9px}
+.sh td{height:6.3mm}.sh td.gh{height:4.5mm}
 .sec td.am{width:22mm}
 .box{border:2px solid #000;padding:5px 7px;margin-top:6px}
 .box .r{display:flex;justify-content:space-between;align-items:center;height:10mm;border-bottom:1px solid #999;font-weight:700;font-size:13px}
@@ -50,14 +51,15 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 let S=null;try{S=JSON.parse(localStorage.getItem('gd_hisaab_v2'))}catch(e){}
 const FD=window.FORM_DATA||null;
 const items=(FD?FD.items:S&&S.items?S.items:[]).map((it,i)=>[it,i]).filter(x=>!x[0].off&&!x[0].cn).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
+const KR=it=>it.kg==='s'?1:it.kg==='o'?2:0;
 // Shopper aur bag (owner, 18/11): their own page P4, printed then sada, with small headings; no Istemal column.
-const shItems=(FD?FD.items||[]:S&&S.items?S.items:[]).map((it,i)=>[it,i]).filter(x=>!x[0].off&&x[0].cn).sort((a,b)=>((a[0].kg==='s')-(b[0].kg==='s'))||((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
-const shHead=it=>(it.kg==='s'?'SADA':'PRINTED')+' — '+(/BAG/i.test(it.name)?'SHOPPING BAG':/COW/i.test(it.name)?'COW DOODH SHOPPER':'BHAINS DOODH SHOPPER');
+const shItems=(FD?FD.items||[]:S&&S.items?S.items:[]).map((it,i)=>[it,i]).filter(x=>!x[0].off&&x[0].cn).sort((a,b)=>(KR(a[0])-KR(b[0]))||((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
+const shHead=it=>it.kg==='o'?(/LASSI/i.test(it.name)?'LASSI GLASS':'GHEE PACKING'):(it.kg==='s'?'SADA':'PRINTED')+' — '+(/BAG/i.test(it.name)?'SHOPPING BAG':/COW/i.test(it.name)?'COW DOODH SHOPPER':'BHAINS DOODH SHOPPER');
 function shopPage(){let h=null,no=0;
- return `<div class="page">${head('P4','PAGE 4 / 4 — SHOPPER AUR BAG')}<div class="rule"><b>Qaide:</b> Har size alag. <b>Purchase</b> = aaj jitne aaye (printer ya dukaan se). <b>Closing</b> = shaam ko jitne bache, gin kar. Khaali = kuch nahi hua.</div>
- <table><tr><th style="width:9mm">#</th><th style="width:72mm">SIZE</th><th>OPENING</th><th>PURCHASE</th><th>CLOSING</th></tr>
- ${shItems.map(it=>{const x=shHead(it),r=x!==h?`<tr><td colspan="5" style="background:#e8e8e8;font-weight:900;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:2px 6px;text-align:left">${x}</td></tr>`:'';h=x;
-  return r+`<tr><td class="no">${++no}</td><td class="nm">${esc(it.name.replace(/^(PRINTED|SADA) /,''))}</td><td></td><td></td><td></td></tr>`}).join('')}</table>
+ return `<div class="page">${head('P4','PAGE 4 / 4 — SHOPPER, LASSI GLASS, GHEE PACKING')}<div class="rule"><b>Qaide:</b> Har size alag. <b>Purchase</b> = aaj jitne aaye (printer ya dukaan se). <b>Closing</b> = shaam ko jitne bache, gin kar. Khaali = kuch nahi hua.</div>
+ <table class="sh"><tr><th style="width:9mm">#</th><th style="width:72mm">SIZE</th><th>OPENING</th><th>PURCHASE</th><th>CLOSING</th></tr>
+ ${shItems.map(it=>{const x=shHead(it),r=x!==h?`<tr><td colspan="5" class="gh" style="background:#e8e8e8;font-weight:900;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:2px 6px;text-align:left">${x}</td></tr>`:'';h=x;
+  return r+`<tr><td class="no">${++no}</td><td class="nm">${esc(it.kg==='o'?it.name:it.name.replace(/^(PRINTED|SADA) /,''))}</td><td></td><td></td><td></td></tr>`}).join('')}</table>
  <div class="ft"><span>P4 · Gujjar Dairies</span><span>Ye page app ke Stock → Shopper aur bag mein likhein</span></div></div>`}
 // Items whose purchase the app adds by itself (a Doodh party linked to the item, e.g. Johar → FULL FAT MILK).
 const autoIn=new Set(FD?FD.autoIn||[]:S&&S.mk&&S.mk.ps?S.mk.ps.filter(p=>p.si&&!p.off).map(p=>p.si):[]);
