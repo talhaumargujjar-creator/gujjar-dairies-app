@@ -523,10 +523,13 @@ const shkCards=()=>`<datalist id="shxl">${[...new Set(S.xn.filter(x=>!x.off).map
 function shpAdd(){const nm=$('#shn').value.trim().toUpperCase(),g=$('#shg').value;if(!nm){alert('Naam aur size likhein, jaise PRINTED MILK SHOPPER BHAINS 1 KG.');return}if(!KG[g]){alert('Printed ya Sada chunein.');return}
  const id='i'+Date.now(),ord=S.items.reduce((m,x)=>Math.max(m,x.ord??0),0)+1;S.items.push({id,name:nm,rate:0,cost:0,op:0,off:false,ord,cn:true,kg:g,lo:500,u:now(),pru:now()});mark('it:'+id);mark('pr:'+id);render()}
 function shpLo(id,v){const it=itm(id);it.lo=String(v).trim()===''?null:n(v);it.u=now();mark('it:'+id);render()}
+// Small headings inside a group: bhains shoppers, cow shoppers, bags.
+const shpType=it=>/BAG/i.test(it.name)?'Shopping bag':/COW/i.test(it.name)?'Cow doodh ke shopper':/BHAINS|BUFFALO/i.test(it.name)?'Bhains doodh ke shopper':'';
+const shpSub=L=>{let t=null;return L.map(it=>{const x=shpType(it),h=x&&x!==t?`<div class="frh">${x}</div>`:'';t=x;return h+card(it)}).join('')};
 function shp(){const A=act().filter(it=>it.cn),G=g=>A.filter(it=>it.kg===g),other=A.filter(it=>!KG[it.kg]);
  return `<button class="link" onclick="go('stock')">← Stock par wapas</button>${lowV()}
  <div class="card"><h3>🛍 Shopper aur bag</h3><p class="hint" style="margin-top:4px">Har size ki <b>Purchase</b> (jab maal aaye) aur roz shaam ki <b>Closing</b> (kitne bache) likhein. Ye bikri aur munafa mein nahi ginte, sirf stock aur khata.</p></div>
- ${['p','s'].map(g=>G(g).length?`<h2>${KG[g]}</h2><div id="list">${G(g).map(card).join('')}</div>`:'').join('')}${other.length?`<h2>Aur</h2>${other.map(card).join('')}`:''}
+ ${['p','s'].map(g=>G(g).length?`<h2>${KG[g]}</h2><div id="list">${shpSub(G(g))}</div>`:'').join('')}${other.length?`<h2>Aur</h2>${other.map(card).join('')}`:''}
  ${own()?`<div class="card"><h3>Naya size jodein</h3><div class="fld"><label for="shn">Naam aur size</label><input type="text" id="shn" placeholder="Jaise PRINTED MILK SHOPPER BHAINS 1 KG"></div>
  <div class="fld"><label for="shg">Qism</label><select id="shg"><option value="">Chunein</option><option value="p">Printed</option><option value="s">Sada</option></select></div><button class="btn full" onclick="shpAdd()">+ Jodein</button>
  <p class="hint" style="margin-top:8px">Koi size band ho jaye to Account → Items, rate aur cost se hata dein; purana hisaab waisa rahega.</p></div>
