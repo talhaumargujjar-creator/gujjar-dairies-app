@@ -691,3 +691,6 @@ grant execute on function public.camera_photo_push(text, text, date, text, text,
 -- Shopper aur bag (owner, 18/11/2026): items.cn = dukaan ka istemal ka saman (never sold, out of sale and munafa),
 -- items.lo = remind when fewer left, items.kg = 'p' printed / 's' sada (each has a khata, settings key 'shk').
 alter table public.items add column if not exists cn boolean not null default false, add column if not exists lo numeric, add column if not exists kg text;
+
+-- items.ors (owner, 19/11/2026): a shopper's opening rate has been written, even 0, so the card stops asking for it.
+alter table public.items add column if not exists ors boolean not null default false;
