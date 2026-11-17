@@ -331,7 +331,11 @@ const keys=()=>MEMO.k||(MEMO.k=Object.keys(S.days).sort());
 const before=d=>keys().filter(x=>x<d).reverse();
 const btx=d=>S.bk.tx.filter(x=>!x.del&&x.day===d);
 const active=D=>D.cash!=null||KINDS.some(k=>live(norm(D),k).length)||Object.values(D.st).some(s=>has(s.cl));
-function opening(it,d){for(const x of before(d)){const s=S.days[x].st[it.id];if(s&&has(s.cl))return n(s.cl)}return n(it.op)}
+// Shopper/bag/glass/ghee packing (owner, 19/11): no daily count. Istemal is written through the day and the day's closing is
+// opening + purchase − istemal, unless a counted closing (ginti) was written, which wins. That closing is the next day's opening.
+function cnClose(it,d){const k='cc'+it.id+d;if(MEMO[k]!=null)return MEMO[k];const s=day(d).st[it.id]||{};return MEMO[k]=q2(has(s.cl)?n(s.cl):cnOpen(it,d)+n(s.pu)-n(s.us))}
+function cnOpen(it,d){for(const x of before(d)){const s=S.days[x].st[it.id];if(s&&(has(s.cl)||n(s.pu)||n(s.us)))return cnClose(it,x)}return n(it.op)}
+function opening(it,d){if(it.cn)return cnOpen(it,d);for(const x of before(d)){const s=S.days[x].st[it.id];if(s&&has(s.cl))return n(s.cl)}return n(it.op)}
 // Production of a day: what an item gained (made) and what recipes took from it (used). All recipes count, even switched-off ones, so old days stay the same.
 const prq=(d,rid)=>n(((S.pr.d[d]||{})[rid]||{}).q);
 function made(it,d){return Object.values(S.pr.rc).filter(r=>r.out===it.id).reduce((a,r)=>a+prq(d,r.id),0)}
@@ -458,7 +462,7 @@ function render(){const a=$('#app');
  a.innerHTML=hdr()+`<main>${({stock,hisaab,doodh,dlv,bank:cashV,cost,report,items,acct,kc,prd,emp,shp})[tab]()}</main>`+navV();shortLists();status()}
 
 // Stock
-const isDone=it=>has((day(date).st[it.id]||{}).cl);
+const isDone=it=>{const s=day(date).st[it.id]||{};return has(s.cl)||(!!it.cn&&has(s.us))};
 // items.ai: this item's purchase comes from a Doodh party by itself. The owner's phone keeps the flag in step with the
 // parties so staff, who never see the Doodh hisaab, know not to type that purchase by hand.
 function markAI(){let ch=false;S.items.forEach(it=>{const a=S.mk.ps.some(p=>p.si===it.id&&!p.off);if(!!it.ai!==a){it.ai=a;it.u=now();mark('it:'+it.id);ch=true}});if(ch)save();return ch}
@@ -466,7 +470,8 @@ function markAI(){let ch=false;S.items.forEach(it=>{const a=S.mk.ps.some(p=>p.si
 // Unit (owner): shoppers and bags are weighed in kg, lassi glass and ghee packing are counted in pieces (kg o).
 const cnU=it=>it&&it.cn?(it.kg==='o'?'piece':'kg'):'';
 function line(it){if(it.cn){const U=' '+cnU(it);const s=day(date).st[it.id]||{},tin=opening(it,date)+n(s.pu),lw=has(it.lo)&&n(it.lo)>0&&cnLeft(it,date)<n(it.lo)?`<span class="neg" style="flex-basis:100%">⚠ Kam hai (${fq(it.lo)}${U} se kam), naya order dein</span>`:'';
-  if(!has(s.cl))return lw+`<span>Total ${fq(tin)}${U}</span><span>Closing likhni hai</span>`;const u=q2(tin-n(s.cl));return lw+(u<0?`<span class="neg">Closing total se zyada hai. Purchase likhi hai?</span>`:`<span>Total ${fq(tin)}${U} · Istemal hua <b>${fq(u)}${U}</b></span>`)}
+  if(!has(s.cl)){const c=q2(tin-n(s.us));return lw+(c<0?`<span class="neg">Istemal total se zyada hai. Purchase likhi hai?</span>`:`<span>${fq(tin)} − istemal ${fq(n(s.us))} = <b>Closing ${fq(c)}${U}</b></span>`)}
+  const u=q2(tin-n(s.cl));return lw+(u<0?`<span class="neg">Ginti total se zyada hai. Purchase likhi hai?</span>`:`<span>Ginti se closing <b>${fq(s.cl)}${U}</b> · asal istemal ${fq(u)}${U}${has(s.us)&&Math.abs(u-n(s.us))>0.001?` <span class="neg">(likha ${fq(n(s.us))}, farq ${fq(q2(u-n(s.us)))})</span>`:''}</span>`)}
  if(it.ai&&!own()){const s=day(date).st[it.id]||{};return `<span style="flex-basis:100%">Is ki purchase Doodh ke hisaab se khud judti hai. <b>Purchase mein na likhein</b>, sirf Closing likhein.</span><span>${has(s.cl)?'Closing likh di':'Closing likhni hai'}</span>`}
  const s=day(date).st[it.id]||{},mk=made(it,date),up=usedP(it,date),mi=milkIn(it,date),tin=opening(it,date)+n(s.pu)+mi.q+mk-up;
  const pl=(mi.q?`<span style="flex-basis:100%">Doodh hisaab se purchase: <b>+${fq(mi.q)} litre</b>${own()&&mi.a?` · Rs ${f(mi.a/mi.q)} fi litre`:''}</span>`+(n(s.pu)?`<span class="neg" style="flex-basis:100%">Purchase mein hath se bhi ${fq(s.pu)} likha hai. Agar ye wahi Johar wala doodh hai to Purchase khali karein, warna do dafa ginega.</span>`:''):'')+(mk||up?`<span style="flex-basis:100%">Production: ${mk?'+'+fq(mk)+' bana':''}${mk&&up?', ':''}${up?'−'+fq(up)+' recipe mein laga':''}</span>`:'');
@@ -478,9 +483,9 @@ function line(it){if(it.cn){const U=' '+cnU(it);const s=day(date).st[it.id]||{},
  if(cs<0)return pl+`<span class="neg">Delivery mein ${fq(dq)} gaya, lekin stock se sirf ${fq(sd)} nikla. Closing ya delivery check karein.</span>`;
  return pl+`<span>Total ${fq(tin)} · Bika <b>${fq(sd)}</b>${dq?` (delivery ${fq(dq)}, counter ${fq(cs)})`:''}</span>`+(own()?`<span><b>Rs ${f(cs*rateOf(it,date))}</b></span>`:'')}
 function card(it){const s=day(date).st[it.id]||{};
- const inp=(k,l)=>`<div class="f"><label for="${k}${it.id}">${l}</label><input type="number" inputmode="decimal" enterkeyhint="next" id="${k}${it.id}" value="${s[k]??''}" onchange="setS('${it.id}','${k}',this)"></div>`;
+ const inp=(k,l)=>`<div class="f"><label for="${k}${it.id}">${l}</label><input type="${it.cn&&k==='us'?'text':'number'}" inputmode="decimal"${it.cn&&k==='us'?' placeholder="2+1.5"':''} enterkeyhint="next" id="${k}${it.id}" value="${s[k]??''}" onchange="setS('${it.id}','${k}',this)"></div>`;
  return `<div class="card item${isDone(it)?' done':''}"><div class="ih"><b>${esc(it.name)}</b>${own()&&!it.cn?`<button class="tag rt" onclick="setRt('${it.id}')" aria-label="${esc(it.name)}: aaj ka rate">${has(s.rt)?'Aaj ka rate '+fq(s.rt):'Rate '+fq(rateOf(it,date))} ✎</button>`:''}</div>
- ${it.cn?`<p class="hint" style="margin:-2px 0 6px">${cnU(it)==='kg'?'Sab kg mein (taraazu par tol kar)':'Sab ginti mein (pieces)'}</p>`:''}<div class="g4"><div class="f"><span class="l">Opening</span><div class="v">${fq(opening(it,date))}</div></div>${it.ai&&!own()?'<div class="f"><span class="l">Purchase</span><div class="v">Doodh se</div></div>':inp('pu','Purchase')}${it.cn?'':inp('us','Istemal')}${inp('cl','Closing')}</div>${it.cn&&own()?cnRateV(it):''}
+ ${it.cn?`<p class="hint" style="margin:-2px 0 6px">${cnU(it)==='kg'?'Sab kg mein (taraazu par tol kar)':'Sab ginti mein (pieces)'}</p>`:''}<div class="g4"><div class="f"><span class="l">Opening</span><div class="v">${fq(opening(it,date))}</div></div>${it.ai&&!own()?'<div class="f"><span class="l">Purchase</span><div class="v">Doodh se</div></div>':inp('pu','Purchase')}${inp('us','Istemal')}${it.cn?inp('cl','Ginti (agar gina)'):inp('cl','Closing')}</div>${it.cn&&own()?cnRateV(it):''}
  <div class="res">${line(it)}</div></div>`}
 // Items in register order; ones without an order keep their place at the end.
 const ordered=()=>S.items.map((it,i)=>[it,i]).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
@@ -497,7 +502,7 @@ const capBtn=()=>`<button class="card capbtn" onclick="go('kc')"><span>📷</spa
 // lo = remind when fewer than this are left. kg = 'p' printed or 's' sada; each group has its own khata with the maker:
 // maal aaya = purchase × cost per piece (Cost tab), payments = a Hisaab name and/or a Cash in hand hissa (settings 'shk').
 const KG={p:'Printed shopper',s:'Sada shopper'};
-const cnLeft=(it,d)=>{const s=day(d).st[it.id]||{};return has(s.cl)?n(s.cl):opening(it,d)+n(s.pu)};
+const cnLeft=(it,d)=>cnClose(it,d);
 const lowItems=()=>act().filter(it=>it.cn&&has(it.lo)&&n(it.lo)>0&&cnLeft(it,date)<n(it.lo));
 function lowV(){const L=lowItems();if(!L.length)return '';
  return `<div class="card" style="border:2px solid var(--red,#c71c2b)"><h3 class="neg">⚠ Ye saman kam hai, naya order dein</h3>${L.map(it=>`<div class="row"><span>${esc(it.name)}</span><b class="neg">${fq(cnLeft(it,date))} ${cnU(it)} baqi</b></div>`).join('')}
@@ -551,7 +556,7 @@ function cnValV(A){const T=g=>A.filter(it=>(KG[g]?it.kg===g:!KG[it.kg])).reduce(
 function shp(){const A=act().filter(it=>it.cn),G=g=>A.filter(it=>it.kg===g),other=A.filter(it=>!KG[it.kg]);// kg o: lassi glass and ghee packing, stock only (owner: no khata)
 
  return `<button class="link" onclick="go('stock')">← Stock par wapas</button>${lowV()}
- <div class="card"><h3>🛍 Shopper, lassi glass, ghee packing</h3><p class="hint" style="margin-top:4px">Har size ki <b>Purchase</b> (jab maal aaye) aur roz shaam ki <b>Closing</b> (kitne bache) likhein. Ye bikri aur munafa mein nahi ginte, sirf stock aur khata.</p></div>${own()?cnValV(A):''}
+ <div class="card"><h3>🛍 Shopper, lassi glass, ghee packing</h3><p class="hint" style="margin-top:4px">Har size ki <b>Purchase</b> (jab maal aaye) aur din bhar ka <b>Istemal</b> likhein; <b>Closing app khud banati hai</b> (opening + purchase − istemal). Kabhi gin lein to <b>Ginti</b> mein likh dein, wahi closing ban jayegi. Ye bikri aur munafa mein nahi ginte, sirf stock aur khata.</p></div>${own()?cnValV(A):''}
  ${['p','s'].map(g=>G(g).length?`<h2>${KG[g]}</h2><div id="list">${shpSub(G(g))}</div>`:'').join('')}${other.length?`<h2>Lassi glass aur ghee packing</h2><div id="list">${shpSub(other)}</div>`:''}
  ${own()?`<div class="card"><h3>Naya size jodein</h3><div class="fld"><label for="shn">Naam aur size</label><input type="text" id="shn" placeholder="Jaise PRINTED MILK SHOPPER BHAINS 1 KG"></div>
  <div class="fld"><label for="shg">Qism</label><select id="shg"><option value="">Chunein</option><option value="p">Printed shopper / bag</option><option value="s">Sada shopper / bag</option><option value="o">Lassi glass / ghee packing (khata nahi)</option></select></div><button class="btn full" onclick="shpAdd()">+ Jodein</button>
@@ -566,7 +571,8 @@ function stock(){const p=progV();
  <div class="chips">${[['all','Sab'],['left','Baqi'],['done','Ho gaye']].map(([k,l])=>`<button class="chip" aria-pressed="${flt===k}" onclick="flt='${k}';render()">${l}</button>`).join('')}</div>
  <div id="list">${listV()}</div>`}
 // Updates only this card so the keyboard stays on the next field.
-function setS(id,k,el){const D=dd(date),s=D.st[id]=D.st[id]||{pu:'',us:'',cl:'',u:0};s[k]=el.value;s.u=now();mark('st:'+date+'|'+id);head();
+// "2+1.5+3" in a box (shopper istemal through the day) is added up before saving.
+function setS(id,k,el){if(/\+/.test(el.value))el.value=String(q2(el.value.split('+').reduce((a,x)=>a+n(x),0)));const D=dd(date),s=D.st[id]=D.st[id]||{pu:'',us:'',cl:'',u:0};s[k]=el.value;s.u=now();mark('st:'+date+'|'+id);head();
  const c=el.closest('.card');c.querySelector('.res').innerHTML=line(itm(id));c.classList.toggle('done',has(s.cl));
  const p=progV(),pc=$('#pc'),pb=$('#pb');if(pc)pc.textContent=p.d+' / '+p.t+' items';if(pb)pb.style.width=p.p+'%'}
 document.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.target.tagName!=='INPUT'||e.target.type!=='number')return;
