@@ -54,7 +54,7 @@ const items=(FD?FD.items:S&&S.items?S.items:[]).map((it,i)=>[it,i]).filter(x=>!x
 const KR=it=>it.kg==='s'?1:it.kg==='o'?2:0;
 // Shopper aur bag (owner, 18/11): their own page P4, printed then sada, with small headings; no Istemal column.
 const shItems=(FD?FD.items||[]:S&&S.items?S.items:[]).map((it,i)=>[it,i]).filter(x=>!x[0].off&&x[0].cn).sort((a,b)=>(KR(a[0])-KR(b[0]))||((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
-const shHead=it=>it.kg==='o'?(/LASSI/i.test(it.name)?'LASSI GLASS (PIECE)':'GHEE PACKING (PIECE)'):(it.kg==='s'?'SADA':'PRINTED')+' — '+(/BAG/i.test(it.name)?'SHOPPING BAG':/COW/i.test(it.name)?'COW DOODH SHOPPER':'BHAINS DOODH SHOPPER')+' (KG)';
+const shHead=it=>it.kg==='o'?(/LASSI/i.test(it.name)?'LASSI GLASS (PIECE)':'GHEE PACKING (PIECE)'):(it.kg==='s'?'SADA':'PRINTED')+' — '+(/BAG/i.test(it.name)?'SHOPPING BAG':/COW/i.test(it.name)?'COW DOODH SHOPPER':/BHAINS/i.test(it.name)?'BHAINS DOODH SHOPPER':'DOODH SHOPPER (BHAINS + COW)')+' (KG)';
 function shopPage(){let h=null,no=0;
  return `<div class="page">${head('P4','PAGE 4 / 4 — SHOPPER, LASSI GLASS, GHEE PACKING')}<div class="rule"><b>Qaide:</b> Har size alag. <b>Shopper aur bag KG mein</b> (taraazu par tol kar, jaise 2.5), <b>lassi glass aur ghee packing ginti (pieces) mein</b>. <b>Purchase</b> = aaj jitna aaya. <b>Closing</b> = shaam ko jitna bacha. Khaali = kuch nahi hua.</div>
  <table class="sh"><tr><th style="width:9mm">#</th><th style="width:72mm">SIZE</th><th>OPENING</th><th>PURCHASE</th><th>CLOSING</th></tr>

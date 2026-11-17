@@ -526,7 +526,7 @@ function shpAdd(){const nm=$('#shn').value.trim().toUpperCase(),g=$('#shg').valu
  const id='i'+Date.now(),ord=S.items.reduce((m,x)=>Math.max(m,x.ord??0),0)+1;S.items.push({id,name:nm,rate:0,cost:0,op:0,off:false,ord,cn:true,kg:g,lo:g==='o'?100:5,u:now(),pru:now()});mark('it:'+id);mark('pr:'+id);render()}
 function shpLo(id,v){const it=itm(id);it.lo=String(v).trim()===''?null:n(v);it.u=now();mark('it:'+id);render()}
 // Small headings inside a group: bhains shoppers, cow shoppers, bags.
-const shpType=it=>/LASSI/i.test(it.name)?'Lassi glass':/GHEE/i.test(it.name)?'Ghee packing':/BAG/i.test(it.name)?'Shopping bag':/COW/i.test(it.name)?'Cow doodh ke shopper':/BHAINS|BUFFALO/i.test(it.name)?'Bhains doodh ke shopper':'';
+const shpType=it=>/LASSI/i.test(it.name)?'Lassi glass':/GHEE/i.test(it.name)?'Ghee packing':/BAG/i.test(it.name)?'Shopping bag':/COW/i.test(it.name)?'Cow doodh ke shopper':/BHAINS|BUFFALO/i.test(it.name)?'Bhains doodh ke shopper':/MILK SHOPPER/i.test(it.name)?'Doodh ke shopper (bhains aur cow ek hi)':'';
 const shpSub=L=>{let t=null;return L.map(it=>{const x=shpType(it),h=x&&x!==t?`<div class="frh">${x}</div>`:'';t=x;return h+card(it)}).join('')};
 function shp(){const A=act().filter(it=>it.cn),G=g=>A.filter(it=>it.kg===g),other=A.filter(it=>!KG[it.kg]);// kg o: lassi glass and ghee packing, stock only (owner: no khata)
 
