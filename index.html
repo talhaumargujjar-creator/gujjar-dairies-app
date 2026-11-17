@@ -535,7 +535,10 @@ function cnAvg(it,d){const k='ca'+it.id+d;if(MEMO[k]!=null)return MEMO[k];let a=
  return MEMO[k]=a}
 const cnVal=(it,d)=>Math.max(0,cnLeft(it,d))*cnAvg(it,d);
 function cnRateV(it){const C=(S.cs[it.id]||{})[date],u=cnU(it);
- return `<div class="row" style="margin-top:6px;gap:8px"><label for="cno_${it.id}" style="min-width:0;font-size:14px">Opening rate (shuru ka stock, fi ${u})</label><input type="number" inputmode="decimal" class="qi" id="cno_${it.id}" value="${n(it.cost)||''}" placeholder="0" onchange="upI('${it.id}','cost',this.value);render()"></div>
+ // Shuru stock (owner): what was there before the app started counting this item; it is the first day's Opening. Not a Purchase,
+ // so it never shows in the khata as maal aaya.
+ return `<div class="row" style="margin-top:6px;gap:8px"><label for="cnq_${it.id}" style="min-width:0;font-size:14px">Shuru ka stock (${u}, pehli dafa)</label><input type="number" inputmode="decimal" class="qi" id="cnq_${it.id}" value="${n(it.op)||''}" placeholder="0" onchange="upI('${it.id}','op',this.value);render()"></div>
+ <div class="row" style="gap:8px"><label for="cno_${it.id}" style="min-width:0;font-size:14px">Opening rate (shuru ka stock, fi ${u})</label><input type="number" inputmode="decimal" class="qi" id="cno_${it.id}" value="${n(it.cost)||''}" placeholder="0" onchange="upI('${it.id}','cost',this.value);render()"></div>
  <div class="row" style="gap:8px"><label for="cnr_${it.id}" style="min-width:0;font-size:14px">Aaj ki purchase ka rate (fi ${u})</label><input type="number" inputmode="decimal" class="qi" id="cnr_${it.id}" value="${C&&has(C.c)?C.c:''}" placeholder="${fq(cnAvg(it,addDay(date,-1)))}" onchange="setCost('${it.id}',this.value)"></div>
  <p class="hint" style="margin:2px 0 0">Stock ki raqam: <b>Rs ${f(cnVal(it,date))}</b> · ${fq(Math.max(0,cnLeft(it,date)))} ${u} × ausat rate ${fq(Math.round(cnAvg(it,date)*100)/100)}</p>`}
 function cnValV(A){const T=g=>A.filter(it=>(KG[g]?it.kg===g:!KG[it.kg])).reduce((s,it)=>s+cnVal(it,date),0),all=A.reduce((s,it)=>s+cnVal(it,date),0);
