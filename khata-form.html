@@ -50,6 +50,15 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 let S=null;try{S=JSON.parse(localStorage.getItem('gd_hisaab_v2'))}catch(e){}
 const FD=window.FORM_DATA||null;
 const items=(FD?FD.items:S&&S.items?S.items:[]).map((it,i)=>[it,i]).filter(x=>!x[0].off&&!x[0].cn).sort((a,b)=>((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
+// Shopper aur bag (owner, 18/11): their own page P4, printed then sada, with small headings; no Istemal column.
+const shItems=(FD?FD.items||[]:S&&S.items?S.items:[]).map((it,i)=>[it,i]).filter(x=>!x[0].off&&x[0].cn).sort((a,b)=>((a[0].kg==='s')-(b[0].kg==='s'))||((a[0].ord??1e6)-(b[0].ord??1e6))||a[1]-b[1]).map(x=>x[0]);
+const shHead=it=>(it.kg==='s'?'SADA':'PRINTED')+' — '+(/BAG/i.test(it.name)?'SHOPPING BAG':/COW/i.test(it.name)?'COW DOODH SHOPPER':'BHAINS DOODH SHOPPER');
+function shopPage(){let h=null,no=0;
+ return `<div class="page">${head('P4','PAGE 4 / 4 — SHOPPER AUR BAG')}<div class="rule"><b>Qaide:</b> Har size alag. <b>Purchase</b> = aaj jitne aaye (printer ya dukaan se). <b>Closing</b> = shaam ko jitne bache, gin kar. Khaali = kuch nahi hua.</div>
+ <table><tr><th style="width:9mm">#</th><th style="width:72mm">SIZE</th><th>OPENING</th><th>PURCHASE</th><th>CLOSING</th></tr>
+ ${shItems.map(it=>{const x=shHead(it),r=x!==h?`<tr><td colspan="5" style="background:#e8e8e8;font-weight:900;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:2px 6px;text-align:left">${x}</td></tr>`:'';h=x;
+  return r+`<tr><td class="no">${++no}</td><td class="nm">${esc(it.name.replace(/^(PRINTED|SADA) /,''))}</td><td></td><td></td><td></td></tr>`}).join('')}</table>
+ <div class="ft"><span>P4 · Gujjar Dairies</span><span>Ye page app ke Stock → Shopper aur bag mein likhein</span></div></div>`}
 // Items whose purchase the app adds by itself (a Doodh party linked to the item, e.g. Johar → FULL FAT MILK).
 const autoIn=new Set(FD?FD.autoIn||[]:S&&S.mk&&S.mk.ps?S.mk.ps.filter(p=>p.si&&!p.off).map(p=>p.si):[]);
 // Fixed lines exactly as on the paper khata (the 21-10 cashbook page), in its order, so the register reads like the
@@ -81,11 +90,11 @@ function secTable([code,title,names,blank]){
  ${names.map(x=>`<tr><td class="nm">${esc(x)}</td><td class="am"></td></tr>`).join('')}${'<tr><td></td><td class="am"></td></tr>'.repeat(blank)}</table></div>`}
 function build(){
  if(!items.length){document.getElementById('out').innerHTML='<div class="page"><h2>Pehle app mein login karein</h2><p>Form aap ki items list se banta hai. Isi phone par app khol kar login karein, phir ye page dobara kholein.</p></div>';return}
- const per=27,p1=items.slice(0,per),p2=items.slice(per,per*2);
+ const per=27,p1=items.slice(0,per),p2=items.slice(per,per*2),NP=shItems.length?4:3;
  const galla=`<div class="box"><div class="r"><span>GALLA OPENING (subah galle mein)</span><span></span></div><div class="r"><span>GALLE MEIN ASAL CASH (shaam ko gin kar)</span><span></span></div><div class="r"><span>LIKHNE WALE KA NAAM</span><span></span></div></div>`;
- document.getElementById('out').innerHTML=stockPage('P1','PAGE 1 / 3 — STOCK',p1,1)+stockPage('P2','PAGE 2 / 3 — STOCK',p2,per+1,galla)+
-  `<div class="page">${head('P3','PAGE 3 / 3 — KHARCHA AUR PAYMENTS')}<div class="rule"><b>Qaide:</b> Har raqam ka apna khana. Do raqam hon to 900+900 likh sakte hain. Naya naam khaali line mein likhein. <b>Delivery ka hisaab yahan nahi</b>, Delivery register mein.</div>
-  <div class="cols">${COLS.map(c=>`<div>${SECS.filter(s=>c.includes(s[0])).map(secTable).join('')}</div>`).join('')}</div><div class="ft"><span>P3 · Gujjar Dairies</span><span>K1-K7 = app ke Hisaab ke hisse</span></div></div>`}
+ document.getElementById('out').innerHTML=stockPage('P1',`PAGE 1 / ${NP} — STOCK`,p1,1)+stockPage('P2',`PAGE 2 / ${NP} — STOCK`,p2,per+1,galla)+
+  `<div class="page">${head('P3',`PAGE 3 / ${NP} — KHARCHA AUR PAYMENTS`)}<div class="rule"><b>Qaide:</b> Har raqam ka apna khana. Do raqam hon to 900+900 likh sakte hain. Naya naam khaali line mein likhein. <b>Delivery ka hisaab yahan nahi</b>, Delivery register mein.</div>
+  <div class="cols">${COLS.map(c=>`<div>${SECS.filter(s=>c.includes(s[0])).map(secTable).join('')}</div>`).join('')}</div><div class="ft"><span>P3 · Gujjar Dairies</span><span>K1-K7 = app ke Hisaab ke hisse</span></div></div>`+(shItems.length?shopPage():'')}
 build();
 </script>
 </body>
