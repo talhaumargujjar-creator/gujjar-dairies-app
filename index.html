@@ -488,10 +488,15 @@ function line(it){if(it.cn){const U=' '+cnU(it);const s=day(date).st[it.id]||{},
 // (table loc_stock: day, item, loc → pu, us, cl). A place's closing = its opening + purchase − istemal, or its ginti when counted.
 // The item's total stock is the three places together.
 const LOC=[['c','Counter'],['o','Office'],['k','Pichhe cabinet']];
+// Owner (19/11): Office and Pichhe cabinet are stores. What is taken out of them (us) goes to the Counter; istemal happens only at the
+// Counter, and only the Counter's closing is counted in the evening. Counter istemal = opening + purchase + aaya − closing.
+const locIn=(it,d)=>n((lsOf(d,it.id,'o')||{}).us)+n((lsOf(d,it.id,'k')||{}).us);
+const locUse=(it,d)=>{const s=lsOf(d,it.id,'c')||{};return has(s.cl)?q2(locOpen(it,'c',d)+n(s.pu)+locIn(it,d)-n(s.cl)):null};
 const lsOf=(d,id,l)=>((S.ls[d]||{})[id]||{})[l];
 const lsKeys=()=>MEMO.lsk||(MEMO.lsk=Object.keys(S.ls).sort());
 const locOn=(it,d)=>!!(it&&it.cn&&it.lsd&&d>=it.lsd);
-function locClose(it,l,d){const k='lc'+it.id+l+d;if(MEMO[k]!=null)return MEMO[k];const s=lsOf(d,it.id,l)||{};return MEMO[k]=q2(has(s.cl)?n(s.cl):locOpen(it,l,d)+n(s.pu)-n(s.us))}
+function locClose(it,l,d){const k='lc'+it.id+l+d;if(MEMO[k]!=null)return MEMO[k];const s=lsOf(d,it.id,l)||{};
+ return MEMO[k]=q2(l==='c'?(has(s.cl)?n(s.cl):locOpen(it,l,d)+n(s.pu)+locIn(it,d)):locOpen(it,l,d)+n(s.pu)-n(s.us))}
 function locOpen(it,l,d){const K=lsKeys();for(let i=K.length-1;i>=0;i--){const x=K[i];if(x>=d)continue;if(x<it.lsd)break;const s=lsOf(x,it.id,l);if(s&&(has(s.cl)||n(s.pu)||n(s.us)))return locClose(it,l,x)}return n((it.lop||{})[l])}
 const locSum=(it,d,k)=>LOC.reduce((a,[l])=>a+n((lsOf(d,it.id,l)||{})[k]),0);
 // Purchases of a day (old single box before the places started, the three places after).
@@ -513,11 +518,15 @@ function locSetupV(it){const u=cnU(it);if(!own())return `<p class="hint">Owner p
  <button class="btn full" onclick="lopSave('${it.id}')">Save karein</button>`}
 // The card once places are on: one line per place, totals below. Ginti shows the worked-out closing faintly until counted.
 function locCardV(it){const u=cnU(it),I=(l,k,ph,t)=>{const s=lsOf(date,it.id,l)||{};return `<input type="${t||'number'}" inputmode="decimal" class="lin" value="${esc(s[k]??'')}" placeholder="${ph}" aria-label="${LOC.find(x=>x[0]===l)[1]} ${k}" onchange="setL('${it.id}','${l}','${k}',this)">`};
- const R=LOC.map(([l,nm0])=>{const nm=nm0.replace('Pichhe cabinet','Cabinet');const o=locOpen(it,l,date),c=locClose(it,l,date),s=lsOf(date,it.id,l)||{};return `<tr><td class="ln">${nm}</td><td>${fq(o)}</td><td>${I(l,'pu','')}</td><td>${I(l,'us','2+1.5','text')}</td><td>${I(l,'cl',fq(c))}</td></tr>`}).join('');
- const to=cnOpen(it,date),tc=cnClose(it,date),lw=has(it.lo)&&n(it.lo)>0&&tc<n(it.lo)?`<p class="neg" style="margin:6px 0 0">⚠ Kam hai (${fq(it.lo)} ${u} se kam), naya order dein</p>`:'';
- return `<table class="lt"><tr><th>Jagah</th><th>Opening</th><th>Purchase</th><th>Istemal</th><th>Ginti</th></tr>${R}
- <tr><td class="ln"><b>Kul</b></td><td><b>${fq(to)}</b></td><td><b>${fq(locSum(it,date,'pu'))}</b></td><td><b>${fq(locSum(it,date,'us'))}</b></td><td><b>${fq(tc)} ${u}</b></td></tr></table>${lw}
- <p class="hint" style="margin:4px 0 0">Ginti ke khane mein halka likha number = app ki closing (opening + purchase − istemal). Gin lein to likh dein, wahi closing. Cabinet = pichhe wala cabinet.</p>`}
+ const st=l=>`<tr><td class="ln">${l==='o'?'Office':'Cabinet'}</td><td>${fq(locOpen(it,l,date))}</td><td>${I(l,'pu','')}</td><td>${I(l,'us','2+1.5','text')}</td><td>${fq(locClose(it,l,date))}</td></tr>`;
+ const sc=lsOf(date,it.id,'c')||{},ci=locIn(it,date),cc=locClose(it,'c',date),use=locUse(it,date);
+ const tc=cnClose(it,date),lw=has(it.lo)&&n(it.lo)>0&&tc<n(it.lo)?`<p class="neg" style="margin:6px 0 0">⚠ Kam hai (${fq(it.lo)} ${u} se kam), naya order dein</p>`:'';
+ return `<table class="lt"><tr><th>Jagah</th><th>Opening</th><th>Purchase</th><th>Counter ko diya</th><th>Closing</th></tr>${st('o')}${st('k')}
+ <tr><th></th><th>Opening</th><th>Purchase</th><th>Aaya</th><th>Closing (gin kar)</th></tr>
+ <tr><td class="ln">Counter</td><td>${fq(locOpen(it,'c',date))}</td><td>${I('c','pu','')}</td><td>${fq(ci)}</td><td>${I('c','cl',fq(cc))}</td></tr>
+ <tr><td class="ln"><b>Kul</b></td><td><b>${fq(cnOpen(it,date))}</b></td><td><b>${fq(locSum(it,date,'pu'))}</b></td><td></td><td><b>${fq(tc)} ${u}</b></td></tr></table>
+ <p style="margin:6px 0 0;font-size:15px">${use==null?'<span class="muted">Shaam ko Counter ki closing likhein, istemal app khud nikalegi.</span>':use<0?'<span class="neg">Counter ki closing zyada hai. Office/Cabinet se diya ya Purchase likhi hai?</span>':`Aaj istemal hua: <b>${fq(use)} ${u}</b>`}</p>${lw}
+ <p class="hint" style="margin:4px 0 0">Office ya Cabinet se Counter par laayein to "Counter ko diya" mein likhein (2+1.5 bhi). Counter ka "Aaya" khud judta hai. Istemal = Counter ki opening + purchase + aaya − closing.</p>`}
 function cnCardV(it){const u=cnU(it);
  const body=!it.lsd?locSetupV(it):date<it.lsd?`<p class="hint">Jagah wala hisaab ${pk(it.lsd)} se shuru hua. Is din ka stock: ${fq(cnClose(it,date))} ${u}.</p>`:locCardV(it)+(own()?cnRateV(it):'');
  return `<div class="card item"><div class="ih"><b>${esc(it.name)}</b></div><p class="hint" style="margin:-2px 0 6px">${u==='kg'?'Sab kg mein (taraazu par tol kar)':'Sab ginti mein (pieces)'}</p>${body}</div>`}
