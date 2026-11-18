@@ -694,3 +694,20 @@ alter table public.items add column if not exists cn boolean not null default fa
 
 -- items.ors (owner, 19/11/2026): a shopper's opening rate has been written, even 0, so the card stops asking for it.
 alter table public.items add column if not exists ors boolean not null default false;
+
+-- Jagah-wise shopper stock (owner, 19/11/2026): items.lop {c counter, o office, k cabinet} = each place's stock on items.lsd;
+-- after that purchase, istemal and ginti per place per day in loc_stock (owner and staff write).
+alter table public.items add column if not exists lop jsonb, add column if not exists lsd date;
+create table if not exists public.loc_stock (
+  day date not null, item_id text not null, loc text not null, pu numeric, us numeric, cl numeric,
+  u bigint not null default 0, sa timestamptz not null default now(), by uuid,
+  primary key (day, item_id, loc)
+);
+drop trigger if exists loc_stock_lww on public.loc_stock;
+create trigger loc_stock_lww before insert or update on public.loc_stock for each row execute function public.lww();
+create index if not exists loc_stock_sa_idx on public.loc_stock (sa);
+alter table public.loc_stock enable row level security;
+create policy loc_stock_member_select on public.loc_stock for select to authenticated using (public.is_member());
+create policy loc_stock_member_insert on public.loc_stock for insert to authenticated with check (public.is_member());
+create policy loc_stock_member_update on public.loc_stock for update to authenticated using (public.is_member()) with check (public.is_member());
+revoke all on public.loc_stock from anon;
